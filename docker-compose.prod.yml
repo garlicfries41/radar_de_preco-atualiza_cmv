@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      # In production, you might not want reloading
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+  # Optional: Frontend container if hosting on same VPS instead of Vercel
+  # frontend:
+  #   image: node:18-alpine
+  #   ...

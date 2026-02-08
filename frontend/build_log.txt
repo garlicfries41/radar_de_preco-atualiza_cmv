@@ -1,0 +1,16 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mÔ£ô[39m 3 modules transformed.
+Ô£ù Build failed in 2.20s
+error during build:
+[vite:css] [postcss] It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin. The PostCSS plugin has moved to a separate package, so to continue using Tailwind CSS with PostCSS you'll need to install `@tailwindcss/postcss` and update your PostCSS configuration.
+file: C:/Users/Alisson/Documents/Projects/Radar de Pre├ºo_Atualiza CMV/frontend/src/index.css:undefined:NaN
+    at lt (C:\Users\Alisson\Documents\Projects\Radar de Pre├ºo_Atualiza CMV\frontend\node_modules\tailwindcss\dist\lib.js:38:1643)
+    at LazyResult.runOnRoot (C:\Users\Alisson\Documents\Projects\Radar de Pre├ºo_Atualiza CMV\frontend\node_modules\postcss\lib\lazy-result.js:361:16)
+    at LazyResult.runAsync (C:\Users\Alisson\Documents\Projects\Radar de Pre├ºo_Atualiza CMV\frontend\node_modules\postcss\lib\lazy-result.js:290:26)
+    at LazyResult.async (C:\Users\Alisson\Documents\Projects\Radar de Pre├ºo_Atualiza CMV\frontend\node_modules\postcss\lib\lazy-result.js:192:30)
+    at LazyResult.then (C:\Users\Alisson\Documents\Projects\Radar de Pre├ºo_Atualiza CMV\frontend\node_modules\postcss\lib\lazy-result.js:436:17)

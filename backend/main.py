@@ -1,0 +1,309 @@
+"""
+FastAPI Backend - Radar de Preço & CMV
+Main application with REST API endpoints.
+"""
+
+import os
+import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime
+from decimal import Decimal
+from typing import List, Optional
+
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from dotenv import load_dotenv
+from supabase import create_client, Client
+
+# Import tools
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from tools.ocr_processor import ocr_from_bytes
+from tools.receipt_parser import parse_receipt
+from tools.cmv_calculator import recalculate_affected_recipes, calculate_cmv_change_percentage
+from tools.discord_notifier import send_price_alert, send_cmv_update
+
+load_dotenv()
+
+# Supabase client (using service_role for backend operations)
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(
+    os.getenv("SUPABASE_URL"),
+    SUPABASE_SERVICE_KEY
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events."""
+    print("🚀 Backend started - Radar de Preço & CMV")
+    yield
+    print("👋 Backend shutting down")
+
+
+app = FastAPI(
+    title="Radar de Preço & CMV API",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# CORS for Vercel frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # TODO: Lock down in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ============= Pydantic Models =============
+
+class ReceiptItemResponse(BaseModel):
+    id: str
+    raw_name: str
+    parsed_price: Optional[Decimal]
+    quantity: Decimal
+    matched_ingredient_id: Optional[str] = None
+    suggested_ingredient: Optional[dict] = None
+
+
+class UploadReceiptResponse(BaseModel):
+    receipt_id: str
+    market_name: Optional[str]
+    total_amount: Optional[Decimal]
+    items: List[ReceiptItemResponse]
+
+
+class ValidateItemInput(BaseModel):
+    receipt_item_id: str
+    ingredient_id: str
+    category: str
+    price: Decimal
+
+
+class ValidateReceiptInput(BaseModel):
+    receipt_id: str
+    items: List[ValidateItemInput]
+
+
+# ============= Endpoints =============
+
+@app.get("/")
+def read_root():
+    return {"status": "online", "service": "Radar de Preço & CMV"}
+
+
+@app.post("/api/receipts/upload", response_model=UploadReceiptResponse)
+async def upload_receipt(file: UploadFile = File(...)):
+    """
+    Upload receipt image, perform OCR, and stage for validation.
+    
+    Flow:
+    1. Read image bytes
+    2. OCR extraction
+    3. Parse text to structured data
+    4. Fuzzy match against product_map
+    5. Save to database (pending_validation)
+    """
+    try:
+        # Read image
+        contents = await file.read()
+        
+        # OCR
+        text = ocr_from_bytes(contents)
+        
+        if not text or len(text) < 20:
+            raise HTTPException(400, "OCR failed - no text detected")
+        
+        # Parse receipt
+        parsed = parse_receipt(text)
+        
+        # Create receipt record
+        receipt_data = {
+            "market_name": parsed["market_name"],
+            "total_amount": float(parsed["total_amount"]) if parsed["total_amount"] else None,
+            "status": "pending_validation"
+        }
+        
+        receipt_response = supabase.table("receipts").insert(receipt_data).execute()
+        receipt_id = receipt_response.data[0]["id"]
+        
+        # Stage items
+        response_items = []
+        for item in parsed["items"]:
+            # Try to find match in product_map
+            matched_ingredient = None
+            product_map_response = supabase.table("product_map") \
+                .select("ingredient_id, ingredients(id, name, category)") \
+                .ilike("raw_name", f"%{item['raw_name'][:20]}%") \
+                .limit(1) \
+                .execute()
+            
+            if product_map_response.data:
+                ingredient_data = product_map_response.data[0]["ingredients"]
+                matched_ingredient = {
+                    "id": ingredient_data["id"],
+                    "name": ingredient_data["name"],
+                    "category": ingredient_data["category"]
+                }
+            
+            # Insert item
+            item_data = {
+                "receipt_id": receipt_id,
+                "raw_name": item["raw_name"],
+                "parsed_price": float(item["price"]),
+                "quantity": float(item["quantity"]),
+                "matched_ingredient_id": matched_ingredient["id"] if matched_ingredient else None
+            }
+            
+            item_response = supabase.table("receipt_items").insert(item_data).execute()
+            item_record = item_response.data[0]
+            
+            response_items.append(ReceiptItemResponse(
+                id=item_record["id"],
+                raw_name=item_record["raw_name"],
+                parsed_price=Decimal(str(item_record["parsed_price"])),
+                quantity=Decimal(str(item_record["quantity"])),
+                matched_ingredient_id=item_record["matched_ingredient_id"],
+                suggested_ingredient=matched_ingredient
+            ))
+        
+        return UploadReceiptResponse(
+            receipt_id=receipt_id,
+            market_name=parsed["market_name"],
+            total_amount=parsed["total_amount"],
+            items=response_items
+        )
+        
+    except Exception as e:
+        raise HTTPException(500, f"Upload failed: {str(e)}")
+
+
+@app.put("/api/receipts/{receipt_id}/validate")
+async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
+    """
+    Validate receipt and update ingredient prices.
+    
+    Flow:
+    1. Update product_map (learning)
+    2. Update ingredient prices
+    3. Recalculate affected recipes
+    4. Send Discord alerts if needed
+    5. Mark receipt as verified
+    """
+    try:
+        updated_ingredients = []
+        ingredient_ids = []
+        
+        for item in payload.items:
+            # Get receipt item
+            receipt_item = supabase.table("receipt_items") \
+                .select("*") \
+                .eq("id", item.receipt_item_id) \
+                .single() \
+                .execute()
+            
+            if not receipt_item.data:
+                continue
+            
+            # Update product_map (learning)
+            supabase.table("product_map").insert({
+                "raw_name": receipt_item.data["raw_name"],
+                "ingredient_id": item.ingredient_id,
+                "confidence": 1.0
+            }).execute()
+            
+            # Get current price before update
+            ingredient = supabase.table("ingredients") \
+                .select("*") \
+                .eq("id", item.ingredient_id) \
+                .single() \
+                .execute()
+            
+            old_price = Decimal(str(ingredient.data["current_price"]))
+            new_price = item.price
+            
+            # Update ingredient price
+            supabase.table("ingredients").update({
+                "current_price": float(new_price),
+                "category": item.category,
+                "last_updated": datetime.utcnow().isoformat()
+            }).eq("id", item.ingredient_id).execute()
+            
+            updated_ingredients.append({
+                "name": ingredient.data["name"],
+                "old_price": old_price,
+                "new_price": new_price
+            })
+            ingredient_ids.append(item.ingredient_id)
+            
+            # Check if price change warrants alert
+            if old_price > 0:
+                change_pct = calculate_cmv_change_percentage(old_price, new_price)
+                if abs(change_pct) >= 10:
+                    send_price_alert(
+                        ingredient.data["name"],
+                        old_price,
+                        new_price,
+                        change_pct
+                    )
+        
+        # Recalculate affected recipes
+        affected_recipes = await recalculate_affected_recipes(ingredient_ids, supabase)
+        
+        # Mark receipt as verified
+        supabase.table("receipts").update({
+            "status": "verified"
+        }).eq("id", receipt_id).execute()
+        
+        return {
+            "success": True,
+            "updated_ingredients": len(updated_ingredients),
+            "recalculated_recipes": len(affected_recipes),
+            "affected_recipes": [r["recipe_id"] for r in affected_recipes]
+        }
+        
+    except Exception as e:
+        raise HTTPException(500, f"Validation failed: {str(e)}")
+
+
+@app.get("/api/receipts/pending")
+def get_pending_receipts():
+    """Get all receipts waiting for validation."""
+    response = supabase.table("receipts") \
+        .select("*, receipt_items(*)") \
+        .eq("status", "pending_validation") \
+        .order("created_at", desc=True) \
+        .execute()
+    
+    return response.data
+
+
+@app.get("/api/ingredients")
+def list_ingredients(search: Optional[str] = None):
+    """List all ingredients with optional search."""
+    query = supabase.table("ingredients").select("*")
+    
+    if search:
+        query = query.ilike("name", f"%{search}%")
+    
+    response = query.order("name").execute()
+    return response.data
+
+
+@app.get("/api/recipes")
+def list_recipes():
+    """List all recipes with current CMV."""
+    response = supabase.table("recipes") \
+        .select("*") \
+        .order("name") \
+        .execute()
+    
+    return response.data
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
