@@ -82,22 +82,18 @@ def ocr_from_bytes(image_bytes: bytes) -> str:
         f.write(image_bytes)
     
     try:
-        # Pass 1: Standard Preprocessing
-        text_processed = extract_text_from_image(temp_path, preprocess=True)
+        # Pass 1: Try RAW Image first (Tesseract 4+ LTE works better with raw)
+        print("--- DEBUG: Trying RAW OCR first ---")
+        text = extract_text_from_image(temp_path, preprocess=False)
         
-        # Simple heuristic: If text is too short or garbage, try raw
-        # Counting alphanumeric characters
-        alpha_count = sum(c.isalnum() for c in text_processed)
-        
-        if alpha_count < 50: 
-            print("⚠️ Preprocessed OCR yielded low quality text. Trying RAW image...")
-            text_raw = extract_text_from_image(temp_path, preprocess=False)
+        # If result is poor (short), try preprocessing as backup
+        if len(text) < 50: 
+            print("⚠️ RAW success yielded low text. Trying Preprocessing...")
+            text_processed = extract_text_from_image(temp_path, preprocess=True)
+            if len(text_processed) > len(text):
+                text = text_processed
             
-            # If raw produced more data, use it
-            if sum(c.isalnum() for c in text_raw) > alpha_count:
-                return text_raw
-            
-        return text_processed
+        return text
 
     except Exception as e:
         print(f"⚠️ OCR failed: {e}")
