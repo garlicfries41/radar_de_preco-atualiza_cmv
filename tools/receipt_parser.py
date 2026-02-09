@@ -61,32 +61,25 @@ def extract_items(text: str) -> List[Dict]:
     items = []
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     
-    # Exclude common non-item lines
-    skip_keywords = ["TOTAL", "SUBTOTAL", "VALOR", "PAGAMENTO", "TROCO", "DINHEIRO", "CARTAO", "CREDITO", "DEBITO", "CPF", "CNPJ", "IMPOSTO", "TRIBUTO", "CAIXA", "OPERADOR", "DATA", "HORA"]
+    # Exclude common non-item lines and address parts
+    pass_keywords = ["TOTAL", "SUBTOTAL", "VALOR", "PAGAMENTO", "TROCO", "DINHEIRO", "CARTAO", "CREDITO", "DEBITO", "CPF", "CNPJ", "IMPOSTO", "TRIBUTO", "CAIXA", "OPERADOR", "DATA", "HORA", "AV", "AVENIDA", "RUA", "CEP", "TEL", "TELEFONE", "LOJA", "PDV"]
     
     for i, line in enumerate(lines):
+        clean_line = line.upper()
         # Skip if too short or matches keywords
-        if len(line) < 5 or any(k in line.upper() for k in skip_keywords):
+        if len(line) < 5 or any(k in clean_line for k in pass_keywords):
             continue
 
         # Strategy A: Multi-line Item (common in Brazil)
         # Line i: Code + Name (e.g., "001 2275 MUSS LACTOPAR kg")
-        # Line i+1: Qty x Unit Price Total (e.g., "4,086 Kg x 26,90 109,91")
+        # Line i+1: Qty x Unit Price Total (e.g., "ENS 4,086 Kg x 26,90 109,91")
         if i + 1 < len(lines):
             next_line = lines[i+1]
             
-            # Pattern: QTY Unit x UnitPrice TotalPrice
-            # Ex: "1,000 Un x 15,79 15779" (OCR error on dot) or "4,086 Kg x 26,90 109,91"
-            # Regex details:
-            #   ^\s*([\d\.,]+)       -> Quantity (Group 1)
-            #   \s*(?:Kg|Un|Gf|L|M|PC)?  -> Unit (Optional)
-            #   \s*[xX]\s*           -> Separator "x"
-            #   ([\d\.,]+)           -> Unit Price (Group 2)
-            #   \s+                  -> Space
-            #   ([\d\.,]+)           -> Total Price (Group 3)
-            
+            # Pattern: [Noise] QTY Unit x UnitPrice TotalPrice
+            # We search for the pattern anywhere in the line, not just at start
             multi_line_match = re.search(
-                r"^\s*([\d\.,]+)\s*(?:Kg|Un|Gf|L|M|PC|SC)?\s*[xX]\s*([\d\.,]+)\s+([\d\.,]+)",
+                r"([\d\.,]+)\s*(?:Kg|Un|Gf|L|M|PC|SC)?\s*[xX]\s*([\d\.,]+)\s+([\d\.,]+)",
                 next_line,
                 re.IGNORECASE
             )
@@ -99,20 +92,23 @@ def extract_items(text: str) -> List[Dict]:
                     
                     # Fix common OCR error where 15,79 becomes 15779
                     if "." not in total_price_str and len(total_price_str) > 3:
+                        # Assume last two digits are cents
                         total_price_str = total_price_str[:-2] + "." + total_price_str[-2:]
                         
                     qty = Decimal(qty_str)
                     total = Decimal(total_price_str)
                     
                     # Clean the name (Line i)
-                    # Remove leading codes (digits at start)
+                    # Remove leading codes (digits at start) and OCR noise (short words like 'RR', 'NE') at start
                     clean_name = re.sub(r"^[\d\s\.]+", "", line).strip()
+                    # Remove common OCR noise prefixes if name starts with them followed by space
+                    clean_name = re.sub(r"^(?:RR|NE|DS|CO|CS)\s+", "", clean_name, flags=re.IGNORECASE)
                     
                     if len(clean_name) > 3 and total > 0:
                         items.append({
                             "raw_name": clean_name,
                             "quantity": qty,
-                            "price": total  # We store total price usually
+                            "price": total
                         })
                         # Consume next line so we don't process it again
                         lines[i+1] = "" 
@@ -123,22 +119,26 @@ def extract_items(text: str) -> List[Dict]:
         # Strategy B: Single-line Item (Fallback)
         # Ex: "LEITE 5.99"
         # Only if NOT processed as multi-line
-        match_single = re.search(r"^(.+?)\s+([\d,\.]+)$", line)
-        if match_single:
-            try:
-                name = match_single.group(1).strip()
-                price_str = match_single.group(2).replace(",", ".")
-                price = Decimal(price_str)
-                
-                # Loose validation to avoid capturing phone numbers or dates
-                if 0.50 <= price <= 5000.00 and not any(char.isdigit() for char in name[-3:]):
-                     items.append({
-                        "raw_name": name,
-                        "quantity": Decimal("1.0"),
-                        "price": price
-                    })
-            except:
-                pass
+        if line: # check if line wasn't consumed
+            match_single = re.search(r"^(.+?)\s+([\d,\.]+)$", line)
+            if match_single:
+                try:
+                    name = match_single.group(1).strip()
+                    price_str = match_single.group(2).replace(",", ".")
+                    price = Decimal(price_str)
+                    
+                    # Stricter validation
+                    # 1. Price range
+                    # 2. Name must have at least 2 letters
+                    # 3. Name shouldn't end with digits (like a phone number captured partially)
+                    if 0.50 <= price <= 5000.00 and len(name) > 2 and not any(char.isdigit() for char in name[-3:]):
+                         items.append({
+                            "raw_name": name,
+                            "quantity": Decimal("1.0"),
+                            "price": price
+                        })
+                except:
+                    pass
     
     return items
 
