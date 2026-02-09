@@ -21,5 +21,5 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  @apply bg-background text-secondary;
+  @apply bg-gray-100 text-blue-500;
 }
