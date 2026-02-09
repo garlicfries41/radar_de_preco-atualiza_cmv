@@ -236,12 +236,12 @@ async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
                 logger.warning(f"Receipt item not found", extra={"request_id": request_id, "item_id": item.receipt_item_id})
                 continue
             
-            # Update product_map (learning)
-            supabase.table("product_map").insert({
+            # Update product_map (learning) - upsert to avoid duplicates
+            supabase.table("product_map").upsert({
                 "raw_name": receipt_item.data["raw_name"],
                 "ingredient_id": item.ingredient_id,
                 "confidence": 1.0
-            }).execute()
+            }, on_conflict="raw_name,ingredient_id").execute()
             
             # Get current price before update
             ingredient = supabase.table("ingredients") \
