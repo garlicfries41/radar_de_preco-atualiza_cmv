@@ -12,7 +12,7 @@ sqlmodel==0.0.22
 # Image Processing & OCR
 pytesseract==0.3.13
 Pillow==11.0.0
-opencv-python==4.10.0.84
+opencv-python-headless==4.10.0.84
 
 # Utilities
 python-dotenv==1.0.1
