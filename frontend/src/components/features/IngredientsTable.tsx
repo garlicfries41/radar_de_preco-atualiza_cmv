@@ -239,7 +239,9 @@ export function IngredientsTable() {
                                         <td className="px-4 py-3 text-white">
                                             {ing.name}
                                             {isPending(ing) && (
-                                                <AlertTriangle size={14} className="inline ml-2 text-yellow-500" title="Dados incompletos" />
+                                                <span title="Dados incompletos">
+                                                    <AlertTriangle size={14} className="inline ml-2 text-yellow-500" />
+                                                </span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-gray-300">{ing.category || '-'}</td>
