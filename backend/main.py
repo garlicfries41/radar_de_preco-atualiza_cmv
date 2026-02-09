@@ -328,6 +328,88 @@ def list_ingredients(search: Optional[str] = None):
     return response.data
 
 
+@app.get("/api/ingredients/pending")
+def list_pending_ingredients():
+    """List ingredients with missing data (category or unit)."""
+    logger.debug("Fetching pending ingredients")
+    response = supabase.table("ingredients") \
+        .select("*") \
+        .or_("category.is.null,category.eq.,unit.is.null,unit.eq.") \
+        .order("name") \
+        .execute()
+    return response.data
+
+
+class CreateIngredientInput(BaseModel):
+    name: str
+    category: Optional[str] = None
+    current_price: Optional[float] = 0
+    unit: Optional[str] = None
+
+
+class UpdateIngredientInput(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    current_price: Optional[float] = None
+    unit: Optional[str] = None
+
+
+@app.post("/api/ingredients")
+def create_ingredient(payload: CreateIngredientInput):
+    """Create a new ingredient."""
+    logger.info(f"Creating ingredient: {payload.name}")
+    
+    try:
+        data = {
+            "name": payload.name.strip(),
+            "category": payload.category,
+            "current_price": payload.current_price or 0,
+            "unit": payload.unit
+        }
+        response = supabase.table("ingredients").insert(data).execute()
+        return response.data[0]
+    except Exception as e:
+        if "duplicate" in str(e).lower():
+            raise HTTPException(400, "Ingredient already exists")
+        logger.error(f"Failed to create ingredient: {e}")
+        raise HTTPException(500, f"Failed to create ingredient: {str(e)}")
+
+
+@app.put("/api/ingredients/{ingredient_id}")
+def update_ingredient(ingredient_id: str, payload: UpdateIngredientInput):
+    """Update an existing ingredient."""
+    logger.info(f"Updating ingredient: {ingredient_id}")
+    
+    try:
+        update_data = {}
+        if payload.name is not None:
+            update_data["name"] = payload.name.strip()
+        if payload.category is not None:
+            update_data["category"] = payload.category
+        if payload.current_price is not None:
+            update_data["current_price"] = payload.current_price
+        if payload.unit is not None:
+            update_data["unit"] = payload.unit
+        
+        if not update_data:
+            raise HTTPException(400, "No fields to update")
+        
+        response = supabase.table("ingredients") \
+            .update(update_data) \
+            .eq("id", ingredient_id) \
+            .execute()
+        
+        if not response.data:
+            raise HTTPException(404, "Ingredient not found")
+        
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update ingredient: {e}")
+        raise HTTPException(500, f"Failed to update ingredient: {str(e)}")
+
+
 @app.get("/api/categories")
 def list_categories(search: Optional[str] = None):
     """List all ingredient categories with optional search."""

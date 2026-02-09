@@ -1,20 +1,22 @@
 
 import { clsx } from 'clsx';
-import { LayoutDashboard, ShoppingBasket, ChefHat, Upload } from 'lucide-react';
+import { LayoutDashboard, ShoppingBasket, ChefHat, Upload, AlertTriangle } from 'lucide-react';
 
-type Tab = 'upload' | 'ingredients' | 'recipes';
+type Tab = 'upload' | 'ingredients' | 'recipes' | 'pending';
 
 interface DashboardProps {
     activeTab: Tab;
     onTabChange: (tab: Tab) => void;
     children: React.ReactNode;
+    pendingCount?: number;
 }
 
-export function DashboardLayout({ activeTab, onTabChange, children }: DashboardProps) {
+export function DashboardLayout({ activeTab, onTabChange, children, pendingCount = 0 }: DashboardProps) {
     const tabs = [
         { id: 'upload', label: 'Upload', icon: Upload },
         { id: 'ingredients', label: 'Ingredientes', icon: ShoppingBasket },
         { id: 'recipes', label: 'Receitas', icon: ChefHat },
+        { id: 'pending', label: 'Pendências', icon: AlertTriangle, badge: pendingCount },
     ];
 
     return (
@@ -33,7 +35,7 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
                             key={tab.id}
                             onClick={() => onTabChange(tab.id as Tab)}
                             className={clsx(
-                                "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium",
+                                "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium relative",
                                 activeTab === tab.id
                                     ? "bg-primary/20 text-primary"
                                     : "text-gray-400 hover:bg-gray-700 hover:text-white"
@@ -41,6 +43,11 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
                         >
                             <tab.icon size={20} />
                             {tab.label}
+                            {tab.badge && tab.badge > 0 && (
+                                <span className="absolute right-3 bg-yellow-500 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
+                                    {tab.badge}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </nav>
@@ -60,20 +67,25 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
             </main>
 
             {/* Bottom Nav (Mobile) */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-20 px-6 py-2 flex justify-between items-center">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-20 px-2 py-2 flex justify-between items-center">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => onTabChange(tab.id as Tab)}
                         className={clsx(
-                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-xs font-medium",
+                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-xs font-medium relative",
                             activeTab === tab.id
                                 ? "text-primary"
                                 : "text-gray-500 hover:text-white"
                         )}
                     >
-                        <tab.icon size={24} />
+                        <tab.icon size={22} />
                         {tab.label}
+                        {tab.badge && tab.badge > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-yellow-500 text-gray-900 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                                {tab.badge}
+                            </span>
+                        )}
                     </button>
                 ))}
             </nav>

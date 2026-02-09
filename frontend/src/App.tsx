@@ -1,16 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { CameraUpload } from './components/features/CameraUpload'
 import { ValidationInterface } from './components/features/ValidationInterface';
 import { DashboardLayout } from './components/features/DashboardLayout';
-import { IngredientsList } from './components/features/IngredientsList';
+import { IngredientsTable } from './components/features/IngredientsTable';
 import { RecipesList } from './components/features/RecipesList';
+import { PendingTab } from './components/features/PendingTab';
 import type { UploadResponse } from './types'
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 function App() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'recipes'>('upload');
-  const [view, setView] = useState<'list' | 'validation'>('list'); // internal view for upload tab specifically
+  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'recipes' | 'pending'>('upload');
+  const [view, setView] = useState<'list' | 'validation'>('list');
   const [receiptData, setReceiptData] = useState<UploadResponse | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    fetchPendingCount();
+  }, [activeTab]);
+
+  const fetchPendingCount = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/ingredients/pending`);
+      const data = await res.json();
+      setPendingCount(data.length);
+    } catch {
+      // ignore
+    }
+  };
 
   const handleUploadSuccess = (data: UploadResponse) => {
     setReceiptData(data);
@@ -20,16 +38,12 @@ function App() {
   const handleValidationSuccess = () => {
     setView('list');
     setReceiptData(null);
+    fetchPendingCount();
   };
 
   const renderContent = () => {
     if (activeTab === 'ingredients') {
-      return (
-        <div>
-          <h2 className="text-2xl font-bold mb-6">Ingredientes</h2>
-          <IngredientsList />
-        </div>
-      );
+      return <IngredientsTable />;
     }
 
     if (activeTab === 'recipes') {
@@ -39,6 +53,10 @@ function App() {
           <RecipesList />
         </div>
       );
+    }
+
+    if (activeTab === 'pending') {
+      return <PendingTab />;
     }
 
     // Upload Tab
@@ -64,13 +82,16 @@ function App() {
   };
 
   return (
-    <DashboardLayout activeTab={activeTab} onTabChange={(tab) => {
-      setActiveTab(tab);
-      // Reset upload flow when switching tabs if needed, or keep state
-      if (tab !== 'upload') {
-        setView('list');
-      }
-    }}>
+    <DashboardLayout
+      activeTab={activeTab}
+      onTabChange={(tab) => {
+        setActiveTab(tab);
+        if (tab !== 'upload') {
+          setView('list');
+        }
+      }}
+      pendingCount={pendingCount}
+    >
       {renderContent()}
       <Toaster position="bottom-center" toastOptions={{
         style: {

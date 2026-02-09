@@ -1,6 +1,5 @@
 import type { ScannedItem } from '../../types';
 import { IngredientSelector } from './IngredientSelector';
-import { CategorySelector } from './CategorySelector';
 import { Trash2 } from 'lucide-react';
 
 interface ValidationRowProps {
@@ -16,10 +15,6 @@ export function ValidationRow({ item, onUpdate, onRemove }: ValidationRowProps) 
         });
     };
 
-    const handleCategoryChange = (category: string) => {
-        onUpdate(item.id, { category });
-    };
-
     return (
         <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 mb-3 hover:border-gray-600 transition-colors">
             <div className="flex justify-between items-start mb-2">
@@ -32,8 +27,8 @@ export function ValidationRow({ item, onUpdate, onRemove }: ValidationRowProps) 
                 </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-1">
-                <div>
+            <div className="flex gap-3 mb-1 items-end">
+                <div className="w-1/3">
                     <label className="block text-xs text-gray-400 mb-1">Preço</label>
                     <div className="relative">
                         <span className="absolute left-2 top-1.5 text-gray-500 text-sm">R$</span>
@@ -46,15 +41,8 @@ export function ValidationRow({ item, onUpdate, onRemove }: ValidationRowProps) 
                         />
                     </div>
                 </div>
-                <div>
-                    <label className="block text-xs text-gray-400 mb-1">Categoria</label>
-                    <CategorySelector
-                        value={item.category || ''}
-                        onChange={handleCategoryChange}
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs text-gray-400 mb-1">Ingrediente</label>
+                <div className="flex-1">
+                    <label className="block text-xs text-gray-400 mb-1">Vincular Ingrediente</label>
                     <IngredientSelector
                         value={item.matched_ingredient_id}
                         onChange={handleIngredientChange}
