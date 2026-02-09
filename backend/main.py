@@ -113,6 +113,7 @@ async def upload_receipt(file: UploadFile = File(...)):
         
         # OCR
         text = ocr_from_bytes(contents)
+        print(f"--- DEBUG OCR START ---\n{text}\n--- DEBUG OCR END ---")
         
         if not text or len(text) < 20:
             raise HTTPException(400, "OCR failed - no text detected")
