@@ -80,7 +80,7 @@ class UploadReceiptResponse(BaseModel):
 class ValidateItemInput(BaseModel):
     receipt_item_id: str
     ingredient_id: str
-    category: str
+    category: Optional[str] = None
     price: Decimal
 
 
