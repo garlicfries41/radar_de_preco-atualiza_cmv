@@ -61,8 +61,19 @@ def extract_items(text: str) -> List[Dict]:
     items = []
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     
-    # Exclude common non-item lines and address parts
-    pass_keywords = ["TOTAL", "SUBTOTAL", "VALOR", "PAGAMENTO", "TROCO", "DINHEIRO", "CARTAO", "CREDITO", "DEBITO", "CPF", "CNPJ", "IMPOSTO", "TRIBUTO", "CAIXA", "OPERADOR", "DATA", "HORA", "AV", "AVENIDA", "RUA", "CEP", "TEL", "TELEFONE", "LOJA", "PDV"]
+    # 1. Skip Header Heuristic (User suggestion)
+    # Find the line with "DOCUMENTO AUXILIAR" and skip everything before/including it
+    start_index = 0
+    clean_lines = [l.upper().replace(" ", "") for l in lines]
+    
+    for idx, clean_line in enumerate(clean_lines):
+        if "DOCUMENTOAUXILIAR" in clean_line or "NOTAFISCAL" in clean_line:
+            start_index = idx + 1
+            
+    lines = lines[start_index:]
+    
+    # Exclude common non-item lines and address parts (cleanup)
+    pass_keywords = ["TOTAL", "SUBTOTAL", "VALOR", "PAGAMENTO", "TROCO", "DINHEIRO", "CARTAO", "CREDITO", "DEBITO", "CPF", "CNPJ", "IMPOSTO", "TRIBUTO", "CAIXA", "OPERADOR", "DATA", "HORA", "AV", "AVENIDA", "RUA", "CEP", "TEL", "TELEFONE", "LOJA", "PDV", "VENDEDOR"]
     
     for i, line in enumerate(lines):
         clean_line = line.upper()
@@ -77,7 +88,7 @@ def extract_items(text: str) -> List[Dict]:
             next_line = lines[i+1]
             
             # Pattern: [Noise] QTY Unit x UnitPrice TotalPrice
-            # We search for the pattern anywhere in the line, not just at start
+            # We search for the pattern anywhere in the line
             multi_line_match = re.search(
                 r"([\d\.,]+)\s*(?:Kg|Un|Gf|L|M|PC|SC)?\s*[xX]\s*([\d\.,]+)\s+([\d\.,]+)",
                 next_line,
@@ -90,25 +101,20 @@ def extract_items(text: str) -> List[Dict]:
                     unit_price_str = multi_line_match.group(2).replace(",", ".")
                     total_price_str = multi_line_match.group(3).replace(",", ".")
                     
-                    # Fix common OCR error where 15,79 becomes 15779
-                    if "." not in total_price_str and len(total_price_str) > 3:
-                        # Assume last two digits are cents
-                        total_price_str = total_price_str[:-2] + "." + total_price_str[-2:]
-                        
                     qty = Decimal(qty_str)
-                    total = Decimal(total_price_str)
+                    unit_price = Decimal(unit_price_str)
                     
                     # Clean the name (Line i)
                     # Remove leading codes (digits at start) and OCR noise (short words like 'RR', 'NE') at start
                     clean_name = re.sub(r"^[\d\s\.]+", "", line).strip()
                     # Remove common OCR noise prefixes if name starts with them followed by space
-                    clean_name = re.sub(r"^(?:RR|NE|DS|CO|CS)\s+", "", clean_name, flags=re.IGNORECASE)
+                    clean_name = re.sub(r"^(?:RR|NE|DS|CO|CS|SE|BE)\s+", "", clean_name, flags=re.IGNORECASE)
                     
-                    if len(clean_name) > 3 and total > 0:
+                    if len(clean_name) > 3 and unit_price > 0:
                         items.append({
                             "raw_name": clean_name,
                             "quantity": qty,
-                            "price": total
+                            "price": unit_price # Now storing UNIT PRICE as requested
                         })
                         # Consume next line so we don't process it again
                         lines[i+1] = "" 
