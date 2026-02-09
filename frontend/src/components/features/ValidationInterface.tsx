@@ -17,7 +17,7 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
 
     // Filter linked items
     const linkedCount = items.filter(i => i.matched_ingredient_id).length;
-    const progress = Math.round((linkedCount / items.length) * 100);
+    const progress = items.length > 0 ? Math.round((linkedCount / items.length) * 100) : 0;
 
     const handleUpdateItem = (id: string, updates: Partial<ScannedItem>) => {
         setItems(prev => prev.map(item =>
@@ -45,7 +45,7 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
             };
 
             await validateReceipt(data.receipt_id, payload);
-            alert('Validação salva com sucesso!');
+            // alert('Validação salva com sucesso!'); // Removed alert for smoother UX
             onSuccess();
         } catch (error) {
             console.error("Save failed", error);
@@ -56,30 +56,30 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
     };
 
     return (
-        <div className="w-full max-w-lg mx-auto pb-20">
+        <div className="w-full max-w-lg mx-auto pb-28">
             {/* Header */}
-            <div className="sticky top-0 bg-gray-900 z-10 pb-4 pt-2">
-                <div className="flex items-center mb-4">
-                    <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-white">
+            <div className="sticky top-0 bg-background/95 backdrop-blur-md z-20 pb-4 pt-4 border-b border-border mb-4">
+                <div className="flex items-center px-4 mb-3">
+                    <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
                         <ArrowLeft size={24} />
                     </button>
-                    <h2 className="text-xl font-bold ml-2">Validar Itens</h2>
-                    <span className="ml-auto text-sm text-gray-400">
-                        {linkedCount}/{items.length}
+                    <h2 className="text-xl font-bold ml-2 text-white">Validar Itens</h2>
+                    <span className="ml-auto text-sm font-medium text-textData bg-surface px-3 py-1 rounded-full border border-border">
+                        {linkedCount} / {items.length}
                     </span>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-1 bg-surface w-full">
                     <div
-                        className="h-full bg-primary transition-all duration-300"
+                        className="h-full bg-primary shadow-[0_0_10px_rgba(212,255,0,0.5)] transition-all duration-500 ease-out"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
             </div>
 
             {/* List */}
-            <div className="space-y-1">
+            <div className="space-y-1 px-4">
                 {items.map(item => (
                     <ValidationRow
                         key={item.id}
@@ -90,22 +90,27 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
                 ))}
 
                 {items.length === 0 && (
-                    <div className="text-center py-10 text-gray-500">
-                        Nenhum item para validar.
+                    <div className="text-center py-20">
+                        <p className="text-gray-500 text-lg">Nenhum item para validar.</p>
+                        <p className="text-sm text-gray-700 mt-2">Tente escanear outra nota.</p>
                     </div>
                 )}
             </div>
 
             {/* Footer Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-gray-800">
-                <div className="max-w-lg mx-auto flex gap-3">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-xl border-t border-border z-30">
+                <div className="max-w-lg mx-auto">
                     <Button
                         fullWidth
                         onClick={handleSave}
                         disabled={saving || linkedCount === 0}
                         size="lg"
+                        className={clsx(
+                            "font-bold text-black transition-all transform active:scale-95",
+                            linkedCount > 0 ? "bg-primary hover:bg-primaryHover shadow-[0_0_20px_rgba(212,255,0,0.3)]" : "bg-surface border border-border text-gray-500"
+                        )}
                     >
-                        {saving ? 'Salvando...' : `Confirmar (${linkedCount})`}
+                        {saving ? 'Processando...' : `Confirmar Atualização (${linkedCount})`}
                     </Button>
                 </div>
             </div>

@@ -7,9 +7,15 @@ export default {
     theme: {
         extend: {
             colors: {
-                // We will add custom colors here later based on "HelloBonsai" design system
-                primary: '#10B981', // Emerald 500 as placeholder
-                secondary: '#3B82F6', // Blue 500
+                // Premium Dark Theme (Blast-inspired)
+                background: '#050505',
+                surface: '#121212',
+                surfaceHighlight: '#1E1E1E',
+                primary: '#D4FF00', // Neon Lime
+                primaryHover: '#B8DE00',
+                secondary: '#FFFFFF',
+                textData: '#888888',
+                border: '#333333',
             },
         },
     },
