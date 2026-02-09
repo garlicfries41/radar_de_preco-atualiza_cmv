@@ -1,5 +1,6 @@
 import type { ScannedItem } from '../../types';
 import { IngredientSelector } from './IngredientSelector';
+import { CategorySelector } from './CategorySelector';
 import { Trash2 } from 'lucide-react';
 
 interface ValidationRowProps {
@@ -12,9 +13,11 @@ export function ValidationRow({ item, onUpdate, onRemove }: ValidationRowProps) 
     const handleIngredientChange = (ingredientId: string, _ingredientName: string) => {
         onUpdate(item.id, {
             matched_ingredient_id: ingredientId,
-            // store the name if needed for UI, but mostly ID matters for link
-            // might update raw_name or keep it distinct
         });
+    };
+
+    const handleCategoryChange = (category: string) => {
+        onUpdate(item.id, { category });
     };
 
     return (
@@ -29,8 +32,8 @@ export function ValidationRow({ item, onUpdate, onRemove }: ValidationRowProps) 
                 </button>
             </div>
 
-            <div className="flex gap-3 mb-1 items-end">
-                <div className="w-1/3">
+            <div className="grid grid-cols-3 gap-3 mb-1">
+                <div>
                     <label className="block text-xs text-gray-400 mb-1">Preço</label>
                     <div className="relative">
                         <span className="absolute left-2 top-1.5 text-gray-500 text-sm">R$</span>
@@ -43,8 +46,15 @@ export function ValidationRow({ item, onUpdate, onRemove }: ValidationRowProps) 
                         />
                     </div>
                 </div>
-                <div className="flex-1">
-                    <label className="block text-xs text-gray-400 mb-1">Vincular Ingrediente</label>
+                <div>
+                    <label className="block text-xs text-gray-400 mb-1">Categoria</label>
+                    <CategorySelector
+                        value={item.category || ''}
+                        onChange={handleCategoryChange}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs text-gray-400 mb-1">Ingrediente</label>
                     <IngredientSelector
                         value={item.matched_ingredient_id}
                         onChange={handleIngredientChange}

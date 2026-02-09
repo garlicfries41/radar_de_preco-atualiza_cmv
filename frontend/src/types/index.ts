@@ -21,7 +21,7 @@ export interface ScannedItem {
     matched_ingredient_id: string | null;
     matched_ingredient_name?: string;
     suggested_ingredient?: Suggestion | null;
-    category_suggestion?: string | null;
+    category?: string;
 }
 
 export interface Receipt {

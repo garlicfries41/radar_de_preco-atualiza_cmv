@@ -328,6 +328,41 @@ def list_ingredients(search: Optional[str] = None):
     return response.data
 
 
+@app.get("/api/categories")
+def list_categories(search: Optional[str] = None):
+    """List all ingredient categories with optional search."""
+    logger.debug(f"Listing categories", extra={"search": search})
+    query = supabase.table("ingredients_categories").select("*")
+    
+    if search:
+        query = query.ilike("name", f"%{search}%")
+    
+    response = query.order("name").execute()
+    return response.data
+
+
+class CreateCategoryInput(BaseModel):
+    name: str
+
+
+@app.post("/api/categories")
+def create_category(payload: CreateCategoryInput):
+    """Create a new ingredient category."""
+    logger.info(f"Creating category: {payload.name}")
+    
+    try:
+        response = supabase.table("ingredients_categories").insert({
+            "name": payload.name.strip().lower()
+        }).execute()
+        
+        return response.data[0]
+    except Exception as e:
+        if "duplicate" in str(e).lower():
+            raise HTTPException(400, "Category already exists")
+        logger.error(f"Failed to create category: {e}")
+        raise HTTPException(500, f"Failed to create category: {str(e)}")
+
+
 @app.get("/api/recipes")
 def list_recipes():
     """List all recipes with current CMV."""
