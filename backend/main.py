@@ -121,7 +121,7 @@ async def upload_receipt(file: UploadFile = File(...)):
     5. Save to database (pending_validation)
     """
     request_id = str(uuid.uuid4())
-    logger.info(f"Starting receipt upload processing", extra={"request_id": request_id, "filename": file.filename})
+    logger.info(f"Starting receipt upload processing", extra={"request_id": request_id, "file_name": file.filename})
     
     try:
         # Read image
