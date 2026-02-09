@@ -81,24 +81,24 @@ export function IngredientSelector({ selectedId, selectedName, onChange, classNa
                     }}
                     placeholder="Buscar ingrediente..."
                     className={clsx(
-                        "w-full pl-9 pr-4 py-3 rounded-lg text-sm transition-all outline-none",
-                        "bg-surfaceHighlight border border-border text-white placeholder-gray-500",
+                        "w-full pl-9 pr-4 py-2 rounded-md text-sm transition-all outline-none",
+                        "bg-white border border-gray-300 text-secondary placeholder-gray-400",
                         "focus:border-primary focus:ring-1 focus:ring-primary",
-                        selectedId ? "text-primary font-medium" : ""
+                        selectedId ? "text-primary font-semibold" : ""
                     )}
                 />
-                <div className="absolute left-3 top-3.5 text-gray-500">
+                <div className="absolute left-3 top-2.5 text-gray-400">
                     {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
                 </div>
             </div>
 
             {isOpen && results.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-surfaceHighlight border border-border rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-white border border-border rounded-md shadow-lg max-h-60 overflow-y-auto ring-1 ring-black ring-opacity-5">
                     {results.map((ingredient) => (
                         <button
                             key={ingredient.id}
                             onClick={() => handleSelect(ingredient)}
-                            className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-gray-200 flex items-center justify-between group transition-colors"
+                            className="w-full text-left px-4 py-2.5 hover:bg-green-50 text-sm text-gray-700 flex items-center justify-between group transition-colors border-b border-gray-50 last:border-none"
                         >
                             <span>{ingredient.name}</span>
                             {selectedId === ingredient.id && <Check size={16} className="text-primary" />}

@@ -18,16 +18,16 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
     ];
 
     return (
-        <div className="min-h-screen bg-background text-white pb-20 md:pb-0 md:pl-64">
+        <div className="min-h-screen bg-background text-secondary pb-20 md:pb-0 md:pl-64 transition-colors duration-200">
             {/* Sidebar (Desktop) */}
-            <aside className="hidden md:flex flex-col w-64 bg-surface border-r border-border fixed top-0 left-0 bottom-0 z-50">
+            <aside className="hidden md:flex flex-col w-64 bg-surface border-r border-border fixed top-0 left-0 bottom-0 z-50 shadow-sm">
                 <div className="p-6 border-b border-border">
-                    <h1 className="text-xl font-bold text-primary flex items-center gap-2">
+                    <h1 className="text-xl font-bold text-primary flex items-center gap-2 tracking-tight">
                         <LayoutDashboard size={24} />
                         Radar de Preço
                     </h1>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
+                <nav className="flex-1 p-4 space-y-1">
                     {tabs.map((tab: any) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -36,10 +36,10 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
                                 key={tab.id}
                                 onClick={() => onTabChange(tab.id as Tab)}
                                 className={clsx(
-                                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium",
+                                    "w-full flex items-center gap-3 px-4 py-3 rounded-md transition-all font-medium text-sm",
                                     isActive
                                         ? "bg-primary/10 text-primary border border-primary/20"
-                                        : "text-gray-400 hover:bg-surfaceHighlight hover:text-white border border-transparent"
+                                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-900 border border-transparent"
                                 )}
                             >
                                 <Icon size={20} />
@@ -50,12 +50,8 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
                 </nav>
             </aside>
 
-            {/* Mobile Header - Removed because ValidationInterface has its own header. 
-                But for other tabs we might need it? 
-                Actually, let's keep it simple and clean. 
-                If we are in 'upload', the validation screen takes over full screen. 
-            */}
-            <div className="md:hidden sticky top-0 bg-background/80 backdrop-blur-md border-b border-border p-4 z-40 flex items-center justify-between">
+            {/* Mobile Header */}
+            <div className="md:hidden sticky top-0 bg-white/90 backdrop-blur-md border-b border-border p-4 z-40 flex items-center justify-between shadow-sm">
                 <h1 className="text-lg font-bold text-primary flex items-center gap-2">
                     <LayoutDashboard size={20} />
                     Radar de Preço
@@ -68,7 +64,7 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
             </main>
 
             {/* Bottom Nav (Mobile) */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-lg border-t border-border z-40 px-6 py-2 flex justify-between items-center safe-area-bottom">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-lg border-t border-border z-40 px-6 py-2 flex justify-between items-center safe-area-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
                 {tabs.map((tab: any) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -79,8 +75,8 @@ export function DashboardLayout({ activeTab, onTabChange, children }: DashboardP
                             className={clsx(
                                 "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-xs font-medium",
                                 isActive
-                                    ? "text-primary drop-shadow-[0_0_8px_rgba(212,255,0,0.5)]"
-                                    : "text-gray-500 hover:text-white"
+                                    ? "text-primary"
+                                    : "text-gray-400 hover:text-gray-600"
                             )}
                         >
                             <Icon size={24} />

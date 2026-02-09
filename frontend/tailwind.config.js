@@ -7,15 +7,15 @@ export default {
     theme: {
         extend: {
             colors: {
-                // Premium Dark Theme (Blast-inspired)
-                background: '#050505',
-                surface: '#121212',
-                surfaceHighlight: '#1E1E1E',
-                primary: '#D4FF00', // Neon Lime
-                primaryHover: '#B8DE00',
-                secondary: '#FFFFFF',
-                textData: '#888888',
-                border: '#333333',
+                // HelloBonsai Style (Clean, Green, Minimal)
+                background: '#F3F4F6', // Gray-100
+                surface: '#FFFFFF',    // White
+                surfaceHighlight: '#F9FAFB', // Gray-50
+                primary: '#00B289',    // Bonsai Green
+                primaryHover: '#009e7a',
+                secondary: '#2C3E50',  // Dark Text
+                textData: '#4B5563',   // Gray-600
+                border: '#E5E7EB',     // Gray-200
             },
         },
     },
