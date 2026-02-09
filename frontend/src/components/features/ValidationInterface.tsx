@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { clsx } from 'clsx';
 import type { UploadResponse, ScannedItem, ValidationPayload } from '../../types';
 import { Button } from '../ui/Button';
 import { ValidationRow } from './ValidationRow';
