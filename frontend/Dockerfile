@@ -4,8 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-# Set API URL to relative path for Nginx proxy
-ENV VITE_API_URL=/
+# Set API URL to empty for same-origin requests
+ENV VITE_API_URL=
 RUN npm run build
 
 # Serve Stage
