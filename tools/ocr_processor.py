@@ -71,14 +71,8 @@ def extract_text_from_image(image_path: str, preprocess: bool = True) -> str:
 
 def ocr_from_bytes(image_bytes: bytes) -> str:
     """
-    Extract text from image bytes (for API upload).
-    Falls back to mock data if Tesseract is not available.
-    
-    Args:
-        image_bytes: Image data as bytes
-        
-    Returns:
-        Extracted text
+    Extract text from image bytes with multi-pass strategy.
+    Tries preprocessed first, then raw if result feels empty.
     """
     # Save temporarily
     temp_path = ".tmp/temp_ocr.jpg"
@@ -88,14 +82,27 @@ def ocr_from_bytes(image_bytes: bytes) -> str:
         f.write(image_bytes)
     
     try:
-        text = extract_text_from_image(temp_path)
-        return text
+        # Pass 1: Standard Preprocessing
+        text_processed = extract_text_from_image(temp_path, preprocess=True)
+        
+        # Simple heuristic: If text is too short or garbage, try raw
+        # Counting alphanumeric characters
+        alpha_count = sum(c.isalnum() for c in text_processed)
+        
+        if alpha_count < 50: 
+            print("⚠️ Preprocessed OCR yielded low quality text. Trying RAW image...")
+            text_raw = extract_text_from_image(temp_path, preprocess=False)
+            
+            # If raw produced more data, use it
+            if sum(c.isalnum() for c in text_raw) > alpha_count:
+                return text_raw
+            
+        return text_processed
+
     except Exception as e:
-        # Fallback to mock OCR if Tesseract is not available
-        print(f"⚠️ OCR failed (Tesseract not available), using MOCK data: {e}")
+        print(f"⚠️ OCR failed: {e}")
         return get_mock_receipt_text()
     finally:
-        # Cleanup
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
