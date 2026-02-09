@@ -1,5 +1,6 @@
 import { useState, useRef, type ChangeEvent } from 'react';
 import { Camera, Upload, X, Loader2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { Button } from '../ui/Button';
 import { uploadReceipt } from '../../services/api';
 import type { UploadResponse } from '../../types';
@@ -38,15 +39,18 @@ export function CameraUpload({ onUploadSuccess }: CameraUploadProps) {
         if (!file) return;
 
         setUploading(true);
+        const loadingToast = toast.loading('Processando recibo...');
+
         try {
             // In a real app, you'd handle the response properly
             const data = await uploadReceipt(file);
             console.log('Upload success:', data);
             setResult(data);
+            toast.success('Recibo processado com sucesso!', { id: loadingToast });
             onUploadSuccess(data);
         } catch (error) {
             console.error('Upload failed:', error);
-            alert('Falha no upload do recibo. Verifique o console.');
+            toast.error('Falha no upload. Tente novamente.', { id: loadingToast });
         } finally {
             setUploading(false);
         }

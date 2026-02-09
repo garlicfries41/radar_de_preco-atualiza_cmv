@@ -19,6 +19,7 @@ export interface ScannedItem {
     parsed_price: number;
     quantity: number;
     matched_ingredient_id: string | null;
+    matched_ingredient_name?: string;
     suggested_ingredient?: Suggestion | null;
     category_suggestion?: string | null;
 }

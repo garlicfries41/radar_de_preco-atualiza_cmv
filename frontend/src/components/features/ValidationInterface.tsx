@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { clsx } from 'clsx';
+import { toast } from 'react-hot-toast';
 import type { UploadResponse, ScannedItem, ValidationPayload } from '../../types';
 import { Button } from '../ui/Button';
 import { ValidationRow } from './ValidationRow';
@@ -18,7 +18,7 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
 
     // Filter linked items
     const linkedCount = items.filter(i => i.matched_ingredient_id).length;
-    const progress = items.length > 0 ? Math.round((linkedCount / items.length) * 100) : 0;
+    const progress = Math.round((linkedCount / items.length) * 100);
 
     const handleUpdateItem = (id: string, updates: Partial<ScannedItem>) => {
         setItems(prev => prev.map(item =>
@@ -32,6 +32,8 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
 
     const handleSave = async () => {
         setSaving(true);
+        const loadingToast = toast.loading('Salvando validação...');
+
         try {
             const payload: ValidationPayload = {
                 receipt_id: data.receipt_id,
@@ -46,40 +48,41 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
             };
 
             await validateReceipt(data.receipt_id, payload);
+            toast.success('Itens validados e preços atualizados!', { id: loadingToast });
             onSuccess();
         } catch (error) {
             console.error("Save failed", error);
-            alert("Erro ao salvar validação.");
+            toast.error("Erro ao salvar validação. Tente novamente.", { id: loadingToast });
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <div className="w-full max-w-lg mx-auto pb-28">
+        <div className="w-full max-w-lg mx-auto pb-20">
             {/* Header */}
-            <div className="sticky top-0 bg-white/95 backdrop-blur-md z-20 pb-4 pt-4 border-b border-border mb-4 shadow-sm">
-                <div className="flex items-center px-4 mb-3">
-                    <button onClick={onBack} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 transition-colors">
+            <div className="sticky top-0 bg-gray-900 z-10 pb-4 pt-2">
+                <div className="flex items-center mb-4">
+                    <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-white">
                         <ArrowLeft size={24} />
                     </button>
-                    <h2 className="text-xl font-bold ml-2 text-secondary">Validar Itens</h2>
-                    <span className="ml-auto text-sm font-medium text-textData bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-                        {linkedCount} / {items.length}
+                    <h2 className="text-xl font-bold ml-2">Validar Itens</h2>
+                    <span className="ml-auto text-sm text-gray-400">
+                        {linkedCount}/{items.length}
                     </span>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="h-1 bg-gray-100 w-full">
+                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-primary transition-all duration-500 ease-out"
+                        className="h-full bg-primary transition-all duration-300"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
             </div>
 
             {/* List */}
-            <div className="space-y-4 px-4">
+            <div className="space-y-1">
                 {items.map(item => (
                     <ValidationRow
                         key={item.id}
@@ -90,32 +93,22 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
                 ))}
 
                 {items.length === 0 && (
-                    <div className="text-center py-20 flex flex-col items-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400">
-                            <span className="text-2xl">📋</span>
-                        </div>
-                        <p className="text-gray-600 text-lg font-medium">Nenhum item para validar.</p>
-                        <p className="text-sm text-gray-400 mt-1">Tente escanear outra nota.</p>
+                    <div className="text-center py-10 text-gray-500">
+                        Nenhum item para validar.
                     </div>
                 )}
             </div>
 
             {/* Footer Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-border z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-                <div className="max-w-lg mx-auto">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-gray-800">
+                <div className="max-w-lg mx-auto flex gap-3">
                     <Button
                         fullWidth
                         onClick={handleSave}
                         disabled={saving || linkedCount === 0}
                         size="lg"
-                        className={clsx(
-                            "font-semibold transition-all shadow-sm",
-                            linkedCount > 0
-                                ? "bg-primary hover:bg-primaryHover text-white"
-                                : "bg-gray-100 text-gray-400 border border-gray-200"
-                        )}
                     >
-                        {saving ? 'Processando...' : `Confirmar Atualização (${linkedCount})`}
+                        {saving ? 'Salvando...' : `Confirmar (${linkedCount})`}
                     </Button>
                 </div>
             </div>

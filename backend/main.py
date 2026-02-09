@@ -23,6 +23,7 @@ from tools.ocr_processor import ocr_from_bytes
 from tools.receipt_parser import parse_receipt
 from tools.cmv_calculator import recalculate_affected_recipes, calculate_cmv_change_percentage
 from tools.discord_notifier import send_price_alert, send_cmv_update
+from backend.utils.logger import logger
 
 load_dotenv()
 
@@ -37,9 +38,9 @@ supabase: Client = create_client(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    print("🚀 Backend started - Radar de Preço & CMV")
+    logger.info("[STARTUP] Backend started - Radar de Preco & CMV")
     yield
-    print("👋 Backend shutting down")
+    logger.info("[SHUTDOWN] Backend shutting down")
 
 
 app = FastAPI(
@@ -90,6 +91,18 @@ class ValidateReceiptInput(BaseModel):
 
 # ============= Endpoints =============
 
+@app.get("/api/health")
+def health_check():
+    """Health check for Docker/Uptime monitors."""
+    try:
+        # Simple query to check DB connection
+        supabase.table("ingredients").select("id").limit(1).execute()
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(503, f"Service unhealthy: {str(e)}")
+
+
 @app.get("/")
 def read_root():
     return {"status": "online", "service": "Radar de Preço & CMV"}
@@ -107,19 +120,24 @@ async def upload_receipt(file: UploadFile = File(...)):
     4. Fuzzy match against product_map
     5. Save to database (pending_validation)
     """
+    request_id = str(uuid.uuid4())
+    logger.info(f"Starting receipt upload processing", extra={"request_id": request_id, "filename": file.filename})
+    
     try:
         # Read image
         contents = await file.read()
         
         # OCR
         text = ocr_from_bytes(contents)
-        print(f"--- DEBUG OCR START ---\n{text}\n--- DEBUG OCR END ---")
+        logger.debug(f"OCR Output", extra={"request_id": request_id, "text_length": len(text), "preview": text[:100]})
         
         if not text or len(text) < 20:
+            logger.warning("OCR failed to extract sufficient text", extra={"request_id": request_id})
             raise HTTPException(400, "OCR failed - no text detected")
         
         # Parse receipt
         parsed = parse_receipt(text)
+        logger.info("Receipt parsed successfully", extra={"request_id": request_id, "market": parsed.get("market_name")})
         
         # Create receipt record
         receipt_data = {
@@ -171,6 +189,8 @@ async def upload_receipt(file: UploadFile = File(...)):
                 suggested_ingredient=matched_ingredient
             ))
         
+        logger.info(f"Receipt uploaded successfully", extra={"request_id": request_id, "receipt_id": receipt_id, "items_count": len(response_items)})
+        
         return UploadReceiptResponse(
             receipt_id=receipt_id,
             market_name=parsed["market_name"],
@@ -178,7 +198,10 @@ async def upload_receipt(file: UploadFile = File(...)):
             items=response_items
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Upload failed: {str(e)}", extra={"request_id": request_id}, exc_info=True)
         raise HTTPException(500, f"Upload failed: {str(e)}")
 
 
@@ -194,6 +217,9 @@ async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
     4. Send Discord alerts if needed
     5. Mark receipt as verified
     """
+    request_id = str(uuid.uuid4())
+    logger.info(f"Starting receipt validation", extra={"request_id": request_id, "receipt_id": receipt_id, "items_count": len(payload.items)})
+    
     try:
         updated_ingredients = []
         ingredient_ids = []
@@ -207,6 +233,7 @@ async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
                 .execute()
             
             if not receipt_item.data:
+                logger.warning(f"Receipt item not found", extra={"request_id": request_id, "item_id": item.receipt_item_id})
                 continue
             
             # Update product_map (learning)
@@ -250,14 +277,18 @@ async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
                         new_price,
                         change_pct
                     )
+                    logger.info("Price alert sent", extra={"request_id": request_id, "ingredient": ingredient.data["name"], "change_pct": change_pct})
         
         # Recalculate affected recipes
         affected_recipes = await recalculate_affected_recipes(ingredient_ids, supabase)
+        logger.info(f"Recipes recalculated", extra={"request_id": request_id, "count": len(affected_recipes)})
         
         # Mark receipt as verified
         supabase.table("receipts").update({
             "status": "verified"
         }).eq("id", receipt_id).execute()
+        
+        logger.info("Receipt validation completed", extra={"request_id": request_id, "receipt_id": receipt_id})
         
         return {
             "success": True,
@@ -267,12 +298,14 @@ async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
         }
         
     except Exception as e:
+        logger.error(f"Validation failed: {str(e)}", extra={"request_id": request_id}, exc_info=True)
         raise HTTPException(500, f"Validation failed: {str(e)}")
 
 
 @app.get("/api/receipts/pending")
 def get_pending_receipts():
     """Get all receipts waiting for validation."""
+    logger.debug("Fetching pending receipts")
     response = supabase.table("receipts") \
         .select("*, receipt_items(*)") \
         .eq("status", "pending_validation") \
@@ -285,6 +318,7 @@ def get_pending_receipts():
 @app.get("/api/ingredients")
 def list_ingredients(search: Optional[str] = None):
     """List all ingredients with optional search."""
+    logger.debug(f"Listing ingredients", extra={"search": search})
     query = supabase.table("ingredients").select("*")
     
     if search:
@@ -297,6 +331,7 @@ def list_ingredients(search: Optional[str] = None):
 @app.get("/api/recipes")
 def list_recipes():
     """List all recipes with current CMV."""
+    logger.debug("Fetching recipes")
     response = supabase.table("recipes") \
         .select("*") \
         .order("name") \

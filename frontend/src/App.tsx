@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { CameraUpload } from './components/features/CameraUpload'
 import { ValidationInterface } from './components/features/ValidationInterface';
 import { DashboardLayout } from './components/features/DashboardLayout';
@@ -71,6 +72,12 @@ function App() {
       }
     }}>
       {renderContent()}
+      <Toaster position="bottom-center" toastOptions={{
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+      }} />
     </DashboardLayout>
   );
 }
