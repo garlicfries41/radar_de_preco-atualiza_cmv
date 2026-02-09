@@ -42,7 +42,6 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
                     .map(item => ({
                         receipt_item_id: item.id,
                         ingredient_id: item.matched_ingredient_id!,
-                        category: item.category_suggestion || 'Outros', // Fallback
                         price: item.parsed_price
                     }))
             };

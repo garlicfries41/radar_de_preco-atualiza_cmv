@@ -36,7 +36,6 @@ export interface ValidationPayload {
     items: Array<{
         receipt_item_id: string;
         ingredient_id: string;
-        category: string;
         price: number;
     }>;
 }
