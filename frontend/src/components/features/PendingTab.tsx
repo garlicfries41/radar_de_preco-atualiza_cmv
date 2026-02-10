@@ -22,6 +22,10 @@ export function PendingTab() {
 
     useEffect(() => {
         fetchPending();
+
+        // Auto-refresh every 5 seconds to catch resolved pending items
+        const interval = setInterval(fetchPending, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     const fetchPending = async () => {
@@ -51,10 +55,22 @@ export function PendingTab() {
         if (!editingId) return;
 
         try {
+            // Find the original ingredient to merge with editData
+            const original = pending.find(i => i.id === editingId);
+            if (!original) return;
+
+            // Merge editData with original to preserve untouched fields
+            const payload = {
+                name: editData.name ?? original.name,
+                category: editData.category ?? original.category,
+                current_price: editData.current_price ?? original.current_price,
+                unit: editData.unit ?? original.unit,
+            };
+
             const res = await fetch(`${API_URL}/api/ingredients/${editingId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editData),
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) throw new Error('Failed to update');

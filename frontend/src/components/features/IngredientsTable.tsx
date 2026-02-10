@@ -54,10 +54,22 @@ export function IngredientsTable() {
         if (!editingId) return;
 
         try {
+            // Find the original ingredient to merge with editData
+            const original = ingredients.find(i => i.id === editingId);
+            if (!original) return;
+
+            // Merge editData with original to preserve untouched fields
+            const payload = {
+                name: editData.name ?? original.name,
+                category: editData.category ?? original.category,
+                current_price: editData.current_price ?? original.current_price,
+                unit: editData.unit ?? original.unit,
+            };
+
             const res = await fetch(`${API_URL}/api/ingredients/${editingId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editData),
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) throw new Error('Failed to update');
