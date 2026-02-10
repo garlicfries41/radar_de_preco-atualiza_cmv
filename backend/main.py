@@ -443,6 +443,214 @@ def create_category(payload: CreateCategoryInput):
         raise HTTPException(500, f"Failed to create category: {str(e)}")
 
 
+
+# ============= Recipe Models =============
+
+class RecipeIngredientInput(BaseModel):
+    ingredient_id: str
+    quantity: float  # In KG/L/UN
+
+
+class RecipeInput(BaseModel):
+    name: str
+    yield_units: int
+    total_weight_kg: float
+    labor_cost: float = 0.0
+    sku: Optional[str] = None
+    ingredients: List[RecipeIngredientInput]
+
+
+
+# ============= Recipe Logic =============
+
+def calculate_recipe_totals(yield_units: int, ingredients: List[dict], labor_cost: Decimal) -> dict:
+    """Calculate total cost and CMV metrics."""
+    total_cost = labor_cost
+    total_weight = Decimal("0.00")
+    
+    for item in ingredients:
+        qty = Decimal(str(item["quantity"]))
+        price = Decimal(str(item.get("current_price", 0)))
+        total_cost += price * qty
+        # For now assume ingredient quantity is in KG/L which maps 1:1 to weight
+        # If unit is UN, weight might be different but we'll use qty as proxy for now
+        total_weight += qty
+        
+    cmv_per_unit = total_cost / Decimal(yield_units) if yield_units > 0 else Decimal("0.00")
+    cmv_per_kg = total_cost / total_weight if total_weight > 0 else Decimal("0.00")
+    
+    return {
+        "current_cost": float(total_cost),
+        "total_weight_kg": float(total_weight),
+        "cmv_per_unit": float(cmv_per_unit),
+        "cmv_per_kg": float(cmv_per_kg)
+    }
+
+
+@app.post("/api/recipes")
+def create_recipe(payload: RecipeInput):
+    """Create a new recipe with ingredients and labor cost."""
+    logger.info(f"Creating recipe: {payload.name}")
+    
+    try:
+        # 1. Fetch current prices for ingredients
+        ing_ids = [i.ingredient_id for i in payload.ingredients]
+        if ing_ids:
+            ing_response = supabase.table("ingredients").select("id, current_price").in_("id", ing_ids).execute()
+            price_map = {i["id"]: i["current_price"] for i in ing_response.data}
+        else:
+            price_map = {}
+            
+        # 2. Prepare ingredients list with prices for calculation
+        calc_ingredients = []
+        for item in payload.ingredients:
+            calc_ingredients.append({
+                "quantity": item.quantity,
+                "current_price": price_map.get(item.ingredient_id, 0)
+            })
+            
+        # 3. Calculate totals
+        totals = calculate_recipe_totals(
+            payload.yield_units, 
+            calc_ingredients, 
+            Decimal(str(payload.labor_cost))
+        )
+        
+        # 4. Insert Recipe
+        recipe_data = {
+            "name": payload.name,
+            "yield_units": payload.yield_units,
+            "labor_cost": payload.labor_cost,
+            "sku": payload.sku,
+            "current_cost": totals["current_cost"],
+            "total_weight_kg": totals["total_weight_kg"],
+            "cmv_per_unit": totals["cmv_per_unit"],
+            "cmv_per_kg": totals["cmv_per_kg"],
+            "last_calculated": datetime.utcnow().isoformat()
+        }
+        
+        res = supabase.table("recipes").insert(recipe_data).execute()
+        recipe = res.data[0]
+        
+        # 5. Insert Recipe Ingredients
+        if payload.ingredients:
+            recipe_ingredients = [{
+                "recipe_id": recipe["id"],
+                "ingredient_id": i.ingredient_id,
+                "quantity": i.quantity
+            } for i in payload.ingredients]
+            
+            supabase.table("recipe_ingredients").insert(recipe_ingredients).execute()
+            
+        return recipe
+        
+    except Exception as e:
+        logger.error(f"Failed to create recipe: {e}")
+        raise HTTPException(500, f"Failed to create recipe: {str(e)}")
+
+
+@app.get("/api/recipes/{recipe_id}")
+def get_recipe(recipe_id: str):
+    """Get recipe details including ingredients."""
+    try:
+        # Fetch recipe
+        recipe_res = supabase.table("recipes").select("*").eq("id", recipe_id).single().execute()
+        if not recipe_res.data:
+            raise HTTPException(404, "Recipe not found")
+        
+        # Fetch ingredients with details
+        ing_res = supabase.table("recipe_ingredients") \
+            .select("*, ingredients(name, unit, current_price, category)") \
+            .eq("recipe_id", recipe_id) \
+            .execute()
+            
+        recipe = recipe_res.data
+        recipe["ingredients"] = ing_res.data
+        
+        return recipe
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get recipe: {e}")
+        raise HTTPException(500, f"Failed to get recipe: {str(e)}")
+
+
+@app.put("/api/recipes/{recipe_id}")
+def update_recipe(recipe_id: str, payload: RecipeInput):
+    """Update recipe details and ingredients."""
+    logger.info(f"Updating recipe: {recipe_id}")
+    
+    try:
+        # 1. Fetch current prices
+        ing_ids = [i.ingredient_id for i in payload.ingredients]
+        if ing_ids:
+            ing_response = supabase.table("ingredients").select("id, current_price").in_("id", ing_ids).execute()
+            price_map = {i["id"]: i["current_price"] for i in ing_response.data}
+        else:
+            price_map = {}
+            
+        # 2. Calculate totals
+        calc_ingredients = []
+        for item in payload.ingredients:
+            calc_ingredients.append({
+                "quantity": item.quantity,
+                "current_price": price_map.get(item.ingredient_id, 0)
+            })
+            
+        totals = calculate_recipe_totals(
+            payload.yield_units, 
+            calc_ingredients, 
+            Decimal(str(payload.labor_cost))
+        )
+        
+        # 3. Update Recipe
+        recipe_data = {
+            "name": payload.name,
+            "yield_units": payload.yield_units,
+            "labor_cost": payload.labor_cost,
+            "sku": payload.sku,
+            "current_cost": totals["current_cost"],
+            "total_weight_kg": totals["total_weight_kg"],
+            "cmv_per_unit": totals["cmv_per_unit"],
+            "cmv_per_kg": totals["cmv_per_kg"],
+            "last_calculated": datetime.utcnow().isoformat()
+        }
+        
+        supabase.table("recipes").update(recipe_data).eq("id", recipe_id).execute()
+        
+        # 4. Update Ingredients (Delete all and re-insert)
+        # Transaction would be better but Supabase-py doesn't support it easily yet
+        supabase.table("recipe_ingredients").delete().eq("recipe_id", recipe_id).execute()
+        
+        if payload.ingredients:
+            recipe_ingredients = [{
+                "recipe_id": recipe_id,
+                "ingredient_id": i.ingredient_id,
+                "quantity": i.quantity
+            } for i in payload.ingredients]
+            
+            supabase.table("recipe_ingredients").insert(recipe_ingredients).execute()
+            
+        return {"id": recipe_id, "status": "updated"}
+        
+    except Exception as e:
+        logger.error(f"Failed to update recipe: {e}")
+        raise HTTPException(500, f"Failed to update recipe: {str(e)}")
+
+
+@app.delete("/api/recipes/{recipe_id}")
+def delete_recipe(recipe_id: str):
+    """Delete a recipe and its ingredients."""
+    try:
+        # Cascade delete handled by foreign key usually, but let's be safe
+        supabase.table("recipe_ingredients").delete().eq("recipe_id", recipe_id).execute()
+        supabase.table("recipes").delete().eq("id", recipe_id).execute()
+        return {"status": "deleted"}
+    except Exception as e:
+        logger.error(f"Failed to delete recipe: {e}")
+        raise HTTPException(500, f"Failed to delete recipe: {str(e)}")
+
+
 @app.get("/api/recipes")
 def list_recipes():
     """List all recipes with current CMV."""
@@ -453,6 +661,7 @@ def list_recipes():
         .execute()
     
     return response.data
+
 
 
 if __name__ == "__main__":

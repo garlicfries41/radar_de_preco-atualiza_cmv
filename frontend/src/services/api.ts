@@ -38,4 +38,24 @@ export const getRecipes = async () => {
     return response.data;
 };
 
+export const getRecipe = async (id: string) => {
+    const response = await api.get<Recipe>(`/api/recipes/${id}`);
+    return response.data;
+};
+
+export const createRecipe = async (data: any) => {
+    const response = await api.post<Recipe>('/api/recipes', data);
+    return response.data;
+};
+
+export const updateRecipe = async (id: string, data: any) => {
+    const response = await api.put<Recipe>(`/api/recipes/${id}`, data);
+    return response.data;
+};
+
+export const deleteRecipe = async (id: string) => {
+    const response = await api.delete(`/api/recipes/${id}`);
+    return response.data;
+};
+
 export default api;

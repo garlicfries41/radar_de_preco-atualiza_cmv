@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, AlertTriangle, Pencil } from 'lucide-react';
+import { Plus, Save, AlertTriangle, Pencil, Filter } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
 import toast from 'react-hot-toast';
 
@@ -22,6 +22,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
     const [editData, setEditData] = useState<Partial<Ingredient>>({});
     const [showAddForm, setShowAddForm] = useState(false);
     const [newIngredient, setNewIngredient] = useState({ name: '', category: '', current_price: 0, unit: 'KG' });
+    const [showPendingOnly, setShowPendingOnly] = useState(false); // New state for filter
 
     useEffect(() => {
         fetchIngredients();
@@ -115,6 +116,11 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
 
     const isPending = (ing: Ingredient) => !ing.category || !ing.unit;
 
+    // Filter ingredients based on state
+    const filteredIngredients = showPendingOnly
+        ? ingredients.filter(ing => isPending(ing))
+        : ingredients;
+
     if (loading) {
         return <div className="text-gray-400 text-center py-8">Carregando...</div>;
     }
@@ -123,7 +129,19 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
         <div className="space-y-4">
             {/* Header */}
             <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-white">Ingredientes</h2>
+                <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-semibold text-white">Ingredientes</h2>
+                    <button
+                        onClick={() => setShowPendingOnly(!showPendingOnly)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${showPendingOnly
+                                ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'
+                                : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
+                            }`}
+                    >
+                        <Filter size={16} />
+                        {showPendingOnly ? 'Apenas Pendentes' : 'Filtrar Pendências'}
+                    </button>
+                </div>
                 <button
                     onClick={() => setShowAddForm(!showAddForm)}
                     className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/80 transition-colors"
@@ -195,7 +213,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                         </tr>
                     </thead>
                     <tbody>
-                        {ingredients.map((ing) => (
+                        {filteredIngredients.map((ing) => (
                             <tr key={ing.id} className="border-t border-gray-700 hover:bg-gray-700/50">
                                 {editingId === ing.id ? (
                                     <>

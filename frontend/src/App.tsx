@@ -5,13 +5,12 @@ import { ValidationInterface } from './components/features/ValidationInterface';
 import { DashboardLayout } from './components/features/DashboardLayout';
 import { IngredientsTable } from './components/features/IngredientsTable';
 import { RecipesList } from './components/features/RecipesList';
-import { PendingTab } from './components/features/PendingTab';
 import type { UploadResponse } from './types'
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'recipes' | 'pending'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'recipes'>('upload');
   const [view, setView] = useState<'list' | 'validation'>('list');
   const [receiptData, setReceiptData] = useState<UploadResponse | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -53,10 +52,6 @@ function App() {
           <RecipesList />
         </div>
       );
-    }
-
-    if (activeTab === 'pending') {
-      return <PendingTab onIngredientUpdate={fetchPendingCount} />;
     }
 
     // Upload Tab

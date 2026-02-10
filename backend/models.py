@@ -79,6 +79,8 @@ class Recipe(SQLModel, table=True):
     current_cost: Decimal = Field(default=Decimal("0.00"))
     yield_units: int  # How many units produced (e.g., 10 lasagnas)
     total_weight_kg: Decimal  # Total weight in kg (e.g., 12.5)
+    labor_cost: Decimal = Field(default=Decimal("0.00"))
+    sku: Optional[str] = Field(default=None, unique=True)
     cmv_per_unit: Optional[Decimal] = None  # Computed: current_cost / yield_units
     cmv_per_kg: Optional[Decimal] = None  # Computed: current_cost / total_weight_kg
     last_calculated: datetime = Field(default_factory=datetime.utcnow)

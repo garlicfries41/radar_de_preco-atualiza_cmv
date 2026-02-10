@@ -41,20 +41,42 @@ export interface ValidationPayload {
 }
 
 
+
 export interface RecipeIngredient {
-    ingredient_name: string;
+    ingredient_id: string;
     quantity: number;
-    cost: number;
-    unit: string;
+    // Joined fields from backend
+    ingredients?: {
+        name: string;
+        unit: string;
+        current_price: number;
+        category: string;
+    };
 }
 
 export interface Recipe {
     id: string;
     name: string;
-    total_cost: number;
     yield_units: number;
-    cost_per_unit: number;
-    ingredients: RecipeIngredient[];
+    labor_cost: number;
+    sku?: string;
+    current_cost: number;
+    total_weight_kg: number;
+    cmv_per_unit: number;
+    cmv_per_kg: number;
+    ingredients?: RecipeIngredient[];
+}
+
+export interface RecipeInput {
+    name: string;
+    yield_units: number;
+    labor_cost: number;
+    sku?: string;
+    ingredients: {
+        ingredient_id: string;
+        quantity: number;
+    }[];
 }
 
 export type UploadResponse = Receipt;
+

@@ -1,8 +1,8 @@
 
 import { clsx } from 'clsx';
-import { LayoutDashboard, ShoppingBasket, ChefHat, Upload, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, ShoppingBasket, ChefHat, Upload } from 'lucide-react';
 
-type Tab = 'upload' | 'ingredients' | 'recipes' | 'pending';
+type Tab = 'upload' | 'ingredients' | 'recipes';
 
 interface DashboardProps {
     activeTab: Tab;
@@ -14,9 +14,8 @@ interface DashboardProps {
 export function DashboardLayout({ activeTab, onTabChange, children, pendingCount = 0 }: DashboardProps) {
     const tabs = [
         { id: 'upload', label: 'Upload', icon: Upload },
-        { id: 'ingredients', label: 'Ingredientes', icon: ShoppingBasket },
+        { id: 'ingredients', label: 'Ingredientes', icon: ShoppingBasket, badge: pendingCount },
         { id: 'recipes', label: 'Receitas', icon: ChefHat },
-        { id: 'pending', label: 'Pendências', icon: AlertTriangle, badge: pendingCount },
     ];
 
     return (
