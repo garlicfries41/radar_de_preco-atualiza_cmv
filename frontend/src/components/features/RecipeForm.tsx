@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Save, ArrowLeft, Search, Calculator } from 'lucide-react';
 import { getIngredients, createRecipe, updateRecipe, getRecipe } from '../../services/api';
-import type { Recipe, Ingredient, RecipeInput } from '../../types';
+import type { Ingredient, RecipeInput } from '../../types';
 import toast from 'react-hot-toast';
 
 interface RecipeFormProps {
@@ -277,7 +277,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Ingredientes</h3>
                                 <div className="space-y-2">
-                                    {groupedItems.food.map((item, idx) => (
+                                    {groupedItems.food.map((item) => (
                                         <ItemRow
                                             key={item.ingredient_id}
                                             item={item}
@@ -295,7 +295,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Embalagens</h3>
                                 <div className="space-y-2">
-                                    {groupedItems.packaging.map((item, idx) => (
+                                    {groupedItems.packaging.map((item) => (
                                         <ItemRow
                                             key={item.ingredient_id}
                                             item={item}
