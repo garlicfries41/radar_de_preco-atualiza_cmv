@@ -14,7 +14,7 @@ interface PendingIngredient {
 const API_URL = import.meta.env.VITE_API_URL || '';
 const UNITS = ['KG', 'G', 'L', 'ML', 'UN', 'PCT', 'CX'];
 
-export function PendingTab() {
+export function PendingTab({ onIngredientUpdate }: { onIngredientUpdate?: () => void }) {
     const [pending, setPending] = useState<PendingIngredient[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -79,6 +79,7 @@ export function PendingTab() {
             setEditingId(null);
             setEditData({});
             fetchPending();
+            onIngredientUpdate?.(); // Notify parent to refresh pending count
         } catch (err) {
             toast.error('Erro ao atualizar');
         }

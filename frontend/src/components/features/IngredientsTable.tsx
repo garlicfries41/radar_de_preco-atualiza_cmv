@@ -15,7 +15,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 
 const UNITS = ['KG', 'G', 'L', 'ML', 'UN', 'PCT', 'CX'];
 
-export function IngredientsTable() {
+export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: () => void }) {
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -78,6 +78,7 @@ export function IngredientsTable() {
             setEditingId(null);
             setEditData({});
             fetchIngredients();
+            onIngredientUpdate?.(); // Notify parent to refresh pending count
         } catch (err) {
             toast.error('Erro ao atualizar ingrediente');
         }
@@ -105,6 +106,7 @@ export function IngredientsTable() {
             setShowAddForm(false);
             setNewIngredient({ name: '', category: '', current_price: 0, unit: 'KG' });
             fetchIngredients();
+            onIngredientUpdate?.(); // Notify parent to refresh pending count
         } catch (err) {
             toast.error(`Erro: ${err}`);
         }

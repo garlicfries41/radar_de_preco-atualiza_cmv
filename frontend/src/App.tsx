@@ -43,7 +43,7 @@ function App() {
 
   const renderContent = () => {
     if (activeTab === 'ingredients') {
-      return <IngredientsTable />;
+      return <IngredientsTable onIngredientUpdate={fetchPendingCount} />;
     }
 
     if (activeTab === 'recipes') {
@@ -56,7 +56,7 @@ function App() {
     }
 
     if (activeTab === 'pending') {
-      return <PendingTab />;
+      return <PendingTab onIngredientUpdate={fetchPendingCount} />;
     }
 
     // Upload Tab
