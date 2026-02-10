@@ -253,12 +253,17 @@ async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
             old_price = Decimal(str(ingredient.data["current_price"]))
             new_price = item.price
             
-            # Update ingredient price
-            supabase.table("ingredients").update({
+            # Update ingredient price and optionally category
+            update_data = {
                 "current_price": float(new_price),
-                "category": item.category,
                 "last_updated": datetime.utcnow().isoformat()
-            }).eq("id", item.ingredient_id).execute()
+            }
+            
+            # Only update category if explicitly provided
+            if item.category is not None:
+                update_data["category"] = item.category
+            
+            supabase.table("ingredients").update(update_data).eq("id", item.ingredient_id).execute()
             
             updated_ingredients.append({
                 "name": ingredient.data["name"],
