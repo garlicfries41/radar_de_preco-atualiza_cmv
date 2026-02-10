@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getRecipes } from '../../services/api';
 import type { Recipe } from '../../types';
-import { Loader2, ChefHat, Info, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, ChefHat, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { RecipeForm } from './RecipeForm';
 import { deleteRecipe } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -9,11 +9,10 @@ import toast from 'react-hot-toast';
 export function RecipesList() {
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [loading, setLoading] = useState(false);
-    const [selectedRecipe, setSelectedRecipe] = useState<string | null>(null);
-
     // View State
     const [isCreating, setIsCreating] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const fetchRecipes = async () => {
         setLoading(true);
@@ -79,11 +78,23 @@ export function RecipesList() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">Receitas & CMV</h2>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <h2 className="text-2xl font-bold text-white whitespace-nowrap">Receitas & CMV</h2>
+
+                <div className="flex-1 max-w-md w-full relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Buscar receitas..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                </div>
+
                 <button
                     onClick={() => setIsCreating(true)}
-                    className="bg-primary hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    className="bg-primary hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
                 >
                     <Plus size={20} />
                     Nova Receita
@@ -91,11 +102,10 @@ export function RecipesList() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recipes.map((recipe) => (
+                {recipes.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase())).map((recipe) => (
                     <div
                         key={recipe.id}
-                        className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors cursor-pointer"
-                        onClick={() => setSelectedRecipe(selectedRecipe === recipe.id ? null : recipe.id)}
+                        className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors"
                     >
                         <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
@@ -118,7 +128,7 @@ export function RecipesList() {
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-700/50">
+                        <div className="flex justify-end items-center pt-3 border-t border-gray-700/50">
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={(e) => handleEdit(e, recipe.id)}
@@ -135,35 +145,7 @@ export function RecipesList() {
                                     <Trash2 size={16} />
                                 </button>
                             </div>
-
-                            <div className="flex items-center text-xs text-primary font-medium">
-                                <Info size={14} className="mr-1" />
-                                {selectedRecipe === recipe.id ? 'Ocultar Detalhes' : 'Ver Detalhes'}
-                            </div>
                         </div>
-
-                        {selectedRecipe === recipe.id && (
-                            <div className="mt-4 pt-3 border-t border-gray-700 bg-gray-900/50 rounded-md p-3">
-                                <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
-                                    <div>
-                                        <span className="text-gray-500 block text-xs">Custo Total</span>
-                                        <span className="text-white font-mono">R$ {recipe.current_cost?.toFixed(2)}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500 block text-xs">Mão de Obra</span>
-                                        <span className="text-white font-mono">R$ {recipe.labor_cost?.toFixed(2)}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500 block text-xs">Peso Total</span>
-                                        <span className="text-white font-mono">{recipe.total_weight_kg?.toFixed(3)} kg</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500 block text-xs">CMV / KG</span>
-                                        <span className="text-white font-mono">R$ {recipe.cmv_per_kg?.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 ))}
 

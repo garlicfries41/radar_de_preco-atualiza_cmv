@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, AlertTriangle, Pencil, Filter } from 'lucide-react';
+import { Plus, Save, AlertTriangle, Pencil, Filter, Search } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
 import toast from 'react-hot-toast';
 
@@ -23,6 +23,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
     const [showAddForm, setShowAddForm] = useState(false);
     const [newIngredient, setNewIngredient] = useState({ name: '', category: '', current_price: 0, unit: 'KG' });
     const [showPendingOnly, setShowPendingOnly] = useState(false); // New state for filter
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         fetchIngredients();
@@ -117,9 +118,9 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
     const isPending = (ing: Ingredient) => !ing.category || !ing.unit;
 
     // Filter ingredients based on state
-    const filteredIngredients = showPendingOnly
-        ? ingredients.filter(ing => isPending(ing))
-        : ingredients;
+    const filteredIngredients = ingredients
+        .filter(ing => showPendingOnly ? isPending(ing) : true)
+        .filter(ing => ing.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     if (loading) {
         return <div className="text-gray-400 text-center py-8">Carregando...</div>;
@@ -128,27 +129,43 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-semibold text-white">Ingredientes</h2>
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 w-full md:w-auto">
+                    <h2 className="text-xl font-semibold text-white whitespace-nowrap">Ingredientes</h2>
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                            type="text"
+                            placeholder="Buscar..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-white text-sm focus:ring-1 focus:ring-primary outline-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex gap-2 w-full md:w-auto justify-end">
                     <button
                         onClick={() => setShowPendingOnly(!showPendingOnly)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${showPendingOnly
-                                ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'
-                                : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${showPendingOnly
+                            ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'
+                            : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
                             }`}
                     >
                         <Filter size={16} />
-                        {showPendingOnly ? 'Apenas Pendentes' : 'Filtrar Pendências'}
+                        <span className="hidden sm:inline">{showPendingOnly ? 'Apenas Pendentes' : 'Filtrar Pendências'}</span>
+                        <span className="sm:hidden">{showPendingOnly ? 'Pendentes' : 'Filtrar'}</span>
+                    </button>
+                    <button
+                        onClick={() => setShowAddForm(!showAddForm)}
+                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/80 transition-colors whitespace-nowrap"
+                    >
+                        <Plus size={18} />
+                        <span className="hidden sm:inline">Novo Ingrediente</span>
+                        <span className="sm:hidden">Novo</span>
                     </button>
                 </div>
-                <button
-                    onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/80 transition-colors"
-                >
-                    <Plus size={18} />
-                    Novo Ingrediente
-                </button>
             </div>
 
             {/* Add Form */}
