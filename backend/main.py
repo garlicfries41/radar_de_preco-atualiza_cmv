@@ -80,7 +80,6 @@ class UploadReceiptResponse(BaseModel):
 class ValidateItemInput(BaseModel):
     receipt_item_id: str
     ingredient_id: str
-    category: Optional[str] = None
     price: Decimal
 
 
@@ -253,17 +252,11 @@ async def validate_receipt(receipt_id: str, payload: ValidateReceiptInput):
             old_price = Decimal(str(ingredient.data["current_price"]))
             new_price = item.price
             
-            # Update ingredient price and optionally category
-            update_data = {
+            # Update ingredient price (category is preserved)
+            supabase.table("ingredients").update({
                 "current_price": float(new_price),
                 "last_updated": datetime.utcnow().isoformat()
-            }
-            
-            # Only update category if explicitly provided
-            if item.category is not None:
-                update_data["category"] = item.category
-            
-            supabase.table("ingredients").update(update_data).eq("id", item.ingredient_id).execute()
+            }).eq("id", item.ingredient_id).execute()
             
             updated_ingredients.append({
                 "name": ingredient.data["name"],
