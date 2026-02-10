@@ -8,6 +8,7 @@ interface Ingredient {
     name: string;
     category: string | null;
     current_price: number;
+    yield_coefficient: number;
     unit: string | null;
 }
 
@@ -21,8 +22,8 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editData, setEditData] = useState<Partial<Ingredient>>({});
     const [showAddForm, setShowAddForm] = useState(false);
-    const [newIngredient, setNewIngredient] = useState({ name: '', category: '', current_price: 0, unit: 'KG' });
-    const [showPendingOnly, setShowPendingOnly] = useState(false); // New state for filter
+    const [newIngredient, setNewIngredient] = useState({ name: '', category: '', current_price: 0, yield_coefficient: 1, unit: 'KG' });
+    const [showPendingOnly, setShowPendingOnly] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -56,16 +57,14 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
         if (!editingId) return;
 
         try {
-            // Find the original ingredient to merge with editData
             const original = ingredients.find(i => i.id === editingId);
             if (!original) return;
 
-            // Merge editData with original to preserve untouched fields
-            // Use || instead of ?? to treat empty strings as falsy
             const payload = {
                 name: editData.name || original.name,
                 category: editData.category || original.category,
                 current_price: editData.current_price ?? original.current_price,
+                yield_coefficient: editData.yield_coefficient ?? original.yield_coefficient ?? 1,
                 unit: editData.unit || original.unit,
             };
 
@@ -81,7 +80,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
             setEditingId(null);
             setEditData({});
             fetchIngredients();
-            onIngredientUpdate?.(); // Notify parent to refresh pending count
+            onIngredientUpdate?.();
         } catch (err) {
             toast.error('Erro ao atualizar ingrediente');
         }
@@ -107,9 +106,9 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
 
             toast.success('Ingrediente criado!');
             setShowAddForm(false);
-            setNewIngredient({ name: '', category: '', current_price: 0, unit: 'KG' });
+            setNewIngredient({ name: '', category: '', current_price: 0, yield_coefficient: 1, unit: 'KG' });
             fetchIngredients();
-            onIngredientUpdate?.(); // Notify parent to refresh pending count
+            onIngredientUpdate?.();
         } catch (err) {
             toast.error(`Erro: ${err}`);
         }
@@ -117,7 +116,6 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
 
     const isPending = (ing: Ingredient) => !ing.category || !ing.unit;
 
-    // Filter ingredients based on state
     const filteredIngredients = ingredients
         .filter(ing => showPendingOnly ? isPending(ing) : true)
         .filter(ing => ing.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -128,7 +126,6 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
 
     return (
         <div className="space-y-4">
-            {/* Header */}
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-4 flex-1 w-full md:w-auto">
@@ -172,14 +169,16 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
             {showAddForm && (
                 <div className="bg-gray-800 p-4 rounded-lg border border-primary">
                     <h3 className="text-white font-medium mb-3">Novo Ingrediente</h3>
-                    <div className="grid grid-cols-4 gap-3">
-                        <input
-                            type="text"
-                            placeholder="Nome"
-                            value={newIngredient.name}
-                            onChange={(e) => setNewIngredient({ ...newIngredient, name: e.target.value })}
-                            className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-                        />
+                    <div className="grid grid-cols-5 gap-3">
+                        <div className="col-span-1">
+                            <input
+                                type="text"
+                                placeholder="Nome"
+                                value={newIngredient.name}
+                                onChange={(e) => setNewIngredient({ ...newIngredient, name: e.target.value })}
+                                className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white w-full"
+                            />
+                        </div>
                         <CategorySelector
                             value={newIngredient.category}
                             onChange={(cat) => setNewIngredient({ ...newIngredient, category: cat })}
@@ -192,13 +191,25 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                             className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
                             step="0.01"
                         />
-                        <select
-                            value={newIngredient.unit}
-                            onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value })}
-                            className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-                        >
-                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
+                        <div className="flex gap-2">
+                            <input
+                                type="number"
+                                placeholder="Fator (ex: 0.95 ou 19.44)"
+                                value={newIngredient.yield_coefficient}
+                                onChange={(e) => setNewIngredient({ ...newIngredient, yield_coefficient: parseFloat(e.target.value) })}
+                                className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white w-2/3"
+                                step="0.01"
+                                min="0.0001"
+                                title="Fator de Rendimento ou Conversão (ex: 0.95 = 95%, 19.44 = cx 360 ovos)"
+                            />
+                            <select
+                                value={newIngredient.unit}
+                                onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value })}
+                                className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white w-1/3"
+                            >
+                                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
                     </div>
                     <div className="flex gap-2 mt-3">
                         <button
@@ -225,6 +236,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                             <th className="text-left px-4 py-3 text-gray-400 text-sm font-medium">Nome</th>
                             <th className="text-left px-4 py-3 text-gray-400 text-sm font-medium">Categoria</th>
                             <th className="text-left px-4 py-3 text-gray-400 text-sm font-medium">Preço</th>
+                            <th className="text-left px-4 py-3 text-gray-400 text-sm font-medium" title="Fator de Rendimento">Rend.</th>
                             <th className="text-left px-4 py-3 text-gray-400 text-sm font-medium">Unidade</th>
                             <th className="text-center px-4 py-3 text-gray-400 text-sm font-medium w-24">Ações</th>
                         </tr>
@@ -255,6 +267,17 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                                 onChange={(e) => setEditData({ ...editData, current_price: parseFloat(e.target.value) })}
                                                 className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-sm"
                                                 step="0.01"
+                                            />
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <input
+                                                type="number"
+                                                value={editData.yield_coefficient ?? 1}
+                                                onChange={(e) => setEditData({ ...editData, yield_coefficient: parseFloat(e.target.value) })}
+                                                className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                                                step="0.01"
+                                                min="0.0001"
+                                                title="Fator de Rendimento ou Conversão"
                                             />
                                         </td>
                                         <td className="px-4 py-2">
@@ -296,6 +319,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                         </td>
                                         <td className="px-4 py-3 text-gray-300">{ing.category || '-'}</td>
                                         <td className="px-4 py-3 text-gray-300">R$ {ing.current_price?.toFixed(2) || '0.00'}</td>
+                                        <td className="px-4 py-3 text-gray-300">{ing.yield_coefficient || '1.0'}</td>
                                         <td className="px-4 py-3 text-gray-300">{ing.unit || '-'}</td>
                                         <td className="px-4 py-3 text-center">
                                             <button

@@ -342,13 +342,16 @@ class CreateIngredientInput(BaseModel):
     name: str
     category: Optional[str] = None
     current_price: Optional[float] = 0
+    yield_coefficient: Optional[float] = 1.0
     unit: Optional[str] = None
 
 
 class UpdateIngredientInput(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
+    category: Optional[str] = None
     current_price: Optional[float] = None
+    yield_coefficient: Optional[float] = None
     unit: Optional[str] = None
 
 
@@ -361,7 +364,9 @@ def create_ingredient(payload: CreateIngredientInput):
         data = {
             "name": payload.name.strip(),
             "category": payload.category,
+            "category": payload.category,
             "current_price": payload.current_price or 0,
+            "yield_coefficient": payload.yield_coefficient or 1.0,
             "unit": payload.unit
         }
         response = supabase.table("ingredients").insert(data).execute()
@@ -386,6 +391,8 @@ def update_ingredient(ingredient_id: str, payload: UpdateIngredientInput):
             update_data["category"] = payload.category
         if payload.current_price is not None:
             update_data["current_price"] = payload.current_price
+        if payload.yield_coefficient is not None:
+            update_data["yield_coefficient"] = payload.yield_coefficient
         if payload.unit is not None:
             update_data["unit"] = payload.unit
         
@@ -471,7 +478,16 @@ def calculate_recipe_totals(yield_units: int, ingredients: List[dict], labor_cos
     for item in ingredients:
         qty = Decimal(str(item["quantity"]))
         price = Decimal(str(item.get("current_price", 0)))
-        total_cost += price * qty
+        yield_coeff = Decimal(str(item.get("yield_coefficient", 1)))
+        
+        # Adjust price by yield coefficient: Effective Price = Price / Yield
+        # e.g. Price 10, Yield 0.9 (90%) => Effective Price 11.11
+        if yield_coeff > 0:
+            effective_price = price / yield_coeff
+        else:
+            effective_price = price
+
+        total_cost += effective_price * qty
         # For now assume ingredient quantity is in KG/L which maps 1:1 to weight
         # If unit is UN, weight might be different but we'll use qty as proxy for now
         total_weight += qty
@@ -496,17 +512,19 @@ def create_recipe(payload: RecipeInput):
         # 1. Fetch current prices for ingredients
         ing_ids = [i.ingredient_id for i in payload.ingredients]
         if ing_ids:
-            ing_response = supabase.table("ingredients").select("id, current_price").in_("id", ing_ids).execute()
-            price_map = {i["id"]: i["current_price"] for i in ing_response.data}
+            ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient").in_("id", ing_ids).execute()
+            price_map = {i["id"]: {"price": float(i["current_price"]), "yield": float(i.get("yield_coefficient", 1) or 1)} for i in ing_response.data}
         else:
             price_map = {}
             
         # 2. Prepare ingredients list with prices for calculation
         calc_ingredients = []
         for item in payload.ingredients:
+            ing_data = price_map.get(item.ingredient_id, {"price": 0, "yield": 1})
             calc_ingredients.append({
                 "quantity": item.quantity,
-                "current_price": price_map.get(item.ingredient_id, 0)
+                "current_price": ing_data["price"],
+                "yield_coefficient": ing_data["yield"]
             })
             
         # 3. Calculate totals
@@ -583,17 +601,19 @@ def update_recipe(recipe_id: str, payload: RecipeInput):
         # 1. Fetch current prices
         ing_ids = [i.ingredient_id for i in payload.ingredients]
         if ing_ids:
-            ing_response = supabase.table("ingredients").select("id, current_price").in_("id", ing_ids).execute()
-            price_map = {i["id"]: i["current_price"] for i in ing_response.data}
+            ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient").in_("id", ing_ids).execute()
+            price_map = {i["id"]: {"price": float(i["current_price"]), "yield": float(i.get("yield_coefficient", 1) or 1)} for i in ing_response.data}
         else:
             price_map = {}
             
         # 2. Calculate totals
         calc_ingredients = []
         for item in payload.ingredients:
+            ing_data = price_map.get(item.ingredient_id, {"price": 0, "yield": 1})
             calc_ingredients.append({
                 "quantity": item.quantity,
-                "current_price": price_map.get(item.ingredient_id, 0)
+                "current_price": ing_data["price"],
+                "yield_coefficient": ing_data["yield"]
             })
             
         totals = calculate_recipe_totals(

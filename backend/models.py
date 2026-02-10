@@ -32,6 +32,7 @@ class Ingredient(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
     category: CategoryEnum
     current_price: Decimal = Field(default=Decimal("0.00"))
+    yield_coefficient: Decimal = Field(default=Decimal("1.0000"))
     unit: str = Field(default="UN")  # kg, L, un, pct
     last_updated: datetime = Field(default_factory=datetime.utcnow)
     created_at: datetime = Field(default_factory=datetime.utcnow)

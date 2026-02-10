@@ -16,6 +16,7 @@ interface RecipeItem {
     quantity: number;
     unit: string;
     current_price: number;
+    yield_coefficient: number;
     category: string;
 }
 
@@ -66,6 +67,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                     quantity: i.quantity,
                     unit: i.ingredients?.unit || 'UN',
                     current_price: i.ingredients?.current_price || 0,
+                    yield_coefficient: i.ingredients?.yield_coefficient || 1,
                     category: i.ingredients?.category || 'OUTROS'
                 }));
                 setItems(mappedItems);
@@ -95,6 +97,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
             quantity: 0,
             unit: ingredient.unit,
             current_price: ingredient.current_price,
+            yield_coefficient: ingredient.yield_coefficient || 1,
             category: ingredient.category
         }]);
         setSearch('');
@@ -114,7 +117,14 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     };
 
     // Calculations
-    const totalIngredientsCost = items.reduce((sum, item) => sum + (item.current_price * item.quantity), 0);
+    const getEffectivePrice = (price: number, yieldCoeff: number) => {
+        return yieldCoeff > 0 ? price / yieldCoeff : price;
+    };
+
+    const totalIngredientsCost = items.reduce((sum, item) => {
+        const effectivePrice = getEffectivePrice(item.current_price, item.yield_coefficient || 1);
+        return sum + (effectivePrice * item.quantity);
+    }, 0);
     const totalCost = totalIngredientsCost + laborCost;
     const costPerUnit = yieldUnits > 0 ? totalCost / yieldUnits : 0;
     const totalWeight = items.reduce((sum, item) => sum + item.quantity, 0); // Approx sum of quantities (kg/l)
@@ -261,7 +271,10 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                                     >
                                         <div>
                                             <span className="text-white block">{ing.name}</span>
-                                            <span className="text-xs text-gray-500">{ing.category} • R$ {ing.current_price.toFixed(2)}/{ing.unit}</span>
+                                            <span className="text-xs text-gray-500">
+                                                {ing.category} • R$ {ing.current_price.toFixed(2)}/{ing.unit}
+                                                {ing.yield_coefficient && ing.yield_coefficient !== 1 && ` • Fator: ${ing.yield_coefficient}`}
+                                            </span>
                                         </div>
                                         <Plus size={16} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </button>
@@ -362,6 +375,11 @@ function ItemRow({ item, index, onUpdate, onRemove }: { item: RecipeItem, index:
                 <div className="font-medium text-white">{item.name}</div>
                 <div className="text-xs text-gray-500">
                     R$ {item.current_price.toFixed(2)} / {item.unit}
+                    {item.yield_coefficient !== 1 && (
+                        <span className="text-yellow-500 ml-2" title={`Preço Efetivo: R$ ${(item.current_price / item.yield_coefficient).toFixed(2)} (${item.yield_coefficient < 1 ? 'Perda/Rendimento' : 'Conversão'}: ${item.yield_coefficient})`}>
+                            {item.yield_coefficient < 1 ? '⚠' : '🔄'} Fator: {item.yield_coefficient}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -379,7 +397,7 @@ function ItemRow({ item, index, onUpdate, onRemove }: { item: RecipeItem, index:
                 </div>
                 <div className="text-sm text-gray-400 w-8">{item.unit}</div>
                 <div className="w-24 text-right font-mono text-emerald-400">
-                    R$ {(item.quantity * item.current_price).toFixed(2)}
+                    R$ {(item.quantity * (item.yield_coefficient > 0 ? item.current_price / item.yield_coefficient : item.current_price)).toFixed(2)}
                 </div>
                 <button
                     onClick={() => onRemove(index)}

@@ -4,6 +4,7 @@ export interface Ingredient {
     name: string;
     category: string;
     current_price: number;
+    yield_coefficient: number;
     unit: string;
 }
 
@@ -50,6 +51,7 @@ export interface RecipeIngredient {
         name: string;
         unit: string;
         current_price: number;
+        yield_coefficient: number;
         category: string;
     };
 }
