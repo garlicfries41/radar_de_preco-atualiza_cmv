@@ -59,11 +59,12 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
             if (!original) return;
 
             // Merge editData with original to preserve untouched fields
+            // Use || instead of ?? to treat empty strings as falsy
             const payload = {
-                name: editData.name ?? original.name,
-                category: editData.category ?? original.category,
+                name: editData.name || original.name,
+                category: editData.category || original.category,
                 current_price: editData.current_price ?? original.current_price,
-                unit: editData.unit ?? original.unit,
+                unit: editData.unit || original.unit,
             };
 
             const res = await fetch(`${API_URL}/api/ingredients/${editingId}`, {
