@@ -454,7 +454,7 @@ class RecipeIngredientInput(BaseModel):
 class RecipeInput(BaseModel):
     name: str
     yield_units: int
-    total_weight_kg: float
+    total_weight_kg: Optional[float] = None
     labor_cost: float = 0.0
     sku: Optional[str] = None
     ingredients: List[RecipeIngredientInput]
