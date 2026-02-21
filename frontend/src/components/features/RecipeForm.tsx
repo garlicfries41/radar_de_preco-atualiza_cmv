@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Save, ArrowLeft, Search, Calculator, Package } from 'lucide-react';
 import { getIngredients, createRecipe, updateRecipe, getRecipe, getProducts } from '../../services/api';
 import type { Ingredient, RecipeInput } from '../../types';
@@ -43,6 +43,10 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     // Product Search UI State
     const [productSearch, setProductSearch] = useState('');
     const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const foodQtyRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const [focusedSuggestIndex, setFocusedSuggestIndex] = useState(-1);
 
     useEffect(() => {
         const storedRate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
@@ -136,6 +140,27 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
         }]);
         setSearch('');
         setShowSuggestions(false);
+        setFocusedSuggestIndex(-1);
+        setTimeout(() => searchInputRef.current?.focus(), 10);
+    };
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!showSuggestions || filteredIngredients.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setFocusedSuggestIndex(i => Math.min(i + 1, filteredIngredients.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setFocusedSuggestIndex(i => Math.max(i - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (focusedSuggestIndex >= 0 && focusedSuggestIndex < filteredIngredients.length) {
+                addItem(filteredIngredients[focusedSuggestIndex]);
+            } else {
+                addItem(filteredIngredients[0]);
+            }
+        }
     };
 
     const removeItem = (index: number) => {
@@ -303,10 +328,10 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                                         key={p.id}
                                                         type="button"
                                                         onMouseDown={() => selectProduct(p)} // Use onMouseDown to prevent onBlur from firing first
-                                                        className="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-center"
+                                                        className="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-start gap-4"
                                                     >
-                                                        <span className="text-white truncate pr-2">{p.product}</span>
-                                                        <span className={`text-xs px-2 py-1 rounded-full ${p.status === 'ativo' ? 'bg-emerald-900/50 text-emerald-400' : p.status === 'inativo' ? 'bg-orange-900/50 text-orange-400' : 'bg-red-900/50 text-red-400'}`}>
+                                                        <span className="text-white whitespace-normal break-words text-sm leading-tight">{p.product}</span>
+                                                        <span className={`text-xs px-2 py-0.5 whitespace-nowrap rounded-full shrink-0 ${p.status === 'ativo' ? 'bg-emerald-900/50 text-emerald-400' : p.status === 'inativo' ? 'bg-orange-900/50 text-orange-400' : 'bg-red-900/50 text-red-400'}`}>
                                                             {p.status || 'desconhecido'}
                                                         </span>
                                                     </button>
@@ -380,12 +405,15 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                             <Search className="text-gray-500" size={18} />
                             <input
                                 type="text"
+                                ref={searchInputRef}
                                 value={search}
                                 onChange={e => {
                                     setSearch(e.target.value);
                                     setShowSuggestions(true);
+                                    setFocusedSuggestIndex(-1);
                                 }}
                                 onFocus={() => setShowSuggestions(true)}
+                                onKeyDown={handleSearchKeyDown}
                                 className="w-full bg-transparent border-none p-2 text-white focus:outline-none"
                                 placeholder="Busque por nome..."
                             />
@@ -393,11 +421,11 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
 
                         {showSuggestions && search && filteredIngredients.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg overflow-hidden">
-                                {filteredIngredients.map(ing => (
+                                {filteredIngredients.map((ing, index) => (
                                     <button
                                         key={ing.id}
                                         onClick={() => addItem(ing)}
-                                        className="w-full text-left px-4 py-3 hover:bg-gray-700 flex justify-between items-center group"
+                                        className={`w-full text-left px-4 py-3 hover:bg-gray-700 flex justify-between items-center group ${focusedSuggestIndex === index ? 'bg-gray-700' : ''}`}
                                     >
                                         <div>
                                             <span className="text-white block">{ing.name || 'Desconhecido'}</span>
@@ -420,13 +448,24 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Ingredientes</h3>
                                 <div className="space-y-2">
-                                    {groupedItems.food.map((item) => (
+                                    {groupedItems.food.map((item, localIndex) => (
                                         <ItemRow
                                             key={item.ingredient_id}
                                             item={item}
                                             index={items.indexOf(item)}
                                             onUpdate={updateItemQuantity}
                                             onRemove={removeItem}
+                                            inputRef={el => { foodQtyRefs.current[localIndex] = el; }}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const next = foodQtyRefs.current[localIndex + 1];
+                                                    if (next) {
+                                                        next.focus();
+                                                        next.select();
+                                                    }
+                                                }
+                                            }}
                                         />
                                     ))}
                                 </div>
@@ -520,7 +559,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     );
 }
 
-function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false }: { item: RecipeItem, index: number, onUpdate: (i: number, q: number) => void, onRemove: (i: number) => void, isPackaging?: boolean }) {
+function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false, inputRef, onKeyDown }: { item: RecipeItem, index: number, onUpdate: (i: number, q: number) => void, onRemove: (i: number) => void, isPackaging?: boolean, inputRef?: React.Ref<HTMLInputElement>, onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void }) {
     return (
         <div className={`flex items-center gap-4 p-3 rounded-md border transition-colors ${isPackaging ? 'bg-blue-900/10 border-blue-900/30 hover:border-blue-900/50' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'}`}>
             <div className="flex-1">
@@ -538,6 +577,8 @@ function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false }: { ite
             <div className="flex items-center gap-3">
                 <div className="w-24">
                     <input
+                        ref={inputRef}
+                        onKeyDown={onKeyDown}
                         type="number"
                         min="0"
                         step="0.001"

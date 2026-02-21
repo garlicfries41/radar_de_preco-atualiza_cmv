@@ -1,0 +1,100 @@
+[
+  {
+    "name": "Carne mo\u00edda",
+    "qty": 7.0,
+    "price": 22.0,
+    "yield": 1.0,
+    "cat": "mercado"
+  },
+  {
+    "name": "Bacon",
+    "qty": 1.0,
+    "price": 27.5,
+    "yield": 0.79,
+    "cat": "mercado"
+  },
+  {
+    "name": "Mortadela",
+    "qty": 2.0,
+    "price": 16.9,
+    "yield": 0.99,
+    "cat": "mercado"
+  },
+  {
+    "name": "Cebola",
+    "qty": 1.4,
+    "price": 3.9,
+    "yield": 0.9,
+    "cat": "mercado"
+  },
+  {
+    "name": "Alho",
+    "qty": 0.08,
+    "price": 35.0,
+    "yield": 0.9,
+    "cat": "mercado"
+  },
+  {
+    "name": "Extrato Tomate",
+    "qty": 2.0,
+    "price": 12.83,
+    "yield": 1.0,
+    "cat": "mercado"
+  },
+  {
+    "name": "Tomate triturado",
+    "qty": 6.8,
+    "price": 16.78,
+    "yield": 1.7,
+    "cat": "mercado"
+  },
+  {
+    "name": "Creme de leite 17%",
+    "qty": 0.4,
+    "price": 14.5,
+    "yield": 1.0,
+    "cat": "mercado"
+  },
+  {
+    "name": "Manteiga",
+    "qty": 0.24,
+    "price": 36.5,
+    "yield": 1.0,
+    "cat": "mercado"
+  },
+  {
+    "name": "Sal",
+    "qty": 0.09,
+    "price": 2.5,
+    "yield": 1.0,
+    "cat": "mercado"
+  },
+  {
+    "name": "Or\u00e9gano",
+    "qty": 0.01,
+    "price": 5.0,
+    "yield": 1.0,
+    "cat": "mercado"
+  },
+  {
+    "name": "Mu\u00e7arela",
+    "qty": 1.9,
+    "price": 27.9,
+    "yield": 1.0,
+    "cat": "mercado"
+  },
+  {
+    "name": "Adesivo caixa",
+    "qty": 38.0,
+    "price": 0.65,
+    "yield": 1.0,
+    "cat": "Embalagem"
+  },
+  {
+    "name": "Bandeja wyda 1000ml",
+    "qty": 38.0,
+    "price": 1.34,
+    "yield": 1.0,
+    "cat": "Embalagem"
+  }
+]
