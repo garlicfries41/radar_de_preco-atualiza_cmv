@@ -473,18 +473,21 @@ class RecipeIngredientInput(BaseModel):
 
 class RecipeInput(BaseModel):
     name: str
-    yield_units: int
+    yield_units: float
     total_weight_kg: Optional[float] = None
     labor_cost: float = 0.0
     sku: Optional[str] = None
     product_id: Optional[int] = None
+    is_pre_preparo: bool = False
+    derived_ingredient_id: Optional[str] = None
+    production_unit: Optional[str] = "KG"
     ingredients: List[RecipeIngredientInput]
 
 
 
 # ============= Recipe Logic =============
 
-def calculate_recipe_totals(yield_units: int, ingredients: List[dict], labor_cost: Decimal) -> dict:
+def calculate_recipe_totals(yield_units: float, ingredients: List[dict], labor_cost: Decimal) -> dict:
     """Calculate total cost and CMV metrics."""
     total_batch_ingredients_cost = Decimal("0.00")
     total_weight = Decimal("0.00")

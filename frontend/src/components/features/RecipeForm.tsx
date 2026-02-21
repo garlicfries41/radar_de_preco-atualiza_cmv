@@ -337,7 +337,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                             <label className="block text-sm text-gray-400 mb-1">Rendimento ({isPrePreparo ? 'Qtd.' : 'Unidades'})</label>
                             <input
                                 type="number"
-                                min="1"
+                                min="0.001"
                                 step="any"
                                 value={yieldUnits}
                                 onChange={e => setYieldUnits(Number(e.target.value))}

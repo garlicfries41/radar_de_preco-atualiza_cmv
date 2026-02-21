@@ -78,7 +78,7 @@ class Recipe(SQLModel, table=True):
     id: Optional[str] = Field(default=None, primary_key=True)
     name: str
     current_cost: Decimal = Field(default=Decimal("0.00"))
-    yield_units: int  # How many units produced (e.g., 10 lasagnas)
+    yield_units: Decimal  # How many units produced (e.g., 10 lasagnas)
     total_weight_kg: Decimal  # Total weight in kg (e.g., 12.5)
     labor_cost: Decimal = Field(default=Decimal("0.00"))
     sku: Optional[str] = Field(default=None, unique=True)
