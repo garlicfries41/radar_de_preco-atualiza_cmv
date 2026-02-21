@@ -58,4 +58,10 @@ export const deleteRecipe = async (id: string) => {
     return response.data;
 };
 
+export const getProducts = async (search?: string) => {
+    const params = search ? { search } : {};
+    const response = await api.get<{ id: number, product: string }[]>('/api/products', { params });
+    return response.data;
+};
+
 export default api;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Save, ArrowLeft, Search, Calculator, Package } from 'lucide-react';
-import { getIngredients, createRecipe, updateRecipe, getRecipe } from '../../services/api';
+import { getIngredients, createRecipe, updateRecipe, getRecipe, getProducts } from '../../services/api';
 import type { Ingredient, RecipeInput } from '../../types';
 import toast from 'react-hot-toast';
 
@@ -23,6 +23,7 @@ interface RecipeItem {
 export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     const [loading, setLoading] = useState(false);
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+    const [products, setProducts] = useState<{ id: number, product: string }[]>([]);
 
     // Form State
     const [name, setName] = useState('');
@@ -41,18 +42,22 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
         const storedRate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
         setGlobalLaborRate(storedRate);
 
-        loadIngredients();
+        loadInitialData();
         if (recipeId) {
             loadRecipe(recipeId, storedRate);
         }
     }, [recipeId]);
 
-    const loadIngredients = async () => {
+    const loadInitialData = async () => {
         try {
-            const data = await getIngredients();
-            setIngredients(data);
+            const [ingData, prodData] = await Promise.all([
+                getIngredients(),
+                getProducts()
+            ]);
+            setIngredients(ingData);
+            setProducts(prodData);
         } catch (error) {
-            toast.error('Erro ao carregar ingredientes');
+            toast.error('Erro ao carregar dados iniciais');
         }
     };
 
@@ -234,14 +239,23 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Nome da Receita</label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
+                            <label className="block text-sm text-gray-400 mb-1">Produto (Receita)</label>
+                            <select
+                                value={productId}
+                                onChange={e => {
+                                    const selectedId = e.target.value;
+                                    setProductId(selectedId);
+                                    const selectedProd = products.find(p => p.id.toString() === selectedId);
+                                    if (selectedProd) setName(selectedProd.product);
+                                    else setName('');
+                                }}
                                 className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
-                                placeholder="Ex: Lasanha Bolonhesa"
-                            />
+                            >
+                                <option value="">Selecione um produto</option>
+                                {products.map(p => (
+                                    <option key={p.id} value={p.id}>{p.product}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
                             <label className="block text-sm text-gray-400 mb-1">SKU (Opcional)</label>
@@ -251,16 +265,6 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                                 onChange={e => setSku(e.target.value)}
                                 className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
                                 placeholder="Ex: LAS-001"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">ID do Produto (products_prices)</label>
-                            <input
-                                type="text"
-                                value={productId}
-                                onChange={e => setProductId(e.target.value)}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
-                                placeholder="UUID do produto (Opcional)"
                             />
                         </div>
                     </div>

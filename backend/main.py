@@ -428,6 +428,19 @@ def list_categories(search: Optional[str] = None):
     return response.data
 
 
+@app.get("/api/products")
+def list_products(search: Optional[str] = None):
+    """List products from Supabase products table with optional search."""
+    logger.debug(f"Listing products", extra={"search": search})
+    query = supabase.table("products").select("id, product")
+    
+    if search:
+        query = query.ilike("product", f"%{search}%")
+        
+    response = query.order("product").execute()
+    return response.data
+
+
 class CreateCategoryInput(BaseModel):
     name: str
 
