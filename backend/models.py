@@ -82,6 +82,7 @@ class Recipe(SQLModel, table=True):
     total_weight_kg: Decimal  # Total weight in kg (e.g., 12.5)
     labor_cost: Decimal = Field(default=Decimal("0.00"))
     sku: Optional[str] = Field(default=None, unique=True)
+    product_id: Optional[int] = Field(default=None)
     cmv_per_unit: Optional[Decimal] = None  # Computed: current_cost / yield_units
     cmv_per_kg: Optional[Decimal] = None  # Computed: current_cost / total_weight_kg
     last_calculated: datetime = Field(default_factory=datetime.utcnow)
@@ -101,5 +102,6 @@ class CMVHistory(SQLModel, table=True):
     
     id: Optional[str] = Field(default=None, primary_key=True)
     recipe_id: str = Field(foreign_key="recipes.id")
+    product_id: Optional[int] = Field(default=None)
     cost: Decimal
     recorded_at: datetime = Field(default_factory=datetime.utcnow)

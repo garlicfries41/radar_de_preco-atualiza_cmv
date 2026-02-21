@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { CameraUpload } from './components/features/CameraUpload'
 import { ValidationInterface } from './components/features/ValidationInterface';
 import { DashboardLayout } from './components/features/DashboardLayout';
+import { SettingsView } from './components/features/SettingsView';
 import { IngredientsTable } from './components/features/IngredientsTable';
 import { RecipesList } from './components/features/RecipesList';
 import type { UploadResponse } from './types'
@@ -10,7 +11,7 @@ import type { UploadResponse } from './types'
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'recipes'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'recipes' | 'settings'>('upload');
   const [view, setView] = useState<'list' | 'validation'>('list');
   const [receiptData, setReceiptData] = useState<UploadResponse | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -51,6 +52,10 @@ function App() {
           <RecipesList />
         </div>
       );
+    }
+
+    if (activeTab === 'settings') {
+      return <SettingsView />;
     }
 
     // Upload Tab

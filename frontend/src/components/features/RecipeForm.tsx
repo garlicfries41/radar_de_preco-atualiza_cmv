@@ -27,8 +27,10 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     // Form State
     const [name, setName] = useState('');
     const [sku, setSku] = useState('');
+    const [productId, setProductId] = useState('');
     const [yieldUnits, setYieldUnits] = useState(1);
-    const [laborCost, setLaborCost] = useState(0);
+    const [laborMinutes, setLaborMinutes] = useState(0);
+    const [globalLaborRate, setGlobalLaborRate] = useState(0);
     const [items, setItems] = useState<RecipeItem[]>([]);
 
     // UI State
@@ -36,9 +38,12 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     const [showSuggestions, setShowSuggestions] = useState(false);
 
     useEffect(() => {
+        const storedRate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
+        setGlobalLaborRate(storedRate);
+
         loadIngredients();
         if (recipeId) {
-            loadRecipe(recipeId);
+            loadRecipe(recipeId, storedRate);
         }
     }, [recipeId]);
 
@@ -51,14 +56,15 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
         }
     };
 
-    const loadRecipe = async (id: string) => {
+    const loadRecipe = async (id: string, rate: number) => {
         try {
             setLoading(true);
             const data = await getRecipe(id);
             setName(data.name);
             setSku(data.sku || '');
+            setProductId(data.product_id ? String(data.product_id) : '');
             setYieldUnits(data.yield_units);
-            setLaborCost(data.labor_cost);
+            setLaborMinutes(rate > 0 ? Math.round((data.labor_cost / rate) * 60) : 0);
 
             if (data.ingredients) {
                 const mappedItems = data.ingredients.map(i => ({
@@ -122,12 +128,21 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     };
 
     const totalIngredientsCost = items.reduce((sum, item) => {
+        if (item.category === 'EMBALAGEM') return sum;
         const effectivePrice = getEffectivePrice(item.current_price, item.yield_coefficient || 1);
         return sum + (effectivePrice * item.quantity);
     }, 0);
-    const totalCost = totalIngredientsCost + laborCost;
-    const costPerUnit = yieldUnits > 0 ? totalCost / yieldUnits : 0;
-    const totalWeight = items.reduce((sum, item) => sum + item.quantity, 0); // Approx sum of quantities (kg/l)
+
+    const totalPackagingUnitCost = items.reduce((sum, item) => {
+        if (item.category !== 'EMBALAGEM') return sum;
+        const effectivePrice = getEffectivePrice(item.current_price, item.yield_coefficient || 1);
+        return sum + (effectivePrice * item.quantity);
+    }, 0);
+
+    const calculatedLaborCost = globalLaborRate > 0 ? (laborMinutes / 60) * globalLaborRate : 0;
+    const totalBatchCost = totalIngredientsCost + calculatedLaborCost + (totalPackagingUnitCost * yieldUnits);
+    const costPerUnit = yieldUnits > 0 ? totalBatchCost / yieldUnits : 0;
+    const totalWeight = items.reduce((sum, item) => item.category !== 'EMBALAGEM' ? sum + item.quantity : sum, 0); // Approx sum of quantities (kg/l) for food
 
     const handleSave = async () => {
         if (!name) return toast.error('Nome é obrigatório');
@@ -136,8 +151,9 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
         const payload: RecipeInput = {
             name,
             sku: sku || undefined,
+            product_id: productId ? Number(productId) : undefined,
             yield_units: Number(yieldUnits),
-            labor_cost: Number(laborCost),
+            labor_cost: Number(calculatedLaborCost.toFixed(2)),
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
                 quantity: Number(i.quantity)
@@ -217,6 +233,16 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                                 placeholder="Ex: LAS-001"
                             />
                         </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">ID do Produto (products_prices)</label>
+                            <input
+                                type="text"
+                                value={productId}
+                                onChange={e => setProductId(e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                placeholder="UUID do produto (Opcional)"
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -231,15 +257,17 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Custo Mão de Obra (R$)</label>
+                            <label className="block text-sm text-gray-400 mb-1">Tempo de Produção (Minutos)</label>
                             <input
                                 type="number"
                                 min="0"
-                                step="0.01"
-                                value={laborCost}
-                                onChange={e => setLaborCost(Number(e.target.value))}
+                                value={laborMinutes}
+                                onChange={e => setLaborMinutes(Number(e.target.value))}
                                 className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
                             />
+                            {globalLaborRate === 0 && (
+                                <p className="text-xs text-yellow-500 mt-1">Configurações: Custo de mão de obra não definido.</p>
+                            )}
                         </div>
                     </div>
 
@@ -339,20 +367,24 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
 
                         <div className="space-y-3 text-sm">
                             <div className="flex justify-between">
-                                <span className="text-gray-400">Ingredientes:</span>
+                                <span className="text-gray-400">Ingredientes (Lote):</span>
                                 <span className="text-white">R$ {totalIngredientsCost.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-400">Mão de Obra:</span>
-                                <span className="text-white">R$ {laborCost.toFixed(2)}</span>
+                                <span className="text-gray-400">Mão de Obra (Lote):</span>
+                                <span className="text-white">R$ {calculatedLaborCost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">Embalagem (Unitário):</span>
+                                <span className="text-white">R$ {totalPackagingUnitCost.toFixed(2)}</span>
                             </div>
                             <div className="h-px bg-gray-700 my-2"></div>
                             <div className="flex justify-between text-lg font-bold">
-                                <span className="text-gray-300">Custo Total:</span>
-                                <span className="text-emerald-400">R$ {totalCost.toFixed(2)}</span>
+                                <span className="text-gray-300">Custo Total (Lote):</span>
+                                <span className="text-emerald-400">R$ {totalBatchCost.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center bg-gray-800 p-3 rounded-md mt-4">
-                                <span className="text-gray-300">Custo Unitário:</span>
+                                <span className="text-gray-300">Custo Unitário Final:</span>
                                 <span className="text-xl font-bold text-white">R$ {costPerUnit.toFixed(2)}</span>
                             </div>
 

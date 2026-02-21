@@ -1,8 +1,8 @@
 
 import { clsx } from 'clsx';
-import { LayoutDashboard, ShoppingBasket, ChefHat, Upload } from 'lucide-react';
+import { LayoutDashboard, ShoppingBasket, ChefHat, Upload, Settings } from 'lucide-react';
 
-type Tab = 'upload' | 'ingredients' | 'recipes';
+type Tab = 'upload' | 'ingredients' | 'recipes' | 'settings';
 
 interface DashboardProps {
     activeTab: Tab;
@@ -16,6 +16,7 @@ export function DashboardLayout({ activeTab, onTabChange, children, pendingCount
         { id: 'upload', label: 'Upload', icon: Upload },
         { id: 'ingredients', label: 'Ingredientes', icon: ShoppingBasket, badge: pendingCount },
         { id: 'recipes', label: 'Receitas', icon: ChefHat },
+        { id: 'settings', label: 'Configurações', icon: Settings },
     ];
 
     return (
@@ -42,7 +43,7 @@ export function DashboardLayout({ activeTab, onTabChange, children, pendingCount
                         >
                             <tab.icon size={20} />
                             {tab.label}
-                            {tab.badge && tab.badge > 0 && (
+                            {(tab.badge || 0) > 0 && (
                                 <span className="absolute right-3 bg-yellow-500 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
                                     {tab.badge}
                                 </span>
@@ -80,7 +81,7 @@ export function DashboardLayout({ activeTab, onTabChange, children, pendingCount
                     >
                         <tab.icon size={22} />
                         {tab.label}
-                        {tab.badge && tab.badge > 0 && (
+                        {(tab.badge || 0) > 0 && (
                             <span className="absolute -top-1 -right-1 bg-yellow-500 text-gray-900 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                                 {tab.badge}
                             </span>

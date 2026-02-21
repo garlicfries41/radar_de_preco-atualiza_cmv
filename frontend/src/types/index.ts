@@ -58,6 +58,7 @@ export interface RecipeIngredient {
 
 export interface Recipe {
     id: string;
+    product_id?: number;
     name: string;
     yield_units: number;
     labor_cost: number;
@@ -70,6 +71,7 @@ export interface Recipe {
 }
 
 export interface RecipeInput {
+    product_id?: number;
     name: string;
     yield_units: number;
     labor_cost: number;
