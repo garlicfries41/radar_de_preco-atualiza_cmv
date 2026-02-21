@@ -131,7 +131,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     const isPackaging = (cat?: string) => {
         if (!cat) return false;
         const c = cat.toUpperCase();
-        return c === 'EMBALAGEM' || c === 'EMBALAGENS';
+        return c.includes('EMBALAGEM') || c.includes('EMBALAGENS');
     };
 
     const totalIngredientsCost = items.reduce((sum, item) => {
@@ -389,36 +389,49 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                             Resumo de Custos
                         </h3>
 
-                        <div className="space-y-3 text-sm">
+                        <div className="text-sm">
+                            {/* Lote */}
                             <div className="flex justify-between">
                                 <span className="text-gray-400">Ingredientes (Lote):</span>
                                 <span className="text-white">R$ {totalIngredientsCost.toFixed(2)}</span>
                             </div>
+
+                            <div className="h-px bg-gray-700 my-3"></div>
+
+                            {/* Unitários */}
                             <div className="flex justify-between">
-                                <span className="text-gray-400">Mão de Obra (Lote):</span>
-                                <span className="text-white">R$ {calculatedLaborCost.toFixed(2)}</span>
+                                <span className="text-gray-400">Ingredientes (Unitário):</span>
+                                <span className="text-white">R$ {(yieldUnits > 0 ? totalIngredientsCost / yieldUnits : 0).toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between border-t border-gray-700 pt-2 mt-2">
-                                <span className="text-blue-400 font-medium">Custo Produção (Unitário):</span>
-                                <span className="text-white">R$ {(recipeFoodCost / yieldUnits || 0).toFixed(2)}</span>
+                            <div className="flex justify-between mt-1">
+                                <span className="text-gray-400">+ Mão de Obra (Unitário):</span>
+                                <span className="text-white">R$ {(yieldUnits > 0 ? calculatedLaborCost / yieldUnits : 0).toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between text-blue-300">
-                                <span>+ Embalagem (Unitário):</span>
-                                <span>R$ {unitPackagingCost.toFixed(2)}</span>
+                            <div className="flex justify-between mt-1">
+                                <span className="text-gray-400">+ Embalagem (Unitário):</span>
+                                <span className="text-white">R$ {unitPackagingCost.toFixed(2)}</span>
                             </div>
-                            <div className="h-px bg-gray-700 my-2"></div>
-                            <div className="flex justify-between text-lg font-bold">
-                                <span className="text-gray-300">Custo Total (Lote):</span>
-                                <span className="text-emerald-400">R$ {totalBatchCost.toFixed(2)}</span>
+
+                            <div className="h-px bg-gray-700 my-3"></div>
+
+                            {/* Totais */}
+                            <div className="flex justify-between text-lg">
+                                <span className="text-gray-300 font-bold">Custo total (Lote):</span>
+                                <span className="text-emerald-400 font-bold">R$ {totalBatchCost.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between items-center bg-gray-800 p-3 rounded-md mt-4">
-                                <span className="text-gray-300">Custo Unitário Final:</span>
+                            <div className="flex justify-between items-center bg-gray-800 p-3 rounded-md mt-4 mb-2">
+                                <span className="text-gray-300">Custo unitário final:</span>
                                 <span className="text-xl font-bold text-white">R$ {costPerUnit.toFixed(2)}</span>
                             </div>
 
-                            <div className="text-xs text-gray-500 mt-4 pt-4 border-t border-gray-700">
-                                <p>Peso Total Aprox.: {totalWeight.toFixed(3)} kg/unid</p>
-                                <p>Rendimento: {yieldUnits} unidades</p>
+                            <div className="h-px bg-gray-700 my-3"></div>
+
+                            {/* Info Adicional */}
+                            <div className="text-gray-400 mt-2">
+                                Rendimento: {yieldUnits} unidades
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                Peso Total Aprox.: {totalWeight.toFixed(3)} kg
                             </div>
                         </div>
                     </div>
