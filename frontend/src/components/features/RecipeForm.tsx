@@ -127,8 +127,15 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
         return yieldCoeff > 0 ? price / yieldCoeff : price;
     };
 
+    // Helper for case-insensitive matching packaging category
+    const isPackaging = (cat?: string) => {
+        if (!cat) return false;
+        const c = cat.toUpperCase();
+        return c === 'EMBALAGEM' || c === 'EMBALAGENS';
+    };
+
     const totalIngredientsCost = items.reduce((sum, item) => {
-        if (item.category === 'EMBALAGEM') return sum;
+        if (isPackaging(item.category)) return sum;
         const effectivePrice = getEffectivePrice(item.current_price, item.yield_coefficient || 1);
         return sum + (effectivePrice * item.quantity);
     }, 0);
@@ -144,7 +151,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
 
     // 2. Packaging Cost (Unit)
     const unitPackagingCost = items.reduce((sum, item) => {
-        if (item.category !== 'EMBALAGEM') return sum;
+        if (!isPackaging(item.category)) return sum;
         const effectivePrice = getEffectivePrice(item.current_price, item.yield_coefficient || 1);
         return sum + effectivePrice;
     }, 0);
@@ -155,7 +162,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     // 4. Unit Cost Final
     const costPerUnit = yieldUnits > 0 ? totalBatchCost / yieldUnits : 0;
 
-    const totalWeight = items.reduce((sum, item) => item.category !== 'EMBALAGEM' ? sum + item.quantity : sum, 0); // Approx sum of quantities (kg/l) for food
+    const totalWeight = items.reduce((sum, item) => !isPackaging(item.category) ? sum + item.quantity : sum, 0); // Approx sum of quantities (kg/l) for food
 
     const handleSave = async () => {
         if (!name) return toast.error('Nome é obrigatório');
@@ -169,7 +176,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
-                quantity: i.category === 'EMBALAGEM' ? Number(yieldUnits) : Number(i.quantity)
+                quantity: isPackaging(i.category) ? Number(yieldUnits) : Number(i.quantity)
             }))
         };
 
@@ -191,8 +198,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     };
 
     const groupedItems = useMemo(() => {
-        const food = items.filter(i => i.category !== 'EMBALAGEM');
-        const packaging = items.filter(i => i.category === 'EMBALAGEM');
+        const food = items.filter(i => !isPackaging(i.category));
+        const packaging = items.filter(i => isPackaging(i.category));
         return { food, packaging };
     }, [items]);
 

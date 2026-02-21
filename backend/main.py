@@ -490,7 +490,7 @@ def calculate_recipe_totals(yield_units: int, ingredients: List[dict], labor_cos
         else:
             effective_price = price
 
-        if category == 'EMBALAGEM':
+        if category and category.upper() in ['EMBALAGEM', 'EMBALAGENS']:
             total_packaging_unit_cost += effective_price * qty
         else:
             total_batch_ingredients_cost += effective_price * qty
