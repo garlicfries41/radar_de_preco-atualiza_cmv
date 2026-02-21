@@ -1,0 +1,179 @@
+                           
+ Usage: nlm [OPTIONS]      
+ COMMAND [ARGS]...         
+                           
+ NotebookLM Tools -        
+ Unified CLI for Google    
+ NotebookLM                
+                           
++- Options ---------------+
+| --ver…  -v        Show  |
+|                   vers… |
+|                   and   |
+|                   exit  |
+| --ai              Outp… |
+|                   AI-f… |
+|                   docu… |
+|                   for   |
+|                   this  |
+|                   CLI   |
+| --ins…            Inst… |
+|                   comp… |
+|                   for   |
+|                   the   |
+|                   curr… |
+|                   shel… |
+| --sho…            Show  |
+|                   comp… |
+|                   for   |
+|                   the   |
+|                   curr… |
+|                   shel… |
+|                   to    |
+|                   copy  |
+|                   it or |
+|                   cust… |
+|                   the   |
+|                   inst… |
+| --help            Show  |
+|                   this  |
+|                   mess… |
+|                   and   |
+|                   exit. |
++-------------------------+
++- Commands --------------+
+| login        Authentic… |
+|              and        |
+|              profile    |
+|              management |
+| notebook     Manage     |
+|              notebooks  |
+| note         Manage     |
+|              notes      |
+| source       Manage     |
+|              sources    |
+| chat         Configure  |
+|              chat       |
+|              settings   |
+| studio       Manage     |
+|              studio     |
+|              artifacts  |
+| research     Research   |
+|              and        |
+|              discover   |
+|              sources    |
+| alias        Manage ID  |
+|              aliases    |
+| config       Manage     |
+|              configura… |
+| download     Download   |
+|              artifacts  |
+|              (audio,    |
+|              video,     |
+|              etc)       |
+| share        Manage     |
+|              notebook   |
+|              sharing    |
+| export       Export     |
+|              artifacts  |
+|              to Google  |
+|              Docs/Shee… |
+| skill        Install    |
+|              skills for |
+|              AI tools   |
+| setup        Configure  |
+|              MCP server |
+|              for AI     |
+|              tools      |
+| doctor       Diagnose   |
+|              installat… |
+|              and        |
+|              configura… |
+| audio        Create     |
+|              audio      |
+|              overviews  |
+| report       Create     |
+|              reports    |
+| quiz         Create     |
+|              quizzes    |
+| flashcards   Create     |
+|              flashcards |
+| mindmap      Create and |
+|              manage     |
+|              mind maps  |
+| slides       Create     |
+|              slide      |
+|              decks      |
+| infographic  Create     |
+|              infograph… |
+| video        Create     |
+|              video      |
+|              overviews  |
+| data-table   Create     |
+|              data       |
+|              tables     |
+| create       Create     |
+|              resources  |
+|              (notebook… |
+|              audio,     |
+|              video,     |
+|              etc)       |
+| list         List       |
+|              resources  |
+|              (notebook… |
+|              sources,   |
+|              artifacts) |
+| get          Get        |
+|              details    |
+|              about      |
+|              resources  |
+| delete       Delete     |
+|              resources  |
+|              (notebook… |
+|              sources,   |
+|              artifacts) |
+| add          Add        |
+|              resources  |
+|              (sources   |
+|              to         |
+|              notebooks) |
+| rename       Rename     |
+|              resources  |
+| status       Check      |
+|              status of  |
+|              resources  |
+| describe     Get        |
+|              AI-genera… |
+|              descripti… |
+|              and        |
+|              summaries  |
+| query        Chat with  |
+|              notebook   |
+|              sources    |
+| sync         Sync       |
+|              resources  |
+|              (Drive     |
+|              sources)   |
+| content      Get raw    |
+|              content    |
+|              from       |
+|              sources    |
+| stale        List stale |
+|              resources  |
+|              that need  |
+|              syncing    |
+| configure    Configure  |
+|              settings   |
+| set          Set values |
+|              (aliases,  |
+|              config)    |
+| show         Show       |
+|              informati… |
+| install      Install    |
+|              resources  |
+|              (skills)   |
+| uninstall    Uninstall  |
+|              resources  |
+|              (skills)   |
++-------------------------+
+

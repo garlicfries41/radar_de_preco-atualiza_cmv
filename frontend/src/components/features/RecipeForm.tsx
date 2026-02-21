@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Save, ArrowLeft, Search, Calculator } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Search, Calculator, Package } from 'lucide-react';
 import { getIngredients, createRecipe, updateRecipe, getRecipe } from '../../services/api';
 import type { Ingredient, RecipeInput } from '../../types';
 import toast from 'react-hot-toast';
@@ -133,15 +133,28 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
         return sum + (effectivePrice * item.quantity);
     }, 0);
 
-    const totalPackagingUnitCost = items.reduce((sum, item) => {
+    const calculatedLaborCost = globalLaborRate > 0 ? (laborMinutes / 60) * globalLaborRate : 0;
+
+    // totalBatchCost matches spreadsheet logic
+    // We already multiplied by yieldUnits in totalPackagingUnitCost for unit pricing math on the backend, but wait:
+    // If totalPackagingUnitCost is meant to be the unit cost of packaging, it shouldn't multiply by yieldUnits inside the reducer above. Let me correct the math logic here for clarity.
+
+    // 1. Core Recipe Cost (Batch)
+    const recipeFoodCost = totalIngredientsCost + calculatedLaborCost;
+
+    // 2. Packaging Cost (Unit)
+    const unitPackagingCost = items.reduce((sum, item) => {
         if (item.category !== 'EMBALAGEM') return sum;
         const effectivePrice = getEffectivePrice(item.current_price, item.yield_coefficient || 1);
-        return sum + (effectivePrice * item.quantity);
+        return sum + effectivePrice;
     }, 0);
 
-    const calculatedLaborCost = globalLaborRate > 0 ? (laborMinutes / 60) * globalLaborRate : 0;
-    const totalBatchCost = totalIngredientsCost + calculatedLaborCost + (totalPackagingUnitCost * yieldUnits);
+    // 3. Batch Cost
+    const totalBatchCost = recipeFoodCost + (unitPackagingCost * yieldUnits);
+
+    // 4. Unit Cost Final
     const costPerUnit = yieldUnits > 0 ? totalBatchCost / yieldUnits : 0;
+
     const totalWeight = items.reduce((sum, item) => item.category !== 'EMBALAGEM' ? sum + item.quantity : sum, 0); // Approx sum of quantities (kg/l) for food
 
     const handleSave = async () => {
@@ -156,7 +169,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
-                quantity: Number(i.quantity)
+                quantity: i.category === 'EMBALAGEM' ? Number(yieldUnits) : Number(i.quantity)
             }))
         };
 
@@ -333,16 +346,20 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
 
                         {/* Packaging */}
                         {groupedItems.packaging.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Embalagens</h3>
+                            <div className="mt-8 pt-6 border-t border-gray-700">
+                                <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Package size={18} />
+                                    Embalagens (Qtd = Rendimento)
+                                </h3>
                                 <div className="space-y-2">
                                     {groupedItems.packaging.map((item) => (
                                         <ItemRow
                                             key={item.ingredient_id}
-                                            item={item}
+                                            item={{ ...item, quantity: yieldUnits }}
                                             index={items.indexOf(item)}
                                             onUpdate={updateItemQuantity}
                                             onRemove={removeItem}
+                                            isPackaging={true}
                                         />
                                     ))}
                                 </div>
@@ -374,9 +391,13 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                                 <span className="text-gray-400">Mão de Obra (Lote):</span>
                                 <span className="text-white">R$ {calculatedLaborCost.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Embalagem (Unitário):</span>
-                                <span className="text-white">R$ {totalPackagingUnitCost.toFixed(2)}</span>
+                            <div className="flex justify-between border-t border-gray-700 pt-2 mt-2">
+                                <span className="text-blue-400 font-medium">Custo Produção (Unitário):</span>
+                                <span className="text-white">R$ {(recipeFoodCost / yieldUnits || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-blue-300">
+                                <span>+ Embalagem (Unitário):</span>
+                                <span>R$ {unitPackagingCost.toFixed(2)}</span>
                             </div>
                             <div className="h-px bg-gray-700 my-2"></div>
                             <div className="flex justify-between text-lg font-bold">
@@ -400,11 +421,11 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     );
 }
 
-function ItemRow({ item, index, onUpdate, onRemove }: { item: RecipeItem, index: number, onUpdate: (i: number, q: number) => void, onRemove: (i: number) => void }) {
+function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false }: { item: RecipeItem, index: number, onUpdate: (i: number, q: number) => void, onRemove: (i: number) => void, isPackaging?: boolean }) {
     return (
-        <div className="flex items-center gap-4 bg-gray-900/50 p-3 rounded-md border border-gray-800 hover:border-gray-700 transition-colors">
+        <div className={`flex items-center gap-4 p-3 rounded-md border transition-colors ${isPackaging ? 'bg-blue-900/10 border-blue-900/30 hover:border-blue-900/50' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'}`}>
             <div className="flex-1">
-                <div className="font-medium text-white">{item.name}</div>
+                <div className={`font-medium ${isPackaging ? 'text-blue-200' : 'text-white'}`}>{item.name}</div>
                 <div className="text-xs text-gray-500">
                     R$ {item.current_price.toFixed(2)} / {item.unit}
                     {item.yield_coefficient !== 1 && (
@@ -423,11 +444,14 @@ function ItemRow({ item, index, onUpdate, onRemove }: { item: RecipeItem, index:
                         step="0.001"
                         value={item.quantity}
                         onChange={e => onUpdate(index, Number(e.target.value))}
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-white focus:border-primary focus:outline-none"
+                        readOnly={isPackaging}
+                        className={`w-full border rounded px-2 py-1 text-right text-white focus:outline-none ${isPackaging ? 'bg-gray-800/50 border-gray-700 text-gray-400 cursor-not-allowed hidden md:block' : 'bg-gray-800 border-gray-700 focus:border-primary'}`}
                         placeholder="Qtd"
+                        title={isPackaging ? "A quantidade de embalagem acompanha automaticamente o rendimento da receita." : ""}
                     />
+                    {isPackaging && <div className="text-right text-sm text-gray-400 md:hidden">{item.quantity}</div>}
                 </div>
-                <div className="text-sm text-gray-400 w-8">{item.unit}</div>
+                <div className="text-sm text-gray-400 w-8">{item.unit === 'UN' || item.unit === 'un' || isPackaging ? 'un' : item.unit}</div>
                 <div className="w-24 text-right font-mono text-emerald-400">
                     R$ {(item.quantity * (item.yield_coefficient > 0 ? item.current_price / item.yield_coefficient : item.current_price)).toFixed(2)}
                 </div>
