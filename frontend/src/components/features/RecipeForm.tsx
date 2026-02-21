@@ -100,7 +100,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
         if (!search) return [];
         return ingredients
             .filter(i =>
-                i.name.toLowerCase().includes(search.toLowerCase()) &&
+                i.name?.toLowerCase()?.includes(search.toLowerCase()) &&
                 !items.some(item => item.ingredient_id === i.id)
             )
             .slice(0, 5);
@@ -109,7 +109,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     const filteredProducts = useMemo(() => {
         if (!productSearch) return [];
         return products
-            .filter(p => p.product.toLowerCase().includes(productSearch.toLowerCase()))
+            .filter(p => p.product?.toLowerCase()?.includes(productSearch.toLowerCase()))
             .slice(0, 10);
     }, [productSearch, products]);
 
@@ -365,9 +365,9 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                                         className="w-full text-left px-4 py-3 hover:bg-gray-700 flex justify-between items-center group"
                                     >
                                         <div>
-                                            <span className="text-white block">{ing.name}</span>
+                                            <span className="text-white block">{ing.name || 'Desconhecido'}</span>
                                             <span className="text-xs text-gray-500">
-                                                {ing.category} • R$ {ing.current_price.toFixed(2)}/{ing.unit}
+                                                {ing.category || 'OUTROS'} • R$ {(ing.current_price || 0).toFixed(2)}/{ing.unit || 'UN'}
                                                 {ing.yield_coefficient && ing.yield_coefficient !== 1 && ` • Fator: ${ing.yield_coefficient}`}
                                             </span>
                                         </div>
@@ -489,11 +489,11 @@ function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false }: { ite
     return (
         <div className={`flex items-center gap-4 p-3 rounded-md border transition-colors ${isPackaging ? 'bg-blue-900/10 border-blue-900/30 hover:border-blue-900/50' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'}`}>
             <div className="flex-1">
-                <div className={`font-medium ${isPackaging ? 'text-blue-200' : 'text-white'}`}>{item.name}</div>
+                <div className={`font-medium ${isPackaging ? 'text-blue-200' : 'text-white'}`}>{item.name || 'Desconhecido'}</div>
                 <div className="text-xs text-gray-500">
-                    R$ {item.current_price.toFixed(2)} / {item.unit}
+                    R$ {(item.current_price || 0).toFixed(2)} / {item.unit || 'UN'}
                     {item.yield_coefficient !== 1 && (
-                        <span className="text-yellow-500 ml-2" title={`Preço Efetivo: R$ ${(item.current_price / item.yield_coefficient).toFixed(2)} (${item.yield_coefficient < 1 ? 'Perda/Rendimento' : 'Conversão'}: ${item.yield_coefficient})`}>
+                        <span className="text-yellow-500 ml-2" title={`Preço Efetivo: R$ ${((item.current_price || 0) / (item.yield_coefficient || 1)).toFixed(2)} (${item.yield_coefficient < 1 ? 'Perda/Rendimento' : 'Conversão'}: ${item.yield_coefficient})`}>
                             {item.yield_coefficient < 1 ? '⚠' : '🔄'} Fator: {item.yield_coefficient}
                         </span>
                     )}
@@ -517,7 +517,7 @@ function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false }: { ite
                 </div>
                 <div className="text-sm text-gray-400 w-8">{item.unit === 'UN' || item.unit === 'un' || isPackaging ? 'un' : item.unit}</div>
                 <div className="w-24 text-right font-mono text-emerald-400">
-                    R$ {(item.quantity * (item.yield_coefficient > 0 ? item.current_price / item.yield_coefficient : item.current_price)).toFixed(2)}
+                    R$ {(Number(item.quantity || 0) * (item.yield_coefficient > 0 ? (item.current_price || 0) / item.yield_coefficient : (item.current_price || 0))).toFixed(2)}
                 </div>
                 <button
                     onClick={() => onRemove(index)}
