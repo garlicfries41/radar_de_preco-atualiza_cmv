@@ -6,12 +6,13 @@ import { DashboardLayout } from './components/features/DashboardLayout';
 import { SettingsView } from './components/features/SettingsView';
 import { IngredientsTable } from './components/features/IngredientsTable';
 import { RecipesList } from './components/features/RecipesList';
+import { PrePreparosList } from './components/features/PrePreparosList';
 import type { UploadResponse } from './types'
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'recipes' | 'settings'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'pre_preparos' | 'recipes' | 'settings'>('upload');
   const [view, setView] = useState<'list' | 'validation'>('list');
   const [receiptData, setReceiptData] = useState<UploadResponse | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -44,6 +45,14 @@ function App() {
   const renderContent = () => {
     if (activeTab === 'ingredients') {
       return <IngredientsTable onIngredientUpdate={fetchPendingCount} />;
+    }
+
+    if (activeTab === 'pre_preparos') {
+      return (
+        <div>
+          <PrePreparosList />
+        </div>
+      );
     }
 
     if (activeTab === 'recipes') {

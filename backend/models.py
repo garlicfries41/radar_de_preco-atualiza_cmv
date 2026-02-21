@@ -85,6 +85,9 @@ class Recipe(SQLModel, table=True):
     product_id: Optional[int] = Field(default=None)
     cmv_per_unit: Optional[Decimal] = None  # Computed: current_cost / yield_units
     cmv_per_kg: Optional[Decimal] = None  # Computed: current_cost / total_weight_kg
+    is_pre_preparo: bool = Field(default=False)
+    derived_ingredient_id: Optional[str] = Field(default=None)
+    production_unit: str = Field(default="KG")
     last_calculated: datetime = Field(default_factory=datetime.utcnow)
 
 

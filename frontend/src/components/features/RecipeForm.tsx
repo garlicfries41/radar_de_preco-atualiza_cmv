@@ -8,6 +8,7 @@ interface RecipeFormProps {
     recipeId?: string | null;
     onClose: () => void;
     onSuccess: () => void;
+    isPrePreparo?: boolean;
 }
 
 interface RecipeItem {
@@ -20,7 +21,7 @@ interface RecipeItem {
     category: string;
 }
 
-export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
+export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false }: RecipeFormProps) {
     const [loading, setLoading] = useState(false);
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [products, setProducts] = useState<{ id: number, product: string, sku: string | null, status: string | null }[]>([]);
@@ -30,6 +31,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
     const [sku, setSku] = useState('');
     const [productId, setProductId] = useState('');
     const [yieldUnits, setYieldUnits] = useState(1);
+    const [productionUnit, setProductionUnit] = useState('KG');
     const [laborMinutes, setLaborMinutes] = useState(0);
     const [globalLaborRate, setGlobalLaborRate] = useState(0);
     const [items, setItems] = useState<RecipeItem[]>([]);
@@ -74,6 +76,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
             setProductId(data.product_id ? String(data.product_id) : '');
             setProductSearch(data.name || '');
             setYieldUnits(data.yield_units);
+            if (data.production_unit) setProductionUnit(data.production_unit);
             setLaborMinutes(rate > 0 ? Math.round((data.labor_cost / rate) * 60) : 0);
 
             if (data.ingredients) {
@@ -192,11 +195,13 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
         if (items.length === 0) return toast.error('Adicione pelo menos um ingrediente');
 
         const payload: RecipeInput = {
-            name,
-            sku: sku || undefined,
-            product_id: productId ? Number(productId) : undefined,
+            name: isPrePreparo ? name : (productId ? name : name), // Product name or typed
+            sku: isPrePreparo ? undefined : (sku || undefined),
+            product_id: isPrePreparo ? undefined : (productId ? Number(productId) : undefined),
             yield_units: Number(yieldUnits),
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
+            is_pre_preparo: isPrePreparo,
+            production_unit: isPrePreparo ? productionUnit : 'KG',
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
                 quantity: isPackaging(i.category) ? Number(yieldUnits) : Number(i.quantity)
@@ -239,7 +244,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                     Voltar
                 </button>
                 <h2 className="text-xl font-bold text-white">
-                    {recipeId ? 'Editar Receita' : 'Nova Receita'}
+                    {recipeId ? (isPrePreparo ? 'Editar Pré-preparo' : 'Editar Receita') : (isPrePreparo ? 'Novo Pré-preparo' : 'Nova Receita')}
                 </h2>
                 <button
                     onClick={handleSave}
@@ -256,73 +261,103 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                 <div className="lg:col-span-2 space-y-6">
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">Produto (Receita)</label>
-                            <div className="relative">
-                                <Search className="absolute left-2 text-gray-500 top-1/2 -translate-y-1/2" size={18} />
+                        {isPrePreparo ? (
+                            <div className="md:col-span-2">
+                                <label className="block text-sm text-gray-400 mb-1">Nome do Pré-preparo</label>
                                 <input
                                     type="text"
-                                    value={productSearch}
-                                    onChange={e => {
-                                        setProductSearch(e.target.value);
-                                        setShowProductSuggestions(true);
-                                        if (e.target.value === '') {
-                                            setProductId('');
-                                            setName('');
-                                            setSku('');
-                                        }
-                                    }}
-                                    onFocus={() => setShowProductSuggestions(true)}
-                                    // Delay blur to allow click on suggestion
-                                    onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-md py-2 px-8 text-white focus:border-primary focus:outline-none"
-                                    placeholder="Buscar produto..."
+                                    value={name}
+                                    onChange={e => setName(e.target.value)}
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                    placeholder="Ex: Molho Bechamel"
                                 />
-                                {showProductSuggestions && productSearch && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg overflow-hidden z-20 max-h-48 overflow-y-auto">
-                                        {filteredProducts.map(p => (
-                                            <button
-                                                key={p.id}
-                                                type="button"
-                                                onMouseDown={() => selectProduct(p)} // Use onMouseDown to prevent onBlur from firing first
-                                                className="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-center"
-                                            >
-                                                <span className="text-white truncate pr-2">{p.product}</span>
-                                                <span className={`text-xs px-2 py-1 rounded-full ${p.status === 'ativo' ? 'bg-emerald-900/50 text-emerald-400' : p.status === 'inativo' ? 'bg-orange-900/50 text-orange-400' : 'bg-red-900/50 text-red-400'}`}>
-                                                    {p.status || 'desconhecido'}
-                                                </span>
-                                            </button>
-                                        ))}
-                                        {filteredProducts.length === 0 && (
-                                            <div className="px-4 py-3 text-gray-500 text-sm">Nenhum produto encontrado.</div>
+                            </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Produto (Receita)</label>
+                                    <div className="relative">
+                                        <Search className="absolute left-2 text-gray-500 top-1/2 -translate-y-1/2" size={18} />
+                                        <input
+                                            type="text"
+                                            value={productSearch}
+                                            onChange={e => {
+                                                setProductSearch(e.target.value);
+                                                setShowProductSuggestions(true);
+                                                if (e.target.value === '') {
+                                                    setProductId('');
+                                                    setName('');
+                                                    setSku('');
+                                                }
+                                            }}
+                                            onFocus={() => setShowProductSuggestions(true)}
+                                            // Delay blur to allow click on suggestion
+                                            onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
+                                            className="w-full bg-gray-900 border border-gray-700 rounded-md py-2 px-8 text-white focus:border-primary focus:outline-none"
+                                            placeholder="Buscar produto..."
+                                        />
+                                        {showProductSuggestions && productSearch && (
+                                            <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg overflow-hidden z-20 max-h-48 overflow-y-auto">
+                                                {filteredProducts.map(p => (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onMouseDown={() => selectProduct(p)} // Use onMouseDown to prevent onBlur from firing first
+                                                        className="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-center"
+                                                    >
+                                                        <span className="text-white truncate pr-2">{p.product}</span>
+                                                        <span className={`text-xs px-2 py-1 rounded-full ${p.status === 'ativo' ? 'bg-emerald-900/50 text-emerald-400' : p.status === 'inativo' ? 'bg-orange-900/50 text-orange-400' : 'bg-red-900/50 text-red-400'}`}>
+                                                            {p.status || 'desconhecido'}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                                {filteredProducts.length === 0 && (
+                                                    <div className="px-4 py-3 text-gray-500 text-sm">Nenhum produto encontrado.</div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">SKU (Automático)</label>
-                            <input
-                                type="text"
-                                value={sku}
-                                disabled
-                                className="w-full bg-gray-900/50 border border-gray-700 rounded-md p-2 text-gray-500 focus:outline-none cursor-not-allowed"
-                                placeholder="Vinculado ao produto"
-                            />
-                        </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">SKU (Automático)</label>
+                                    <input
+                                        type="text"
+                                        value={sku}
+                                        disabled
+                                        className="w-full bg-gray-900/50 border border-gray-700 rounded-md p-2 text-gray-500 focus:outline-none cursor-not-allowed"
+                                        placeholder="Vinculado ao produto"
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Rendimento (Unidades)</label>
+                            <label className="block text-sm text-gray-400 mb-1">Rendimento ({isPrePreparo ? 'Qtd.' : 'Unidades'})</label>
                             <input
                                 type="number"
                                 min="1"
+                                step="any"
                                 value={yieldUnits}
                                 onChange={e => setYieldUnits(Number(e.target.value))}
                                 className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
                             />
                         </div>
+                        {isPrePreparo && (
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Unidade</label>
+                                <select
+                                    value={productionUnit}
+                                    onChange={e => setProductionUnit(e.target.value)}
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                >
+                                    <option value="KG">KG</option>
+                                    <option value="L">Litros (L)</option>
+                                    <option value="UN">Unidades (UN)</option>
+                                </select>
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm text-gray-400 mb-1">Tempo de Produção (Minutos)</label>
                             <input
@@ -467,7 +502,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess }: RecipeFormProps) {
                                 <span className="text-emerald-400 font-bold">R$ {totalBatchCost.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center bg-gray-800 p-3 rounded-md mt-4 mb-2">
-                                <span className="text-gray-300">Custo unitário final:</span>
+                                <span className="text-gray-300">Custo final ({isPrePreparo ? productionUnit : 'UN'}):</span>
                                 <span className="text-xl font-bold text-white">R$ {costPerUnit.toFixed(2)}</span>
                             </div>
 

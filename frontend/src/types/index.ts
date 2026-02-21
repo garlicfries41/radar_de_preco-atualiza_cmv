@@ -67,6 +67,9 @@ export interface Recipe {
     total_weight_kg: number;
     cmv_per_unit: number;
     cmv_per_kg: number;
+    is_pre_preparo?: boolean;
+    derived_ingredient_id?: string;
+    production_unit?: string;
     ingredients?: RecipeIngredient[];
 }
 
@@ -80,6 +83,8 @@ export interface RecipeInput {
         ingredient_id: string;
         quantity: number;
     }[];
+    is_pre_preparo?: boolean;
+    production_unit?: string;
 }
 
 export type UploadResponse = Receipt;
