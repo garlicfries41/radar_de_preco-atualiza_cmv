@@ -598,7 +598,7 @@ def get_recipe(recipe_id: str):
         
         # Fetch ingredients with details
         ing_res = supabase.table("recipe_ingredients") \
-            .select("*, ingredients(name, unit, current_price, category)") \
+            .select("*, ingredients(name, unit, current_price, category, yield_coefficient)") \
             .eq("recipe_id", recipe_id) \
             .execute()
             
