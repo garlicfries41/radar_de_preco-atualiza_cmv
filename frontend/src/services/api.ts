@@ -60,7 +60,7 @@ export const deleteRecipe = async (id: string) => {
 
 export const getProducts = async (search?: string) => {
     const params = search ? { search } : {};
-    const response = await api.get<{ id: number, product: string }[]>('/api/products', { params });
+    const response = await api.get<{ id: number, product: string, sku: string | null, status: string | null }[]>('/api/products', { params });
     return response.data;
 };
 

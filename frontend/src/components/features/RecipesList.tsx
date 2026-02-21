@@ -105,44 +105,38 @@ export function RecipesList() {
                 {recipes.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase())).map((recipe) => (
                     <div
                         key={recipe.id}
-                        className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors"
+                        className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors flex items-center justify-between gap-4"
                     >
-                        <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-gray-700 rounded-lg text-primary">
-                                    <ChefHat size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-white text-lg leading-tight">{recipe.name}</h3>
-                                    <p className="text-gray-400 text-sm">
-                                        Rendimento: {recipe.yield_units} un
-                                        {recipe.sku && <span className="ml-2 text-xs bg-gray-700 px-1.5 py-0.5 rounded">SKU: {recipe.sku}</span>}
-                                    </p>
-                                </div>
-                            </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-white text-lg leading-tight truncate" title={recipe.name}>{recipe.name}</h3>
+                            <p className="text-gray-400 text-sm mt-1 truncate">
+                                Rendimento: {recipe.yield_units} un
+                                {recipe.sku && <span className="ml-2 text-xs bg-gray-700 px-1.5 py-0.5 rounded">SKU: {recipe.sku}</span>}
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-6 shrink-0">
                             <div className="text-right">
-                                <div className="text-sm text-gray-400">Custo UN</div>
-                                <div className="text-xl font-bold text-emerald-400">
+                                <div className="text-xs text-gray-400 leading-none mb-1">Custo UN</div>
+                                <div className="text-xl font-bold text-emerald-400 leading-none">
                                     R$ {recipe.cmv_per_unit?.toFixed(2) || '0.00'}
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="flex justify-end items-center pt-3 border-t border-gray-700/50">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 border-l border-gray-700 pl-4">
                                 <button
                                     onClick={(e) => handleEdit(e, recipe.id)}
-                                    className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
                                     title="Editar"
                                 >
-                                    <Pencil size={16} />
+                                    <Pencil size={18} />
                                 </button>
                                 <button
                                     onClick={(e) => handleDelete(e, recipe.id)}
-                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
+                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
                                     title="Excluir"
                                 >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={18} />
                                 </button>
                             </div>
                         </div>

@@ -432,7 +432,7 @@ def list_categories(search: Optional[str] = None):
 def list_products(search: Optional[str] = None):
     """List products from Supabase products table with optional search."""
     logger.debug(f"Listing products", extra={"search": search})
-    query = supabase.table("products").select("id, product")
+    query = supabase.table("products").select("id, product, sku, status")
     
     if search:
         query = query.ilike("product", f"%{search}%")
@@ -487,7 +487,6 @@ class RecipeInput(BaseModel):
 def calculate_recipe_totals(yield_units: int, ingredients: List[dict], labor_cost: Decimal) -> dict:
     """Calculate total cost and CMV metrics."""
     total_batch_ingredients_cost = Decimal("0.00")
-    total_packaging_unit_cost = Decimal("0.00")
     total_weight = Decimal("0.00")
     
     for item in ingredients:
@@ -503,13 +502,14 @@ def calculate_recipe_totals(yield_units: int, ingredients: List[dict], labor_cos
         else:
             effective_price = price
 
-        if category and 'EMBALAGEM' in category.upper():
-            total_packaging_unit_cost += effective_price * qty
-        else:
-            total_batch_ingredients_cost += effective_price * qty
+        # We add the total cost for this item to the batch total.
+        # Note: Frontend already passes qty = yield_units for packaging items.
+        total_batch_ingredients_cost += effective_price * qty
+        
+        if not (category and 'EMBALAGEM' in category.upper()):
             total_weight += qty
             
-    total_cost = total_batch_ingredients_cost + labor_cost + (total_packaging_unit_cost * Decimal(yield_units))
+    total_cost = total_batch_ingredients_cost + labor_cost
         
     cmv_per_unit = total_cost / Decimal(yield_units) if yield_units > 0 else Decimal("0.00")
     cmv_per_kg = total_cost / total_weight if total_weight > 0 else Decimal("0.00")
