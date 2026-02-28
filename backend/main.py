@@ -527,6 +527,91 @@ def calculate_recipe_totals(yield_units: float, ingredients: List[dict], labor_c
         "cmv_per_kg": float(cmv_per_kg)
     }
 
+def materialize_pre_preparo_nutrition(recipe_name: str, calc_ingredients: List[dict], total_weight_kg: float, existing_ref_id: Optional[str] = None) -> Optional[str]:
+    """Calculate and materialize nutrition for 100g of a pre-preparo recipe."""
+    if total_weight_kg <= 0:
+        return existing_ref_id
+        
+    total_energy_kcal = Decimal("0")
+    total_energy_kj = Decimal("0")
+    total_protein = Decimal("0")
+    total_carbs = Decimal("0")
+    total_lipid = Decimal("0")
+    total_sat_fat = Decimal("0")
+    total_trans_fat = Decimal("0")
+    total_fiber = Decimal("0")
+    total_sodium = Decimal("0")
+    
+    # We need to fetch the actual nutritional data for the refs.
+    ref_ids = [item.get("nutritional_ref_id") for item in calc_ingredients if item.get("nutritional_ref_id")]
+    if not ref_ids:
+        return existing_ref_id # Cannot calculate if no ingredients have nutrition
+        
+    refs_response = supabase.table("nutritional_ref").select("*").in_("id", ref_ids).execute()
+    refs_map = {r["id"]: r for r in refs_response.data}
+    
+    has_any_data = False
+    
+    for item in calc_ingredients:
+        qty_kg = Decimal(str(item["quantity"]))
+        qty_g = qty_kg * 1000
+        ref_id = item.get("nutritional_ref_id")
+        
+        if not ref_id or ref_id not in refs_map:
+            continue
+            
+        ref_data = refs_map[ref_id]
+        base_qty = Decimal(str(ref_data.get("base_qty_g") or 100))
+        if base_qty <= 0: continue
+        
+        multiplier = qty_g / base_qty
+        
+        total_energy_kcal += Decimal(str(ref_data.get("energy_kcal") or 0)) * multiplier
+        total_energy_kj += Decimal(str(ref_data.get("energy_kj") or 0)) * multiplier
+        total_protein += Decimal(str(ref_data.get("protein_g") or 0)) * multiplier
+        total_carbs += Decimal(str(ref_data.get("carbs_g") or 0)) * multiplier
+        total_lipid += Decimal(str(ref_data.get("lipid_g") or 0)) * multiplier
+        total_sat_fat += Decimal(str(ref_data.get("saturated_fat_g") or 0)) * multiplier
+        total_trans_fat += Decimal(str(ref_data.get("trans_fat_g") or 0)) * multiplier
+        total_fiber += Decimal(str(ref_data.get("fiber_g") or 0)) * multiplier
+        total_sodium += Decimal(str(ref_data.get("sodium_mg") or 0)) * multiplier
+        has_any_data = True
+        
+    if not has_any_data:
+        return existing_ref_id
+        
+    # Now divide by total_weight_g to get to 100g chunk
+    total_weight_g = Decimal(str(total_weight_kg)) * 1000
+    if total_weight_g <= 0: return existing_ref_id
+    
+    ratio_100g = Decimal("100") / total_weight_g
+    
+    new_nutri_data = {
+        "description": f"Pré-preparo: {recipe_name}",
+        "category": "Pre-preparo",
+        "tbca_code": f"PRE-{uuid.uuid4().hex[:8]}".upper(),
+        "base_qty_g": 100.0,
+        "energy_kcal": float(round(total_energy_kcal * ratio_100g, 2)),
+        "energy_kj": float(round(total_energy_kj * ratio_100g, 2)),
+        "protein_g": float(round(total_protein * ratio_100g, 2)),
+        "carbs_g": float(round(total_carbs * ratio_100g, 2)),
+        "lipid_g": float(round(total_lipid * ratio_100g, 2)),
+        "saturated_fat_g": float(round(total_sat_fat * ratio_100g, 2)),
+        "trans_fat_g": float(round(total_trans_fat * ratio_100g, 2)),
+        "fiber_g": float(round(total_fiber * ratio_100g, 2)),
+        "sodium_mg": float(round(total_sodium * ratio_100g, 2))
+    }
+    
+    if existing_ref_id:
+        supabase.table("nutritional_ref").update(new_nutri_data).eq("id", existing_ref_id).execute()
+        return existing_ref_id
+    else:
+        res = supabase.table("nutritional_ref").insert(new_nutri_data).execute()
+        if res.data:
+            return res.data[0]["id"]
+            
+    return None
+
 
 @app.post("/api/recipes")
 def create_recipe(payload: RecipeInput):
@@ -537,20 +622,26 @@ def create_recipe(payload: RecipeInput):
         # 1. Fetch current prices for ingredients
         ing_ids = [i.ingredient_id for i in payload.ingredients]
         if ing_ids:
-            ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient, category").in_("id", ing_ids).execute()
-            price_map = {i["id"]: {"price": float(i.get("current_price") or 0), "yield": float(i.get("yield_coefficient", 1) or 1), "category": i.get("category", "")} for i in ing_response.data}
+            ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient, category, nutritional_ref_id").in_("id", ing_ids).execute()
+            price_map = {i["id"]: {
+                "price": float(i.get("current_price") or 0), 
+                "yield": float(i.get("yield_coefficient", 1) or 1), 
+                "category": i.get("category", ""),
+                "nutritional_ref_id": i.get("nutritional_ref_id")
+            } for i in ing_response.data}
         else:
             price_map = {}
             
         # 2. Prepare ingredients list with prices for calculation
         calc_ingredients = []
         for item in payload.ingredients:
-            ing_data = price_map.get(item.ingredient_id, {"price": 0, "yield": 1, "category": ""})
+            ing_data = price_map.get(item.ingredient_id, {"price": 0, "yield": 1, "category": "", "nutritional_ref_id": None})
             calc_ingredients.append({
                 "quantity": item.quantity,
                 "current_price": ing_data["price"],
                 "yield_coefficient": ing_data["yield"],
-                "category": ing_data["category"]
+                "category": ing_data["category"],
+                "nutritional_ref_id": ing_data.get("nutritional_ref_id")
             })
             
         # 3. Calculate totals
@@ -560,15 +651,23 @@ def create_recipe(payload: RecipeInput):
             Decimal(str(payload.labor_cost))
         )
         
-        # 4. Handle pre-preparo derived ingredient
+        # 4. Handle pre-preparo derived ingredient and its nutrition
         derived_ing_id = None
         if getattr(payload, 'is_pre_preparo', False):
+            # Calculate and materialize nutrition before creating the ingredient
+            new_ref_id = materialize_pre_preparo_nutrition(
+                payload.name, 
+                calc_ingredients, 
+                totals["total_weight_kg"]
+            )
+            
             ing_data = {
                 "name": f"{payload.name}",
                 "category": "Pré-preparo",
                 "current_price": float(totals["cmv_per_unit"]),
                 "yield_coefficient": 1.0,
-                "unit": getattr(payload, 'production_unit', 'KG')
+                "unit": getattr(payload, 'production_unit', 'KG'),
+                "nutritional_ref_id": new_ref_id
             }
             res_ing = supabase.table("ingredients").insert(ing_data).execute()
             if res_ing.data:
@@ -648,20 +747,26 @@ def update_recipe(recipe_id: str, payload: RecipeInput):
         # 1. Fetch current prices
         ing_ids = [i.ingredient_id for i in payload.ingredients]
         if ing_ids:
-            ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient, category").in_("id", ing_ids).execute()
-            price_map = {i["id"]: {"price": float(i.get("current_price") or 0), "yield": float(i.get("yield_coefficient", 1) or 1), "category": i.get("category", "")} for i in ing_response.data}
+            ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient, category, nutritional_ref_id").in_("id", ing_ids).execute()
+            price_map = {i["id"]: {
+                "price": float(i.get("current_price") or 0), 
+                "yield": float(i.get("yield_coefficient", 1) or 1), 
+                "category": i.get("category", ""),
+                "nutritional_ref_id": i.get("nutritional_ref_id")
+            } for i in ing_response.data}
         else:
             price_map = {}
             
         # 2. Calculate totals
         calc_ingredients = []
         for item in payload.ingredients:
-            ing_data = price_map.get(item.ingredient_id, {"price": 0, "yield": 1, "category": ""})
+            ing_data = price_map.get(item.ingredient_id, {"price": 0, "yield": 1, "category": "", "nutritional_ref_id": None})
             calc_ingredients.append({
                 "quantity": item.quantity,
                 "current_price": ing_data["price"],
                 "yield_coefficient": ing_data["yield"],
-                "category": ing_data["category"]
+                "category": ing_data["category"],
+                "nutritional_ref_id": ing_data.get("nutritional_ref_id")
             })
             
         totals = calculate_recipe_totals(
@@ -675,14 +780,29 @@ def update_recipe(recipe_id: str, payload: RecipeInput):
         existing_recipe = existing_recipe_res.data if existing_recipe_res else {}
         derived_ing_id = existing_recipe.get("derived_ingredient_id")
         
-        # 3. Handle pre-preparo derived ingredient
+        # 3. Handle pre-preparo derived ingredient and its nutrition
         if getattr(payload, 'is_pre_preparo', False):
+            existing_ref_id = None
+            if derived_ing_id:
+                # Need to fetch the current derived ingredient to get its nutritional_ref_id if any
+                target_ing_res = supabase.table("ingredients").select("nutritional_ref_id").eq("id", derived_ing_id).execute()
+                if target_ing_res.data:
+                    existing_ref_id = target_ing_res.data[0].get("nutritional_ref_id")
+                    
+            updated_ref_id = materialize_pre_preparo_nutrition(
+                payload.name, 
+                calc_ingredients, 
+                totals["total_weight_kg"],
+                existing_ref_id=existing_ref_id
+            )
+            
             ing_data = {
                 "name": f"{payload.name}",
                 "category": "Pré-preparo",
                 "current_price": float(totals["cmv_per_unit"]),
                 "yield_coefficient": 1.0,
-                "unit": getattr(payload, 'production_unit', 'KG')
+                "unit": getattr(payload, 'production_unit', 'KG'),
+                "nutritional_ref_id": updated_ref_id
             }
             if derived_ing_id:
                 supabase.table("ingredients").update(ing_data).eq("id", derived_ing_id).execute()
