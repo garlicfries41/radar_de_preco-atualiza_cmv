@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Save, ArrowLeft, Search, Calculator, Package } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Search, Calculator, Package, AlertTriangle } from 'lucide-react';
 import { getIngredients, createRecipe, updateRecipe, getRecipe, getProducts } from '../../services/api';
+import { normalizeText } from '../../utils/text';
 import type { Ingredient, RecipeInput } from '../../types';
 import toast from 'react-hot-toast';
 
@@ -19,6 +20,7 @@ interface RecipeItem {
     current_price: number;
     yield_coefficient: number;
     category: string;
+    nutritional_ref_id?: string | null;
 }
 
 export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false }: RecipeFormProps) {
@@ -34,6 +36,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const [productionUnit, setProductionUnit] = useState('KG');
     const [laborMinutes, setLaborMinutes] = useState(0);
     const [globalLaborRate, setGlobalLaborRate] = useState(0);
+    const [loadedLaborCost, setLoadedLaborCost] = useState(0);
     const [items, setItems] = useState<RecipeItem[]>([]);
 
     // UI State
@@ -81,6 +84,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             setProductSearch(data.name || '');
             setYieldUnits(data.yield_units);
             if (data.production_unit) setProductionUnit(data.production_unit);
+            setLoadedLaborCost(data.labor_cost || 0);
             setLaborMinutes(rate > 0 ? Math.round((data.labor_cost / rate) * 60) : 0);
 
             if (data.ingredients) {
@@ -91,7 +95,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                     unit: i.ingredients?.unit || 'UN',
                     current_price: i.ingredients?.current_price || 0,
                     yield_coefficient: i.ingredients?.yield_coefficient || 1,
-                    category: i.ingredients?.category || 'OUTROS'
+                    category: i.ingredients?.category || 'OUTROS',
+                    nutritional_ref_id: i.ingredients?.nutritional_ref_id || null
                 }));
                 setItems(mappedItems);
             }
@@ -105,9 +110,10 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
 
     const filteredIngredients = useMemo(() => {
         if (!search) return [];
+        const normalizedSearch = normalizeText(search);
         return ingredients
             .filter(i =>
-                i.name?.toLowerCase()?.includes(search.toLowerCase()) &&
+                normalizeText(i.name).includes(normalizedSearch) &&
                 !items.some(item => item.ingredient_id === i.id)
             )
             .slice(0, 5);
@@ -115,8 +121,9 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
 
     const filteredProducts = useMemo(() => {
         if (!productSearch) return [];
+        const normalizedSearch = normalizeText(productSearch);
         return products
-            .filter(p => p.product?.toLowerCase()?.includes(productSearch.toLowerCase()))
+            .filter(p => normalizeText(p.product).includes(normalizedSearch))
             .slice(0, 10);
     }, [productSearch, products]);
 
@@ -193,7 +200,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
         return sum + (effectivePrice * item.quantity);
     }, 0);
 
-    const calculatedLaborCost = globalLaborRate > 0 ? (laborMinutes / 60) * globalLaborRate : 0;
+    const calculatedLaborCost = globalLaborRate > 0 ? (laborMinutes / 60) * globalLaborRate : loadedLaborCost;
 
     // totalBatchCost matches spreadsheet logic
     // We already multiplied by yieldUnits in totalPackagingUnitCost for unit pricing math on the backend, but wait:
@@ -224,6 +231,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             sku: isPrePreparo ? undefined : (sku || undefined),
             product_id: isPrePreparo ? undefined : (productId ? Number(productId) : undefined),
             yield_units: Number(yieldUnits),
+            labor_minutes: Number(laborMinutes),
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
             is_pre_preparo: isPrePreparo,
             production_unit: isPrePreparo ? productionUnit : 'KG',
@@ -256,6 +264,15 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
         return { food, packaging };
     }, [items]);
 
+    const missingNutritionIngredients = useMemo(() => {
+        return items.filter(i => {
+            if (isPackaging(i.category)) return false;
+            const cat = i.category?.toUpperCase() || '';
+            if (cat.includes('PRÉ-PREPARO') || cat.includes('PRE-PREPARO')) return false;
+            return !i.nutritional_ref_id;
+        });
+    }, [items]);
+
     if (loading && recipeId && !name) { // Only show full loader on initial fetch
         return <div className="p-8 text-center text-gray-400">Carregando...</div>;
     }
@@ -280,6 +297,19 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                     Salvar
                 </button>
             </div>
+
+            {missingNutritionIngredients.length > 0 && (
+                <div className="mb-6 p-4 rounded-lg bg-orange-900/40 border border-orange-700/50 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-orange-400 font-bold">
+                        <AlertTriangle size={20} />
+                        Atenção: Impacto na Tabela Nutricional
+                    </div>
+                    <p className="text-orange-200/80 text-sm">
+                        Esta receita contém <strong>{missingNutritionIngredients.map(i => i.name).join(', ')}</strong>, que ainda {missingNutritionIngredients.length > 1 ? 'não possuem' : 'não possui'} dados nutricionais vinculados.
+                        A porcentagem final e o valor energético do seu rótulo poderão ficar incorretos até que você vincule {missingNutritionIngredients.length > 1 ? 'os ingredientes-base' : 'o ingrediente-base'}.
+                    </p>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Form */}
@@ -390,10 +420,11 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                 min="0"
                                 value={laborMinutes}
                                 onChange={e => setLaborMinutes(Number(e.target.value))}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                disabled={globalLaborRate === 0}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                             />
                             {globalLaborRate === 0 && (
-                                <p className="text-xs text-yellow-500 mt-1">Configurações: Custo de mão de obra não definido.</p>
+                                <p className="text-xs text-yellow-500 mt-1">Configure o valor da mão de obra nas configurações primeiro.</p>
                             )}
                         </div>
                     </div>

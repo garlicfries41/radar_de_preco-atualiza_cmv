@@ -475,6 +475,7 @@ class RecipeInput(BaseModel):
     name: str
     yield_units: float
     total_weight_kg: Optional[float] = None
+    labor_minutes: float = 0.0
     labor_cost: float = 0.0
     sku: Optional[str] = None
     product_id: Optional[int] = None
@@ -488,8 +489,9 @@ class RecipeInput(BaseModel):
 # ============= Recipe Logic =============
 
 def calculate_recipe_totals(yield_units: float, ingredients: List[dict], labor_cost: Decimal) -> dict:
-    """Calculate total cost and CMV metrics."""
+    """Calculate total cost and CMV metrics including breakdawn."""
     total_batch_ingredients_cost = Decimal("0.00")
+    total_batch_packaging_cost = Decimal("0.00")
     total_weight = Decimal("0.00")
     
     for item in ingredients:
@@ -498,27 +500,28 @@ def calculate_recipe_totals(yield_units: float, ingredients: List[dict], labor_c
         yield_coeff = Decimal(str(item.get("yield_coefficient", 1)))
         category = item.get("category", "")
         
-        # Adjust price by yield coefficient: Effective Price = Price / Yield
-        # e.g. Price 10, Yield 0.9 (90%) => Effective Price 11.11
         if yield_coeff > 0:
             effective_price = price / yield_coeff
         else:
             effective_price = price
 
-        # We add the total cost for this item to the batch total.
-        # Note: Frontend already passes qty = yield_units for packaging items.
-        total_batch_ingredients_cost += effective_price * qty
+        item_cost = effective_price * qty
         
-        if not (category and 'EMBALAGEM' in category.upper()):
+        if category and 'EMBALAGEM' in category.upper():
+            total_batch_packaging_cost += item_cost
+        else:
+            total_batch_ingredients_cost += item_cost
             total_weight += qty
             
-    total_cost = total_batch_ingredients_cost + labor_cost
+    total_cost = total_batch_ingredients_cost + total_batch_packaging_cost + labor_cost
         
     cmv_per_unit = total_cost / Decimal(yield_units) if yield_units > 0 else Decimal("0.00")
     cmv_per_kg = total_cost / total_weight if total_weight > 0 else Decimal("0.00")
     
     return {
         "current_cost": float(total_cost),
+        "ingredients_cost": float(total_batch_ingredients_cost),
+        "packaging_cost": float(total_batch_packaging_cost),
         "total_weight_kg": float(total_weight),
         "cmv_per_unit": float(cmv_per_unit),
         "cmv_per_kg": float(cmv_per_kg)
@@ -535,7 +538,7 @@ def create_recipe(payload: RecipeInput):
         ing_ids = [i.ingredient_id for i in payload.ingredients]
         if ing_ids:
             ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient, category").in_("id", ing_ids).execute()
-            price_map = {i["id"]: {"price": float(i["current_price"]), "yield": float(i.get("yield_coefficient", 1) or 1), "category": i.get("category", "")} for i in ing_response.data}
+            price_map = {i["id"]: {"price": float(i.get("current_price") or 0), "yield": float(i.get("yield_coefficient", 1) or 1), "category": i.get("category", "")} for i in ing_response.data}
         else:
             price_map = {}
             
@@ -575,7 +578,10 @@ def create_recipe(payload: RecipeInput):
         recipe_data = {
             "name": payload.name,
             "yield_units": payload.yield_units,
+            "labor_minutes": payload.labor_minutes,
             "labor_cost": payload.labor_cost,
+            "ingredients_cost": totals["ingredients_cost"],
+            "packaging_cost": totals["packaging_cost"],
             "sku": payload.sku,
             "product_id": payload.product_id,
             "current_cost": totals["current_cost"],
@@ -618,7 +624,7 @@ def get_recipe(recipe_id: str):
         
         # Fetch ingredients with details
         ing_res = supabase.table("recipe_ingredients") \
-            .select("*, ingredients(name, unit, current_price, category, yield_coefficient)") \
+            .select("*, ingredients(name, unit, current_price, category, yield_coefficient, nutritional_ref_id)") \
             .eq("recipe_id", recipe_id) \
             .execute()
             
@@ -643,7 +649,7 @@ def update_recipe(recipe_id: str, payload: RecipeInput):
         ing_ids = [i.ingredient_id for i in payload.ingredients]
         if ing_ids:
             ing_response = supabase.table("ingredients").select("id, current_price, yield_coefficient, category").in_("id", ing_ids).execute()
-            price_map = {i["id"]: {"price": float(i["current_price"]), "yield": float(i.get("yield_coefficient", 1) or 1), "category": i.get("category", "")} for i in ing_response.data}
+            price_map = {i["id"]: {"price": float(i.get("current_price") or 0), "yield": float(i.get("yield_coefficient", 1) or 1), "category": i.get("category", "")} for i in ing_response.data}
         else:
             price_map = {}
             
@@ -689,7 +695,10 @@ def update_recipe(recipe_id: str, payload: RecipeInput):
         recipe_data = {
             "name": payload.name,
             "yield_units": payload.yield_units,
+            "labor_minutes": payload.labor_minutes,
             "labor_cost": payload.labor_cost,
+            "ingredients_cost": totals["ingredients_cost"],
+            "packaging_cost": totals["packaging_cost"],
             "sku": payload.sku,
             "product_id": payload.product_id,
             "current_cost": totals["current_cost"],

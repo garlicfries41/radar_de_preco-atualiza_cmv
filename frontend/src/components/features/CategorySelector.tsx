@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { normalizeText } from '../../utils/text';
 
 interface Category {
     id: string;
@@ -87,7 +88,7 @@ export function CategorySelector({ value, onChange }: CategorySelectorProps) {
     };
 
     const showAddOption = search.trim() && !categories.some(
-        c => c.name.toLowerCase() === search.trim().toLowerCase()
+        c => normalizeText(c.name) === normalizeText(search.trim())
     );
 
     return (

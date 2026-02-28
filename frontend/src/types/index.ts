@@ -53,6 +53,7 @@ export interface RecipeIngredient {
         current_price: number;
         yield_coefficient: number;
         category: string;
+        nutritional_ref_id?: string | null;
     };
 }
 
@@ -61,7 +62,10 @@ export interface Recipe {
     product_id?: number;
     name: string;
     yield_units: number;
+    labor_minutes: number;
     labor_cost: number;
+    ingredients_cost: number;
+    packaging_cost: number;
     sku?: string;
     current_cost: number;
     total_weight_kg: number;
@@ -77,6 +81,7 @@ export interface RecipeInput {
     product_id?: number;
     name: string;
     yield_units: number;
+    labor_minutes: number;
     labor_cost: number;
     sku?: string;
     ingredients: {

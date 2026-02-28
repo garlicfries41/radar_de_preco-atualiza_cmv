@@ -5,6 +5,7 @@ import { Loader2, ChefHat, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { RecipeForm } from './RecipeForm';
 import { deleteRecipe } from '../../services/api';
 import toast from 'react-hot-toast';
+import { normalizeText } from '../../utils/text';
 
 export function RecipesList() {
     const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -102,7 +103,7 @@ export function RecipesList() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recipes.filter(r => !r.is_pre_preparo && r.name.toLowerCase().includes(searchTerm.toLowerCase())).map((recipe) => (
+                {recipes.filter(r => !r.is_pre_preparo && normalizeText(r.name).includes(normalizeText(searchTerm))).map((recipe) => (
                     <div
                         key={recipe.id}
                         className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors flex items-center justify-between gap-4"

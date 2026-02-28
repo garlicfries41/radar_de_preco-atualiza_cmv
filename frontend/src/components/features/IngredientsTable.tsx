@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Save, AlertTriangle, Pencil, Filter, Search } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
 import toast from 'react-hot-toast';
+import { normalizeText } from '../../utils/text';
 
 interface Ingredient {
     id: string;
@@ -118,7 +119,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
 
     const filteredIngredients = ingredients
         .filter(ing => showPendingOnly ? isPending(ing) : true)
-        .filter(ing => ing.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        .filter(ing => normalizeText(ing.name).includes(normalizeText(searchTerm)));
 
     if (loading) {
         return <div className="text-gray-400 text-center py-8">Carregando...</div>;

@@ -4,6 +4,7 @@ import type { Recipe } from '../../types';
 import { Loader2, ChefHat, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { RecipeForm } from './RecipeForm';
 import toast from 'react-hot-toast';
+import { normalizeText } from '../../utils/text';
 
 export function PrePreparosList() {
     const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -77,7 +78,7 @@ export function PrePreparosList() {
     }
 
     const filteredRecipes = recipes.filter(r =>
-        r.is_pre_preparo && r.name.toLowerCase().includes(searchTerm.toLowerCase())
+        r.is_pre_preparo && normalizeText(r.name).includes(normalizeText(searchTerm))
     );
 
     return (
