@@ -43,6 +43,16 @@ export const getRecipe = async (id: string) => {
     return response.data;
 };
 
+export const getRecipeCategories = async () => {
+    const response = await api.get<any[]>('/api/recipe-categories');
+    return response.data;
+};
+
+export const getAnvisaLabel = async (recipeId: string) => {
+    const response = await api.get<any>(`/api/recipes/${recipeId}/anvisa-label`);
+    return response.data;
+};
+
 export const createRecipe = async (data: any) => {
     const response = await api.post<Recipe>('/api/recipes', data);
     return response.data;

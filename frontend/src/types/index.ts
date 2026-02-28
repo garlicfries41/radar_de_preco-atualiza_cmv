@@ -8,6 +8,12 @@ export interface Ingredient {
     unit: string;
 }
 
+export interface RecipeCategory {
+    id: number;
+    name: string;
+    anvisa_portion_g: number;
+}
+
 export interface Suggestion {
     id: string;
     name: string;
@@ -60,6 +66,7 @@ export interface RecipeIngredient {
 export interface Recipe {
     id: string;
     product_id?: number;
+    category_id?: number;
     name: string;
     yield_units: number;
     labor_minutes: number;
@@ -79,6 +86,7 @@ export interface Recipe {
 
 export interface RecipeInput {
     product_id?: number;
+    category_id?: number;
     name: string;
     yield_units: number;
     labor_minutes: number;

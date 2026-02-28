@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Save, ArrowLeft, Search, Calculator, Package, AlertTriangle } from 'lucide-react';
-import { getIngredients, createRecipe, updateRecipe, getRecipe, getProducts } from '../../services/api';
+import { getIngredients, createRecipe, updateRecipe, getRecipe, getProducts, getRecipeCategories, getAnvisaLabel } from '../../services/api';
+import { AnvisaLabel } from './AnvisaLabel';
 import { normalizeText } from '../../utils/text';
-import type { Ingredient, RecipeInput } from '../../types';
+import type { Ingredient, RecipeInput, RecipeCategory } from '../../types';
 import toast from 'react-hot-toast';
 
 interface RecipeFormProps {
@@ -27,11 +28,15 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const [loading, setLoading] = useState(false);
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [products, setProducts] = useState<{ id: number, product: string, sku: string | null, status: string | null }[]>([]);
+    const [categories, setCategories] = useState<RecipeCategory[]>([]);
+    const [showAnvisa, setShowAnvisa] = useState(false);
+    const [anvisaData, setAnvisaData] = useState<any>(null);
 
     // Form State
     const [name, setName] = useState('');
     const [sku, setSku] = useState('');
     const [productId, setProductId] = useState('');
+    const [categoryId, setCategoryId] = useState<string>('');
     const [yieldUnits, setYieldUnits] = useState(1);
     const [productionUnit, setProductionUnit] = useState('KG');
     const [laborMinutes, setLaborMinutes] = useState(0);
@@ -63,12 +68,14 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
 
     const loadInitialData = async () => {
         try {
-            const [ingData, prodData] = await Promise.all([
+            const [ingData, prodData, catData] = await Promise.all([
                 getIngredients(),
-                getProducts()
+                getProducts(),
+                getRecipeCategories()
             ]);
             setIngredients(ingData);
             setProducts(prodData);
+            setCategories(catData);
         } catch (error) {
             toast.error('Erro ao carregar dados iniciais');
         }
@@ -81,6 +88,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             setName(data.name);
             setSku(data.sku || '');
             setProductId(data.product_id ? String(data.product_id) : '');
+            setCategoryId(data.category_id ? String(data.category_id) : '');
             setProductSearch(data.name || '');
             setYieldUnits(data.yield_units);
             if (data.production_unit) setProductionUnit(data.production_unit);
@@ -230,6 +238,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             name: isPrePreparo ? name : (productId ? name : name), // Product name or typed
             sku: isPrePreparo ? undefined : (sku || undefined),
             product_id: isPrePreparo ? undefined : (productId ? Number(productId) : undefined),
+            category_id: categoryId ? Number(categoryId) : undefined,
             yield_units: Number(yieldUnits),
             labor_minutes: Number(laborMinutes),
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
@@ -253,6 +262,20 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             onSuccess();
         } catch (error) {
             toast.error('Erro ao salvar receita');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGenerateAnvisa = async () => {
+        if (!recipeId) return;
+        try {
+            setLoading(true);
+            const data = await getAnvisaLabel(recipeId);
+            setAnvisaData(data);
+            setShowAnvisa(true);
+        } catch (error) {
+            toast.error('Erro ao gerar rótulo ANVISA');
         } finally {
             setLoading(false);
         }
@@ -297,6 +320,22 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                     Salvar
                 </button>
             </div>
+
+            {showAnvisa && anvisaData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-4 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-800 z-10">
+                            <h3 className="text-lg font-bold text-white">Rótulo Nutricional ANVISA</h3>
+                            <button onClick={() => setShowAnvisa(false)} className="text-gray-400 hover:text-white">
+                                <ArrowLeft size={20} className="rotate-90 md:rotate-0" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <AnvisaLabel data={anvisaData} />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {missingNutritionIngredients.length > 0 && (
                 <div className="mb-6 p-4 rounded-lg bg-orange-900/40 border border-orange-700/50 flex flex-col gap-2">
@@ -384,6 +423,22 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                     />
                                 </div>
                             </>
+                        )}
+                        {!isPrePreparo && (
+                            <div className="md:col-span-2">
+                                <label className="block text-sm text-gray-400 mb-1">Categoria de Produto (ANVISA)</label>
+                                <select
+                                    value={categoryId}
+                                    onChange={e => setCategoryId(e.target.value)}
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                >
+                                    <option value="">Selecione uma categoria...</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name} ({cat.anvisa_portion_g}g)</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">A categoria define a porção padrão para o rótulo nutricional.</p>
+                            </div>
                         )}
                     </div>
 
@@ -583,6 +638,16 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                 Rendimento: {yieldUnits} unidades
                             </div>
                         </div>
+
+                        {recipeId && categoryId && !isPrePreparo && (
+                            <button
+                                onClick={handleGenerateAnvisa}
+                                className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold"
+                            >
+                                <Calculator size={20} />
+                                Gerar Rótulo ANVISA
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
