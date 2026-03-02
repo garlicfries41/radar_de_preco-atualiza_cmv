@@ -1,5 +1,4 @@
-import React from 'react';
-import { Download, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
 
 interface AnvisaLabelProps {
     data: {
