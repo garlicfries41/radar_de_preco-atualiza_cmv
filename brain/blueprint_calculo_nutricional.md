@@ -19,22 +19,29 @@ fator_ingrediente = quantidade_na_receita_kg / 0.1  # Pois a referência é por 
 total_nutriente_batch += valor_referencia_100g * fator_ingrediente
 ```
 
-### Etapa B: Normalização por Peso Total
-Como as receitas têm perdas ou pesos variados, calculamos a densidade nutricional:
+### Etapa B: Normalização por Rendimento (Peso Final)
+Diferente da versão anterior, agora consideramos a perda/ganho de peso no preparo (evaporação, drenagem):
 ```python
-fator_densidade = 1 / peso_total_da_receita_kg
+# Cálculo do Peso Final Acabado (KG)
+Se Unidade == 'KG':
+    peso_final_kg = rendimento_da_receita (yield_units)
+Senão (Unidade == 'UN'):
+    peso_final_kg = rendimento (yield_units) * peso_unitario (net_weight)
+
+fator_densidade = 1 / peso_final_kg
 ```
 
 ### Etapa C: Cálculo por Porção (Rótulo)
-Para o rótulo ANVISA, os valores são calculados com base na porção da categoria (`P`):
+Para o rótulo ANVISA, os valores são calculados com base na porção da categoria (`P` em gramas):
 ```python
-valor_na_porção = (total_nutriente_batch * fator_densidade) * (P / 1000)
+# (Total Batch / Peso Final em gramas) * Porção
+valor_na_porção = (total_nutriente_batch / (peso_final_kg * 1000)) * P
 ```
 
 ### Etapa D: Cálculo por 100g (Tabela Consolidada)
-Para a comparação entre produtos, usamos o padrão de 100g (0.1kg):
 ```python
-valor_100g_final = (total_nutriente_batch * fator_densidade) * 0.1
+# (Total Batch / Peso Final em kg) * 0.1
+valor_100g_final = (total_nutriente_batch / peso_final_kg) * 0.1
 ```
 
 ## 3. Valores Diários de Referência (%VD)

@@ -561,14 +561,14 @@ def calculate_recipe_totals(yield_units: float, ingredients: List[dict], labor_c
         "current_cost": float(total_cost),
         "ingredients_cost": float(total_batch_ingredients_cost),
         "packaging_cost": float(total_batch_packaging_cost),
-        "total_weight_kg": float(total_weight),
+        "total_weight_kg": float(total_weight), # Input weight
         "cmv_per_unit": float(cmv_per_unit),
         "cmv_per_kg": float(cmv_per_kg)
     }
 
-def materialize_pre_preparo_nutrition(recipe_name: str, calc_ingredients: List[dict], total_weight_kg: float, existing_ref_id: Optional[str] = None) -> Optional[str]:
+def materialize_pre_preparo_nutrition(recipe_name: str, calc_ingredients: List[dict], finished_weight_kg: float, existing_ref_id: Optional[str] = None) -> Optional[str]:
     """Calculate and materialize nutrition for 100g of a pre-preparo recipe."""
-    if total_weight_kg <= 0:
+    if finished_weight_kg <= 0:
         return existing_ref_id
         
     total_energy_kcal = Decimal("0")
@@ -694,10 +694,21 @@ def create_recipe(payload: RecipeInput):
         derived_ing_id = None
         if getattr(payload, 'is_pre_preparo', False):
             # Calculate and materialize nutrition before creating the ingredient
+            # Calculate finished weight for nutrition accuracy
+            yield_units = Decimal(str(payload.yield_units or 0))
+            net_weight = Decimal(str(payload.net_weight or 0)) if payload.net_weight else Decimal("0")
+            prod_unit = getattr(payload, 'production_unit', 'KG').upper()
+            if prod_unit == "KG" and yield_units > 0:
+                finished_weight_kg = float(yield_units)
+            elif yield_units > 0 and net_weight > 0:
+                finished_weight_kg = float(yield_units * net_weight)
+            else:
+                finished_weight_kg = totals["total_weight_kg"]
+
             new_ref_id = materialize_pre_preparo_nutrition(
                 payload.name, 
                 calc_ingredients, 
-                totals["total_weight_kg"]
+                finished_weight_kg
             )
             
             ing_data = {
@@ -841,10 +852,21 @@ def update_recipe(recipe_id: str, payload: RecipeInput):
                 if target_ing_res.data:
                     existing_ref_id = target_ing_res.data[0].get("nutritional_ref_id")
                     
+            # Calculate finished weight for nutrition accuracy
+            yield_units = Decimal(str(payload.yield_units or 0))
+            net_weight = Decimal(str(payload.net_weight or 0)) if payload.net_weight else Decimal("0")
+            prod_unit = getattr(payload, 'production_unit', 'KG').upper()
+            if prod_unit == "KG" and yield_units > 0:
+                finished_weight_kg = float(yield_units)
+            elif yield_units > 0 and net_weight > 0:
+                finished_weight_kg = float(yield_units * net_weight)
+            else:
+                finished_weight_kg = totals["total_weight_kg"]
+
             updated_ref_id = materialize_pre_preparo_nutrition(
                 payload.name, 
                 calc_ingredients, 
-                totals["total_weight_kg"],
+                finished_weight_kg,
                 existing_ref_id=existing_ref_id
             )
             
@@ -982,7 +1004,18 @@ def get_recipe_anvisa_label(recipe_id: str):
             "sodium_mg": Decimal("0.0")
         }
 
-        total_weight_g = Decimal(str(recipe.get("total_weight_kg", 0))) * 1000
+        # Calculate finished weight based on yield
+        yield_units = Decimal(str(recipe.get("yield_units") or 0))
+        net_weight = Decimal(str(recipe.get("net_weight") or 0)) if recipe.get("net_weight") else Decimal("0")
+        production_unit = recipe.get("production_unit", "KG").upper()
+
+        if production_unit == "KG" and yield_units > 0:
+            finished_weight_g = yield_units * 1000
+        elif yield_units > 0 and net_weight > 0:
+            finished_weight_g = yield_units * net_weight * 1000
+        else:
+            # Fallback to input weight if yield info is missing
+            finished_weight_g = Decimal(str(recipe.get("total_weight_kg", 0))) * 1000
 
         for item in ing_res.data:
             qty_g = Decimal(str(item["quantity"])) * 1000
@@ -997,11 +1030,11 @@ def get_recipe_anvisa_label(recipe_id: str):
                         batch_totals[key] += Decimal(str(val)) * factor
 
         # 4. Calculate values per portion
-        if total_weight_g <= 0:
-            raise HTTPException(400, "Recipe total weight is zero")
+        if finished_weight_g <= 0:
+            raise HTTPException(400, "Recipe finished weight is zero")
             
-        portion_factor = Decimal(str(portion_g)) / total_weight_g
-        factor_100g = Decimal("100.0") / total_weight_g
+        portion_factor = Decimal(str(portion_g)) / finished_weight_g
+        factor_100g = Decimal("100.0") / finished_weight_g
         
         label_data = {
             "recipe_name": recipe["name"],
@@ -1063,6 +1096,9 @@ def get_nutrition_report():
             id,
             name,
             total_weight_kg,
+            yield_units,
+            net_weight,
+            production_unit,
             recipe_ingredients(
                 quantity,
                 ingredients(
@@ -1074,8 +1110,18 @@ def get_nutrition_report():
         
         report = []
         for recipe in query.data:
-            total_weight_g = Decimal(str(recipe.get("total_weight_kg", 0))) * 1000
-            if total_weight_g <= 0:
+            yield_units = Decimal(str(recipe.get("yield_units") or 0))
+            net_weight = Decimal(str(recipe.get("net_weight") or 0)) if recipe.get("net_weight") else Decimal("0")
+            prod_unit = recipe.get("production_unit", "KG").upper()
+
+            if prod_unit == "KG" and yield_units > 0:
+                finished_weight_g = yield_units * 1000
+            elif yield_units > 0 and net_weight > 0:
+                finished_weight_g = yield_units * net_weight * 1000
+            else:
+                finished_weight_g = Decimal(str(recipe.get("total_weight_kg", 0))) * 1000
+
+            if finished_weight_g <= 0:
                 continue
             
             totals = {
@@ -1098,7 +1144,7 @@ def get_nutrition_report():
                     totals["sugars_added_g"] += Decimal(str(ref.get("sugars_added_g", 0) or 0)) * factor
             
             # Normalize to 100g of final product
-            normalize_factor = Decimal("100.0") / total_weight_g
+            normalize_factor = Decimal("100.0") / finished_weight_g
             
             report.append({
                 "id": recipe["id"],
