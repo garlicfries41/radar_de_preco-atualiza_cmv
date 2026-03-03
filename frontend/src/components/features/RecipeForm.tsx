@@ -64,14 +64,17 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             let rate = 0;
             try {
                 const settings = await getSettings();
-                if (settings && settings.global_labor_rate !== undefined) {
+                // Use API value only if it's > 0, otherwise stick to localStorage or default
+                if (settings && settings.global_labor_rate > 0) {
                     rate = settings.global_labor_rate;
                     localStorage.setItem('global_labor_rate', rate.toString());
                 } else {
-                    rate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
+                    const stored = localStorage.getItem('global_labor_rate');
+                    rate = stored ? parseFloat(stored) : 0;
                 }
             } catch (error) {
-                rate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
+                const stored = localStorage.getItem('global_labor_rate');
+                rate = stored ? parseFloat(stored) : 0;
             }
             setGlobalLaborRate(rate);
 
@@ -728,14 +731,25 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                             </div>
                         </div>
 
-                        {recipeId && categoryId && !isPrePreparo && (
-                            <button
-                                onClick={handleGenerateAnvisa}
-                                className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold"
-                            >
-                                <Calculator size={20} />
-                                Gerar Rótulo ANVISA
-                            </button>
+                        {recipeId && !isPrePreparo && (
+                            <div className="mt-6 space-y-2">
+                                <button
+                                    onClick={handleGenerateAnvisa}
+                                    disabled={!categoryId}
+                                    className={`w-full text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold ${categoryId
+                                            ? 'bg-blue-600 hover:bg-blue-700'
+                                            : 'bg-gray-700 cursor-not-allowed opacity-50'
+                                        }`}
+                                >
+                                    <Calculator size={20} />
+                                    Gerar Rótulo ANVISA
+                                </button>
+                                {!categoryId && (
+                                    <p className="text-xs text-orange-400 text-center">
+                                        Selecione uma categoria acima para habilitar o rótulo.
+                                    </p>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

@@ -6,7 +6,7 @@ Main application with REST API endpoints.
 import os
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 
@@ -1183,10 +1183,10 @@ def get_settings():
         response = supabase.table("integration_settings").select("settings").eq("service_name", "app_config").execute()
         if response.data:
             return response.data[0]["settings"]
-        return {"global_labor_rate": 0.0}
+        return {} # Return empty if not found so frontend uses localStorage fallback
     except Exception as e:
         logger.error(f"Error fetching settings: {e}")
-        return {"global_labor_rate": 0.0}
+        return {}
 
 @app.post("/api/settings")
 def save_settings(payload: dict):
@@ -1194,21 +1194,28 @@ def save_settings(payload: dict):
     try:
         # Check if exists
         response = supabase.table("integration_settings").select("id").eq("service_name", "app_config").execute()
+        
+        update_data = {
+            "settings": payload,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
         if response.data:
-            supabase.table("integration_settings").update({
-                "settings": payload,
-                "updated_at": datetime.utcnow().isoformat()
-            }).eq("service_name", "app_config").execute()
+            res = supabase.table("integration_settings").update(update_data).eq("service_name", "app_config").execute()
         else:
-            supabase.table("integration_settings").insert({
+            res = supabase.table("integration_settings").insert({
                 "service_name": "app_config",
-                "settings": payload,
-                "updated_at": datetime.utcnow().isoformat()
+                **update_data
             }).execute()
+            
+        # Check for errors in the response object (some SDK versions don't raise)
+        if hasattr(res, 'error') and res.error:
+            raise Exception(str(res.error))
+            
         return {"status": "success"}
     except Exception as e:
         logger.error(f"Error saving settings: {e}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, f"Erro ao salvar configurações: {str(e)}")
 
 
 

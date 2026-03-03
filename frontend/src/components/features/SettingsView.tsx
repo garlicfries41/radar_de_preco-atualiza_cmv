@@ -78,10 +78,11 @@ export function SettingsView() {
                     <div className="pt-4 border-t border-gray-700">
                         <button
                             onClick={handleSave}
-                            className="flex items-center gap-2 bg-primary text-gray-900 px-4 py-2 rounded font-medium hover:bg-primary-dark transition-colors"
+                            disabled={loading}
+                            className={`flex items-center gap-2 bg-primary text-gray-900 px-4 py-2 rounded font-medium transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
                         >
                             <Save size={18} />
-                            Salvar Configurações
+                            {loading ? 'Salvando...' : 'Salvar Configurações'}
                         </button>
                     </div>
                 </div>
