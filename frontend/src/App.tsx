@@ -7,12 +7,13 @@ import { SettingsView } from './components/features/SettingsView';
 import { IngredientsTable } from './components/features/IngredientsTable';
 import { RecipesList } from './components/features/RecipesList';
 import { PrePreparosList } from './components/features/PrePreparosList';
+import { NutritionalTableView } from './components/features/NutritionalTableView';
 import type { UploadResponse } from './types'
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'pre_preparos' | 'recipes' | 'settings'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'pre_preparos' | 'recipes' | 'nutritional_table' | 'settings'>('upload');
   const [view, setView] = useState<'list' | 'validation'>('list');
   const [receiptData, setReceiptData] = useState<UploadResponse | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -61,6 +62,10 @@ function App() {
           <RecipesList />
         </div>
       );
+    }
+
+    if (activeTab === 'nutritional_table') {
+      return <NutritionalTableView />;
     }
 
     if (activeTab === 'settings') {

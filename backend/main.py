@@ -1021,6 +1021,70 @@ def get_recipe_anvisa_label(recipe_id: str):
         raise HTTPException(500, f"Error generating label: {str(e)}")
 
 
+@app.get("/api/recipes/nutrition-report")
+def get_nutrition_report():
+    """
+    Get consolidated nutritional report for all recipes.
+    Returns values per 100g.
+    """
+    try:
+        # Join recipes with ingredients and nutritional ref
+        query = supabase.table("recipes").select("""
+            id,
+            name,
+            total_weight_kg,
+            recipe_ingredients(
+                quantity,
+                ingredients(
+                    nutritional_ref_id,
+                    nutritional_ref(*)
+                )
+            )
+        """).eq("is_pre_preparo", False).execute()
+        
+        report = []
+        for recipe in query.data:
+            total_weight_g = Decimal(str(recipe.get("total_weight_kg", 0))) * 1000
+            if total_weight_g <= 0:
+                continue
+            
+            totals = {
+                "energy_kcal": Decimal("0.0"),
+                "protein_g": Decimal("0.0"),
+                "fiber_g": Decimal("0.0")
+            }
+            
+            for ring in recipe.get("recipe_ingredients", []):
+                qty_g = Decimal(str(ring["quantity"])) * 1000
+                ing = ring.get("ingredients")
+                if ing and ing.get("nutritional_ref"):
+                    ref = ing["nutritional_ref"]
+                    # Ref values are per 100g
+                    factor = qty_g / Decimal("100.0")
+                    totals["energy_kcal"] += Decimal(str(ref.get("energy_kcal", 0) or 0)) * factor
+                    totals["protein_g"] += Decimal(str(ref.get("protein_g", 0) or 0)) * factor
+                    totals["fiber_g"] += Decimal(str(ref.get("fiber_g", 0) or 0)) * factor
+            
+            # Normalize to 100g of final product
+            # (Total / Total Weight) * 100
+            normalize_factor = Decimal("100.0") / total_weight_g
+            
+            report.append({
+                "id": recipe["id"],
+                "name": recipe["name"],
+                "energy_kcal": round(float(totals["energy_kcal"] * normalize_factor), 1),
+                "protein_g": round(float(totals["protein_g"] * normalize_factor), 1),
+                "fiber_g": round(float(totals["fiber_g"] * normalize_factor), 1)
+            })
+            
+        return report
+
+    except Exception as e:
+        logger.error(f"Failed to generate nutrition report: {e}")
+        raise HTTPException(500, f"Error generating report: {str(e)}")
+
+
+
 @app.get("/api/recipes")
 def list_recipes():
     """List all recipes with current CMV."""

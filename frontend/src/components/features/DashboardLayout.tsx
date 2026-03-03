@@ -1,8 +1,8 @@
 
 import { clsx } from 'clsx';
-import { LayoutDashboard, ShoppingBasket, ChefHat, Upload, Settings } from 'lucide-react';
+import { LayoutDashboard, ShoppingBasket, ChefHat, Upload, Settings, Table } from 'lucide-react';
 
-type Tab = 'upload' | 'ingredients' | 'pre_preparos' | 'recipes' | 'settings';
+type Tab = 'upload' | 'ingredients' | 'pre_preparos' | 'recipes' | 'nutritional_table' | 'settings';
 
 interface DashboardProps {
     activeTab: Tab;
@@ -17,6 +17,7 @@ export function DashboardLayout({ activeTab, onTabChange, children, pendingCount
         { id: 'ingredients', label: 'Ingredientes', icon: ShoppingBasket, badge: pendingCount },
         { id: 'pre_preparos', label: 'Pré-preparos', icon: ChefHat },
         { id: 'recipes', label: 'Receitas', icon: ChefHat },
+        { id: 'nutritional_table', label: 'Tabela Nutricional', icon: Table },
         { id: 'settings', label: 'Configurações', icon: Settings },
     ];
 
