@@ -44,11 +44,21 @@ O sistema utiliza as bases oficiais da ANVISA para uma dieta de 2.000 kcal:
 | :--- | :--- |
 | Valor Energético | 2.000 kcal |
 | Carboidratos | 300 g |
+| Açúcares Totais | - |
+| Açúcares Adicionados | 50 g |
 | Proteínas | 50 g |
 | Gorduras Totais | 65 g |
 | Gorduras Saturadas | 22 g |
 | Fibra Alimentar | 25 g |
 | Sódio | 2.000 mg |
+
+## 4. Selo de Advertência Frontal (Lupa) - ANVISA 2022
+O sistema deve emitir um alerta ("Alto em...") se o valor por **100g do produto pronto** for igual ou superior a:
+
+- **Açúcar Adicionado**: $\geq 15g$
+- **Gordura Saturada**: $\geq 6g$
+- **Sódio**: $\geq 600mg$
+
 
 ## 4. Arredondamentos e Regras de Exibição
 - **Nutrientes**: Exibidos com 1 casa decimal.

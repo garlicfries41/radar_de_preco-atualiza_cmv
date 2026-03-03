@@ -10,6 +10,7 @@ interface NutritionData {
     energy_kcal: number;
     protein_g: number;
     fiber_g: number;
+    sugars_added_g: number;
 }
 
 export function NutritionalTableView() {
@@ -35,12 +36,13 @@ export function NutritionalTableView() {
     };
 
     const exportCSV = () => {
-        const headers = ['Produto', 'Energia (kcal/100g)', 'Proteína (g/100g)', 'Fibra (g/100g)'];
+        const headers = ['Produto', 'Energia (kcal/100g)', 'Proteína (g/100g)', 'Fibra (g/100g)', 'Açúcar Adicionado (g/100g)'];
         const rows = data.map(item => [
             item.name,
             item.energy_kcal.toString().replace('.', ','),
             item.protein_g.toString().replace('.', ','),
-            item.fiber_g.toString().replace('.', ',')
+            item.fiber_g.toString().replace('.', ','),
+            item.sugars_added_g.toString().replace('.', ',')
         ]);
 
         const csvContent = [
@@ -112,6 +114,7 @@ export function NutritionalTableView() {
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-300 text-right">Energia (kcal)</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-300 text-right">Proteína (g)</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-300 text-right">Fibra (g)</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-300 text-right">Açúcar Adici. (g)</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700">
@@ -121,6 +124,7 @@ export function NutritionalTableView() {
                                     <td className="px-6 py-4 text-sm text-emerald-400 font-mono text-right">{item.energy_kcal.toFixed(1)}</td>
                                     <td className="px-6 py-4 text-sm text-blue-400 font-mono text-right">{item.protein_g.toFixed(1)}</td>
                                     <td className="px-6 py-4 text-sm text-orange-400 font-mono text-right">{item.fiber_g.toFixed(1)}</td>
+                                    <td className="px-6 py-4 text-sm text-red-400 font-mono text-right">{item.sugars_added_g.toFixed(1)}</td>
                                 </tr>
                             ))}
                             {filteredData.length === 0 && (

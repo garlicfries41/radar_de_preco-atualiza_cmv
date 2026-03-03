@@ -515,6 +515,8 @@ class RecipeInput(BaseModel):
 ANVISA_VD = {
     "energy_kcal": 2000,
     "carbs_g": 300,
+    "sugars_total_g": None,  # Não há VD definido oficialmente pela ANVISA para totais
+    "sugars_added_g": 50,
     "protein_g": 50,
     "lipid_g": 65,
     "saturated_fat_g": 22,
@@ -970,6 +972,8 @@ def get_recipe_anvisa_label(recipe_id: str):
         batch_totals = {
             "energy_kcal": Decimal("0.0"),
             "carbs_g": Decimal("0.0"),
+            "sugars_total_g": Decimal("0.0"),
+            "sugars_added_g": Decimal("0.0"),
             "protein_g": Decimal("0.0"),
             "lipid_g": Decimal("0.0"),
             "saturated_fat_g": Decimal("0.0"),
@@ -997,20 +1001,46 @@ def get_recipe_anvisa_label(recipe_id: str):
             raise HTTPException(400, "Recipe total weight is zero")
             
         portion_factor = Decimal(str(portion_g)) / total_weight_g
+        factor_100g = Decimal("100.0") / total_weight_g
         
         label_data = {
             "recipe_name": recipe["name"],
             "category_name": category["name"] if category else "Geral",
             "portion_g": portion_g,
             "values": {},
-            "vd_percentages": {}
+            "vd_percentages": {},
+            "high_in": {
+                "sugars_added": False,
+                "saturated_fat": False,
+                "sodium": False
+            }
+        }
+
+        # Thresholds for FOP (Lupa) per 100g
+        fop_thresholds = {
+            "sugars_added_g": 15,
+            "saturated_fat_g": 6,
+            "sodium_mg": 600
         }
 
         for key, total_batch_val in batch_totals.items():
+            # Value for the specific portion
             val_per_portion = float(total_batch_val * portion_factor)
             label_data["values"][key] = round(val_per_portion, 1)
             
-            if key in ANVISA_VD:
+            # Value per 100g for FOP (Lupa) check
+            val_100g = float(total_batch_val * factor_100g)
+            
+            # Check Lupa limits
+            if key == "sugars_added_g" and val_100g >= fop_thresholds["sugars_added_g"]:
+                label_data["high_in"]["sugars_added"] = True
+            elif key == "saturated_fat_g" and val_100g >= fop_thresholds["saturated_fat_g"]:
+                label_data["high_in"]["saturated_fat"] = True
+            elif key == "sodium_mg" and val_100g >= fop_thresholds["sodium_mg"]:
+                label_data["high_in"]["sodium"] = True
+
+            # %VD
+            if key in ANVISA_VD and ANVISA_VD[key] is not None:
                 vd_val = ANVISA_VD[key]
                 label_data["vd_percentages"][key] = round((val_per_portion / vd_val) * 100)
 
@@ -1051,7 +1081,8 @@ def get_nutrition_report():
             totals = {
                 "energy_kcal": Decimal("0.0"),
                 "protein_g": Decimal("0.0"),
-                "fiber_g": Decimal("0.0")
+                "fiber_g": Decimal("0.0"),
+                "sugars_added_g": Decimal("0.0")
             }
             
             for ring in recipe.get("recipe_ingredients", []):
@@ -1064,9 +1095,9 @@ def get_nutrition_report():
                     totals["energy_kcal"] += Decimal(str(ref.get("energy_kcal", 0) or 0)) * factor
                     totals["protein_g"] += Decimal(str(ref.get("protein_g", 0) or 0)) * factor
                     totals["fiber_g"] += Decimal(str(ref.get("fiber_g", 0) or 0)) * factor
+                    totals["sugars_added_g"] += Decimal(str(ref.get("sugars_added_g", 0) or 0)) * factor
             
             # Normalize to 100g of final product
-            # (Total / Total Weight) * 100
             normalize_factor = Decimal("100.0") / total_weight_g
             
             report.append({
@@ -1074,7 +1105,8 @@ def get_nutrition_report():
                 "name": recipe["name"],
                 "energy_kcal": round(float(totals["energy_kcal"] * normalize_factor), 1),
                 "protein_g": round(float(totals["protein_g"] * normalize_factor), 1),
-                "fiber_g": round(float(totals["fiber_g"] * normalize_factor), 1)
+                "fiber_g": round(float(totals["fiber_g"] * normalize_factor), 1),
+                "sugars_added_g": round(float(totals["sugars_added_g"] * normalize_factor), 1)
             })
             
         return report

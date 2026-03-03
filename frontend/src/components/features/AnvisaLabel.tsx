@@ -1,4 +1,4 @@
-import { Printer } from 'lucide-react';
+import { Printer, Search } from 'lucide-react';
 
 interface AnvisaLabelProps {
     data: {
@@ -20,11 +20,17 @@ interface AnvisaLabelProps {
         daily_values: {
             energetic_value: number;
             carbohydrates: number;
+            sugars_added: number;
             proteins: number;
             fats_total: number;
             fats_saturated: number;
             fibers: number;
             sodium: number;
+        };
+        high_in?: {
+            sugars_added: boolean;
+            saturated_fat: boolean;
+            sodium: boolean;
         };
     };
 }
@@ -35,12 +41,29 @@ export function AnvisaLabel({ data }: AnvisaLabelProps) {
         return val < 1 ? val.toFixed(1).replace('.', ',') : Math.round(val).toString();
     };
 
-    const formatDV = (val: number) => {
+    const formatDV = (val: number | undefined) => {
+        if (val === undefined) return '-';
         return Math.round(val).toString();
     };
 
+    const hasAnyHighIn = data.high_in && (data.high_in.sugars_added || data.high_in.saturated_fat || data.high_in.sodium);
+
     return (
         <div className="bg-white p-4 text-black font-sans max-w-sm mx-auto border-2 border-black" id="anvisa-label-printable">
+            {/* Selo de Lupa (ANVISA 2022) */}
+            {hasAnyHighIn && (
+                <div className="border-2 border-black mb-4 p-2 flex items-center gap-3">
+                    <Search size={32} strokeWidth={3} />
+                    <div>
+                        <div className="text-[10px] font-bold uppercase leading-none">Alto em</div>
+                        <div className="flex flex-col text-[12px] font-black uppercase leading-tight">
+                            {data.high_in?.sugars_added && <span>Açúcar Adicionado</span>}
+                            {data.high_in?.saturated_fat && <span>Gordura Saturada</span>}
+                            {data.high_in?.sodium && <span>Sódio</span>}
+                        </div>
+                    </div>
+                </div>
+            )}
             <h2 className="text-center font-bold text-lg border-b-2 border-black pb-1 mb-2 uppercase">Informação Nutricional</h2>
             <p className="text-sm mb-1 italic">Porções por embalagem: Variável</p>
             <p className="text-sm mb-2 font-bold">Porção: {data.anvisa_portion_g}g</p>
@@ -67,12 +90,12 @@ export function AnvisaLabel({ data }: AnvisaLabelProps) {
                     <tr>
                         <td className="py-1 pl-4">Açúcares totais (g)</td>
                         <td className="text-right">{formatValue(data.nutrients.sugars_total_g)}</td>
-                        <td className="text-right text-gray-400">-</td>
+                        <td className="text-right">{formatDV(data.daily_values.sugars_added ? undefined : undefined)} -</td>
                     </tr>
                     <tr>
                         <td className="py-1 pl-4">Açúcares adicionados (g)</td>
                         <td className="text-right">{formatValue(data.nutrients.sugars_added_g)}</td>
-                        <td className="text-right">-</td>
+                        <td className="text-right">{formatDV(data.daily_values.sugars_added)}</td>
                     </tr>
                     <tr>
                         <td className="py-1">Proteínas (g)</td>
