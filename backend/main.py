@@ -1037,16 +1037,43 @@ def get_recipe_anvisa_label(recipe_id: str):
         factor_100g = Decimal("100.0") / finished_weight_g
         
         label_data = {
+        label_data = {
             "recipe_name": recipe["name"],
             "category_name": category["name"] if category else "Geral",
-            "portion_g": portion_g,
-            "values": {},
-            "vd_percentages": {},
+            "anvisa_portion_g": portion_g,
+            "nutrients": {},
+            "daily_values": {},
             "high_in": {
                 "sugars_added": False,
                 "saturated_fat": False,
                 "sodium": False
             }
+        }
+
+        # Mapping between internal names and frontend names
+        key_map = {
+            "energy_kcal": "energetic_value_kcal",
+            "energy_kj": "energetic_value_kj",
+            "carbs_g": "carbohydrates_g",
+            "sugars_total_g": "sugars_total_g",
+            "sugars_added_g": "sugars_added_g",
+            "protein_g": "proteins_g",
+            "lipid_g": "fats_total_g",
+            "saturated_fat_g": "fats_saturated_g",
+            "trans_fat_g": "fats_trans_g",
+            "fiber_g": "fibers_g",
+            "sodium_mg": "sodium_mg"
+        }
+
+        vd_map = {
+            "energy_kcal": "energetic_value",
+            "carbs_g": "carbohydrates",
+            "sugars_added_g": "sugars_added",
+            "protein_g": "proteins",
+            "lipid_g": "fats_total",
+            "saturated_fat_g": "fats_saturated",
+            "fiber_g": "fibers",
+            "sodium_mg": "sodium"
         }
 
         # Thresholds for FOP (Lupa) per 100g
@@ -1059,7 +1086,9 @@ def get_recipe_anvisa_label(recipe_id: str):
         for key, total_batch_val in batch_totals.items():
             # Value for the specific portion
             val_per_portion = float(total_batch_val * portion_factor)
-            label_data["values"][key] = round(val_per_portion, 1)
+            
+            fe_key = key_map.get(key, key)
+            label_data["nutrients"][fe_key] = round(val_per_portion, 1)
             
             # Value per 100g for FOP (Lupa) check
             val_100g = float(total_batch_val * factor_100g)
@@ -1075,7 +1104,8 @@ def get_recipe_anvisa_label(recipe_id: str):
             # %VD
             if key in ANVISA_VD and ANVISA_VD[key] is not None:
                 vd_val = ANVISA_VD[key]
-                label_data["vd_percentages"][key] = round((val_per_portion / vd_val) * 100)
+                vd_fe_key = vd_map.get(key, key)
+                label_data["daily_values"][vd_fe_key] = round((val_per_portion / vd_val) * 100)
 
         return label_data
 

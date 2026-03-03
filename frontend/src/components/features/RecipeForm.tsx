@@ -258,8 +258,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
         const payload: RecipeInput = {
             name: isPrePreparo ? name : (productId ? name : name), // Product name or typed
             sku: isPrePreparo ? undefined : (sku || undefined),
-            product_id: isPrePreparo ? undefined : (productId ? Number(productId) : undefined),
-            category_id: categoryId ? Number(categoryId) : undefined,
+            product_id: isPrePreparo ? undefined : (productId ? productId : undefined),
+            category_id: categoryId ? categoryId : undefined,
             yield_units: Number(yieldUnits),
             labor_minutes: Number(laborMinutes),
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
@@ -737,8 +737,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                     onClick={handleGenerateAnvisa}
                                     disabled={!categoryId}
                                     className={`w-full text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold ${categoryId
-                                            ? 'bg-blue-600 hover:bg-blue-700'
-                                            : 'bg-gray-700 cursor-not-allowed opacity-50'
+                                        ? 'bg-blue-600 hover:bg-blue-700'
+                                        : 'bg-gray-700 cursor-not-allowed opacity-50'
                                         }`}
                                 >
                                     <Calculator size={20} />

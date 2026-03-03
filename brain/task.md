@@ -9,6 +9,13 @@
     - [x] MVP finalizado e Operacional
 - [x] **Fase 3: Evolução do Front-end (Nova Frente)**
     - [x] Criar fork/branch para produção separada do ambiente de desenvolvimento do front-end
+    - [x] Corrigir tela em branco no Rótulo ANVISA (nomes de campos inconsistentes)
+    - [x] Corrigir falha no salvamento de categoria de produto (conversão UUID para Number)
+    - [x] Implementar cálculo nutricional baseado no rendimento (Peso Final Acabado)
+    - [x] Incluir Açúcares Adicionados no Rótulo e Tabela Consolidada
+    - [x] Implementar Alerta de Lupa (Alto em...) conforme ANVISA 2022
+    - [x] Validar persistência de dados no Supabase (UUIDs)
+    - [x] Corrigir renderização da Tabela Nutricional Consolidada (colSpan e dados)
     - [x] Evoluir interface do painel mantendo o núcleo atual intocável
 - [x] **Fase 4: Cascateamento de Pesos e Sincronização Global**
     - [x] Implementar Colunas de Peso Líquido no DB
