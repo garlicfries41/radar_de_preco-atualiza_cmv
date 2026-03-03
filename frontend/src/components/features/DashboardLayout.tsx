@@ -1,6 +1,6 @@
 
 import { clsx } from 'clsx';
-import { LayoutDashboard, ShoppingBasket, ChefHat, Upload, Settings, Table } from 'lucide-react';
+import { LayoutDashboard, ShoppingBasket, ChefHat, Upload, Settings, Apple } from 'lucide-react';
 
 type Tab = 'upload' | 'ingredients' | 'pre_preparos' | 'recipes' | 'nutritional_table' | 'settings';
 
@@ -17,7 +17,7 @@ export function DashboardLayout({ activeTab, onTabChange, children, pendingCount
         { id: 'ingredients', label: 'Ingredientes', icon: ShoppingBasket, badge: pendingCount },
         { id: 'pre_preparos', label: 'Pré-preparos', icon: ChefHat },
         { id: 'recipes', label: 'Receitas', icon: ChefHat },
-        { id: 'nutritional_table', label: 'Tabela Nutricional', icon: Table },
+        { id: 'nutritional_table', label: 'Nutrição', icon: Apple },
         { id: 'settings', label: 'Configurações', icon: Settings },
     ];
 
@@ -69,13 +69,13 @@ export function DashboardLayout({ activeTab, onTabChange, children, pendingCount
             </main>
 
             {/* Bottom Nav (Mobile) */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-20 px-2 py-2 flex justify-between items-center">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-20 px-2 py-2 flex overflow-x-auto no-scrollbar items-center gap-1">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => onTabChange(tab.id as Tab)}
                         className={clsx(
-                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-xs font-medium relative",
+                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-[10px] min-w-[64px] font-medium relative",
                             activeTab === tab.id
                                 ? "text-primary"
                                 : "text-gray-500 hover:text-white"

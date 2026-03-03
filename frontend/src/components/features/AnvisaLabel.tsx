@@ -17,6 +17,19 @@ interface AnvisaLabelProps {
             fibers_g: number;
             sodium_mg: number;
         };
+        nutrients_100g?: {
+            energetic_value_kcal: number;
+            energetic_value_kj: number;
+            carbohydrates_g: number;
+            sugars_total_g: number;
+            sugars_added_g: number;
+            proteins_g: number;
+            fats_total_g: number;
+            fats_saturated_g: number;
+            fats_trans_g: number;
+            fibers_g: number;
+            sodium_mg: number;
+        };
         daily_values: {
             energetic_value: number;
             carbohydrates: number;
@@ -47,6 +60,22 @@ export function AnvisaLabel({ data }: AnvisaLabelProps) {
     };
 
     const hasAnyHighIn = data.high_in && (data.high_in.sugars_added || data.high_in.saturated_fat || data.high_in.sodium);
+    const has100g = !!data.nutrients_100g;
+    const n = data.nutrients;
+    const n100 = data.nutrients_100g || data.nutrients;
+
+    const rows: { label: string; indent?: boolean; portionKey: keyof typeof n; dvKey?: keyof typeof data.daily_values; dvDash?: boolean }[] = [
+        { label: 'Valor energético (kcal)', portionKey: 'energetic_value_kcal', dvKey: 'energetic_value' },
+        { label: 'Carboidratos (g)', portionKey: 'carbohydrates_g', dvKey: 'carbohydrates' },
+        { label: 'Açúcares totais (g)', portionKey: 'sugars_total_g', indent: true, dvDash: true },
+        { label: 'Açúcares adicionados (g)', portionKey: 'sugars_added_g', indent: true, dvKey: 'sugars_added' },
+        { label: 'Proteínas (g)', portionKey: 'proteins_g', dvKey: 'proteins' },
+        { label: 'Gorduras totais (g)', portionKey: 'fats_total_g', dvKey: 'fats_total' },
+        { label: 'Gorduras saturadas (g)', portionKey: 'fats_saturated_g', indent: true, dvKey: 'fats_saturated' },
+        { label: 'Gorduras trans (g)', portionKey: 'fats_trans_g', indent: true, dvDash: true },
+        { label: 'Fibra alimentar (g)', portionKey: 'fibers_g', dvKey: 'fibers' },
+        { label: 'Sódio (mg)', portionKey: 'sodium_mg', dvKey: 'sodium' },
+    ];
 
     return (
         <div className="bg-white p-4 text-black font-sans max-w-sm mx-auto border-2 border-black" id="anvisa-label-printable">
@@ -72,61 +101,22 @@ export function AnvisaLabel({ data }: AnvisaLabelProps) {
                 <thead>
                     <tr className="border-y-2 border-black">
                         <th className="text-left py-1"></th>
+                        {has100g && <th className="text-right py-1 w-16">100g</th>}
                         <th className="text-right py-1 w-20">{data.anvisa_portion_g}g</th>
-                        <th className="text-right py-1 w-16">%VD*</th>
+                        <th className="text-right py-1 w-14">%VD*</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-black/20">
-                    <tr>
-                        <td className="py-1">Valor energético (kcal)</td>
-                        <td className="text-right">{formatValue(data.nutrients.energetic_value_kcal)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.energetic_value)}</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1">Carboidratos (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.carbohydrates_g)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.carbohydrates)}</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1 pl-4">Açúcares totais (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.sugars_total_g)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.sugars_added ? undefined : undefined)} -</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1 pl-4">Açúcares adicionados (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.sugars_added_g)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.sugars_added)}</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1">Proteínas (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.proteins_g)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.proteins)}</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1">Gorduras totais (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.fats_total_g)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.fats_total)}</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1 pl-4">Gorduras saturadas (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.fats_saturated_g)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.fats_saturated)}</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1 pl-4">Gorduras trans (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.fats_trans_g)}</td>
-                        <td className="text-right">-</td>
-                    </tr>
-                    <tr>
-                        <td className="py-1">Fibra alimentar (g)</td>
-                        <td className="text-right">{formatValue(data.nutrients.fibers_g)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.fibers)}</td>
-                    </tr>
-                    <tr className="border-b-2 border-black">
-                        <td className="py-1">Sódio (mg)</td>
-                        <td className="text-right">{formatValue(data.nutrients.sodium_mg)}</td>
-                        <td className="text-right">{formatDV(data.daily_values.sodium)}</td>
-                    </tr>
+                    {rows.map((row, idx) => (
+                        <tr key={idx} className={idx === rows.length - 1 ? 'border-b-2 border-black' : ''}>
+                            <td className={`py-1 ${row.indent ? 'pl-4' : ''}`}>{row.label}</td>
+                            {has100g && <td className="text-right">{formatValue(n100[row.portionKey])}</td>}
+                            <td className="text-right">{formatValue(n[row.portionKey])}</td>
+                            <td className="text-right">
+                                {row.dvDash ? '-' : formatDV(row.dvKey ? data.daily_values[row.dvKey] : undefined)}
+                            </td>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
 

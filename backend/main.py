@@ -1042,6 +1042,7 @@ def get_recipe_anvisa_label(recipe_id: str):
             "category_name": category["name"] if category else "Geral",
             "anvisa_portion_g": portion_g,
             "nutrients": {},
+            "nutrients_100g": {},
             "daily_values": {},
             "high_in": {
                 "sugars_added": False,
@@ -1086,12 +1087,12 @@ def get_recipe_anvisa_label(recipe_id: str):
         for key, total_batch_val in batch_totals.items():
             # Value for the specific portion
             val_per_portion = float(total_batch_val * portion_factor)
+            # Value per 100g for FOP (Lupa) check and second column
+            val_100g = float(total_batch_val * factor_100g)
             
             fe_key = key_map.get(key, key)
             label_data["nutrients"][fe_key] = round(val_per_portion, 1)
-            
-            # Value per 100g for FOP (Lupa) check
-            val_100g = float(total_batch_val * factor_100g)
+            label_data["nutrients_100g"][fe_key] = round(val_100g, 1)
             
             # Check Lupa limits
             if key == "sugars_added_g" and val_100g >= fop_thresholds["sugars_added_g"]:
