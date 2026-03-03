@@ -1,25 +1,52 @@
 import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getSettings, saveSettings } from '../../services/api';
 
 export function SettingsView() {
     const [laborRate, setLaborRate] = useState<string>('0.00');
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const storedRate = localStorage.getItem('global_labor_rate');
-        if (storedRate) {
-            setLaborRate(storedRate);
-        }
+        const loadSettings = async () => {
+            try {
+                const settings = await getSettings();
+                if (settings && settings.global_labor_rate !== undefined) {
+                    setLaborRate(settings.global_labor_rate.toString());
+                    localStorage.setItem('global_labor_rate', settings.global_labor_rate.toString());
+                } else {
+                    // Fallback to localStorage if no settings found on server
+                    const storedRate = localStorage.getItem('global_labor_rate');
+                    if (storedRate) {
+                        setLaborRate(storedRate);
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading settings:", error);
+                const storedRate = localStorage.getItem('global_labor_rate');
+                if (storedRate) setLaborRate(storedRate);
+            }
+        };
+        loadSettings();
     }, []);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const rate = parseFloat(laborRate);
         if (isNaN(rate) || rate < 0) {
             toast.error('Valor inválido');
             return;
         }
-        localStorage.setItem('global_labor_rate', rate.toString());
-        toast.success('Configurações salvas!');
+
+        try {
+            setLoading(true);
+            await saveSettings({ global_labor_rate: rate });
+            localStorage.setItem('global_labor_rate', rate.toString());
+            toast.success('Configurações salvas!');
+        } catch (error) {
+            toast.error('Erro ao salvar no servidor');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

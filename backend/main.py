@@ -505,6 +505,7 @@ class RecipeInput(BaseModel):
     production_unit: Optional[str] = "KG"
     net_weight: Optional[float] = None
     update_category_default: bool = False
+    cascade_update: bool = False
     ingredients: List[RecipeIngredientInput]
 
 
@@ -736,6 +737,10 @@ def create_recipe(payload: RecipeInput):
                 .update({"default_net_weight": payload.net_weight, "updated_at": datetime.utcnow().isoformat()}) \
                 .eq("id", payload.category_id) \
                 .execute()
+             
+             if payload.cascade_update:
+                logger.info(f"Cascading net weight update to all recipes in category {payload.category_id}")
+                supabase.table("recipes").update({"net_weight": payload.net_weight}).eq("category_id", payload.category_id).execute()
         
         res = supabase.table("recipes").insert(recipe_data).execute()
         recipe = res.data[0]
@@ -884,6 +889,11 @@ def update_recipe(recipe_id: str, payload: RecipeInput):
                 .eq("id", payload.category_id) \
                 .execute()
 
+             if payload.cascade_update:
+                logger.info(f"Cascading net weight update to all recipes in category {payload.category_id}")
+                supabase.table("recipes").update({"net_weight": payload.net_weight}).eq("category_id", payload.category_id).execute()
+        
+
         supabase.table("recipes").update(recipe_data).eq("id", recipe_id).execute()
         
         # 4. Update Ingredients (Delete all and re-insert)
@@ -1021,6 +1031,43 @@ def list_recipes():
         .execute()
     
     return response.data
+
+# ============= Settings Endpoints =============
+
+@app.get("/api/settings")
+def get_settings():
+    """Get global application settings from integration_settings table."""
+    try:
+        response = supabase.table("integration_settings").select("settings").eq("service_name", "app_config").execute()
+        if response.data:
+            return response.data[0]["settings"]
+        return {"global_labor_rate": 0.0}
+    except Exception as e:
+        logger.error(f"Error fetching settings: {e}")
+        return {"global_labor_rate": 0.0}
+
+@app.post("/api/settings")
+def save_settings(payload: dict):
+    """Save global application settings to integration_settings table."""
+    try:
+        # Check if exists
+        response = supabase.table("integration_settings").select("id").eq("service_name", "app_config").execute()
+        if response.data:
+            supabase.table("integration_settings").update({
+                "settings": payload,
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("service_name", "app_config").execute()
+        else:
+            supabase.table("integration_settings").insert({
+                "service_name": "app_config",
+                "settings": payload,
+                "updated_at": datetime.utcnow().isoformat()
+            }).execute()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error saving settings: {e}")
+        raise HTTPException(500, str(e))
+
 
 
 

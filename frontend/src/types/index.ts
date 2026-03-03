@@ -101,6 +101,7 @@ export interface RecipeInput {
     production_unit?: string;
     net_weight?: number;
     update_category_default?: boolean;
+    cascade_update?: boolean;
     ingredients: {
         ingredient_id: string;
         quantity: number;

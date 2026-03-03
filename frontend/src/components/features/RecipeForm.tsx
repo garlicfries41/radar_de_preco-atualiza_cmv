@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Save, ArrowLeft, Search, Calculator, Package, AlertTriangle } from 'lucide-react';
-import { getIngredients, createRecipe, updateRecipe, getRecipe, getProducts, getRecipeCategories, getAnvisaLabel } from '../../services/api';
+import { getIngredients, createRecipe, updateRecipe, getRecipe, getProducts, getRecipeCategories, getAnvisaLabel, getSettings } from '../../services/api';
 import { AnvisaLabel } from './AnvisaLabel';
 import { normalizeText } from '../../utils/text';
 import type { Ingredient, RecipeInput, RecipeCategory } from '../../types';
@@ -44,6 +44,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const [loadedLaborCost, setLoadedLaborCost] = useState(0);
     const [netWeight, setNetWeight] = useState<number | ''>('');
     const [updateCategoryDefault, setUpdateCategoryDefault] = useState(false);
+    const [cascadeUpdate, setCascadeUpdate] = useState(false);
     const [items, setItems] = useState<RecipeItem[]>([]);
 
     // UI State
@@ -59,13 +60,27 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const [focusedSuggestIndex, setFocusedSuggestIndex] = useState(-1);
 
     useEffect(() => {
-        const storedRate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
-        setGlobalLaborRate(storedRate);
+        const init = async () => {
+            let rate = 0;
+            try {
+                const settings = await getSettings();
+                if (settings && settings.global_labor_rate !== undefined) {
+                    rate = settings.global_labor_rate;
+                    localStorage.setItem('global_labor_rate', rate.toString());
+                } else {
+                    rate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
+                }
+            } catch (error) {
+                rate = parseFloat(localStorage.getItem('global_labor_rate') || '0');
+            }
+            setGlobalLaborRate(rate);
 
-        loadInitialData();
-        if (recipeId) {
-            loadRecipe(recipeId, storedRate);
-        }
+            loadInitialData();
+            if (recipeId) {
+                loadRecipe(recipeId, rate);
+            }
+        };
+        init();
     }, [recipeId]);
 
     const loadInitialData = async () => {
@@ -249,6 +264,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             production_unit: isPrePreparo ? productionUnit : 'KG',
             net_weight: netWeight === '' ? undefined : Number(netWeight),
             update_category_default: updateCategoryDefault,
+            cascade_update: cascadeUpdate,
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
                 quantity: isPackaging(i.category) ? Number(yieldUnits) : Number(i.quantity)
@@ -523,17 +539,37 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                     </div>
 
                     {categoryId && (
-                        <div className="flex items-center gap-2 mt-4 px-1">
-                            <input
-                                type="checkbox"
-                                id="update-category-default"
-                                checked={updateCategoryDefault}
-                                onChange={(e) => setUpdateCategoryDefault(e.target.checked)}
-                                className="w-4 h-4 text-primary focus:ring-primary border-gray-700 bg-gray-900 rounded cursor-pointer"
-                            />
-                            <label htmlFor="update-category-default" className="text-sm text-gray-400 cursor-pointer select-none">
-                                Atualizar peso padrão desta categoria para novas receitas
-                            </label>
+                        <div className="space-y-3 mt-4 px-1">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="update-category-default"
+                                    checked={updateCategoryDefault}
+                                    onChange={(e) => {
+                                        setUpdateCategoryDefault(e.target.checked);
+                                        if (!e.target.checked) setCascadeUpdate(false);
+                                    }}
+                                    className="w-4 h-4 text-primary focus:ring-primary border-gray-700 bg-gray-900 rounded cursor-pointer"
+                                />
+                                <label htmlFor="update-category-default" className="text-sm text-gray-400 cursor-pointer select-none font-medium">
+                                    Atualizar peso líquido padrão desta categoria
+                                </label>
+                            </div>
+
+                            {updateCategoryDefault && (
+                                <div className="flex items-center gap-2 ml-6 p-2 bg-yellow-900/10 border border-yellow-900/30 rounded-md animate-in fade-in slide-in-from-left-2">
+                                    <input
+                                        type="checkbox"
+                                        id="cascade-update"
+                                        checked={cascadeUpdate}
+                                        onChange={(e) => setCascadeUpdate(e.target.checked)}
+                                        className="w-4 h-4 text-yellow-500 focus:ring-yellow-500 border-gray-700 bg-gray-900 rounded cursor-pointer"
+                                    />
+                                    <label htmlFor="cascade-update" className="text-sm text-yellow-500/80 cursor-pointer select-none">
+                                        <span className="font-bold">Cascatear:</span> Aplicar este peso a TODAS as receitas existentes nesta categoria?
+                                    </label>
+                                </div>
+                            )}
                         </div>
                     )}
 

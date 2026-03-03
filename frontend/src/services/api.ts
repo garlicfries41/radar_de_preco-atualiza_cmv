@@ -74,4 +74,14 @@ export const getProducts = async (search?: string) => {
     return response.data;
 };
 
+export const getSettings = async () => {
+    const response = await api.get('/api/settings');
+    return response.data;
+};
+
+export const saveSettings = async (settings: any) => {
+    const response = await api.post('/api/settings', settings);
+    return response.data;
+};
+
 export default api;
