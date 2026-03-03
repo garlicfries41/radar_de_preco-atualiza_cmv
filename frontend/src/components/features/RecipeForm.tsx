@@ -43,8 +43,6 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const [globalLaborRate, setGlobalLaborRate] = useState(0);
     const [loadedLaborCost, setLoadedLaborCost] = useState(0);
     const [netWeight, setNetWeight] = useState<number | ''>('');
-    const [updateCategoryDefault, setUpdateCategoryDefault] = useState(false);
-    const [cascadeUpdate, setCascadeUpdate] = useState(false);
     const [items, setItems] = useState<RecipeItem[]>([]);
 
     // UI State
@@ -220,11 +218,11 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     // Helper for case-insensitive matching packaging category
     const isPackaging = (cat?: string) => {
         if (!cat) return false;
-        const c = cat.toUpperCase();
-        return c.includes('EMBALAGEM') || c.includes('EMBALAGENS');
+        const c = cat.trim().toUpperCase();
+        return c.includes('EMBALAGEM') || c.includes('EMBALAGENS') || c === 'PACKAGING';
     };
 
-    const isB2B = name.toUpperCase().includes('[B2B]');
+    const isB2B = name.toUpperCase().includes('B2B') || name.toUpperCase().includes('[B2B]');
 
     const totalIngredientsCost = items.reduce((sum, item) => {
         if (isPackaging(item.category)) return sum;
@@ -270,8 +268,6 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             is_pre_preparo: isPrePreparo,
             production_unit: isPrePreparo ? productionUnit : 'KG',
             net_weight: netWeight === '' ? undefined : Number(netWeight),
-            update_category_default: updateCategoryDefault,
-            cascade_update: cascadeUpdate,
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
                 quantity: isPackaging(i.category) ? (isB2B ? Number((yieldUnits / 2.5).toFixed(3)) : Number(yieldUnits)) : Number(i.quantity)
@@ -318,9 +314,14 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const missingNutritionIngredients = useMemo(() => {
         return items.filter(i => {
             if (isPackaging(i.category)) return false;
-            const cat = i.category?.toUpperCase() || '';
+            const cat = i.category?.trim().toUpperCase() || '';
+            // Skip checks for pre-preparo items as they usually have nutrition materialized elsewhere or calculated on the fly
             if (cat.includes('PRÉ-PREPARO') || cat.includes('PRE-PREPARO')) return false;
-            return !i.nutritional_ref_id;
+
+            // If the item has a nutritional_ref_id, it is NOT missing
+            if (i.nutritional_ref_id) return false;
+
+            return true;
         });
     }, [items]);
 
@@ -457,16 +458,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                 <label className="block text-sm text-gray-400 mb-1">Categoria de Produto (ANVISA)</label>
                                 <select
                                     value={categoryId}
-                                    onChange={(e) => {
-                                        const catId = e.target.value;
-                                        setCategoryId(catId);
-
-                                        // Auto-fill net_weight from category default
-                                        const cat = categories.find(c => String(c.id) === catId);
-                                        if (cat?.default_net_weight) {
-                                            setNetWeight(cat.default_net_weight);
-                                        }
-                                    }}
+                                    onChange={(e) => setCategoryId(e.target.value)}
                                     className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
                                 >
                                     <option value="">Selecione uma categoria...</option>
@@ -545,40 +537,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                         </div>
                     </div>
 
-                    {categoryId && (
-                        <div className="space-y-3 mt-4 px-1">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="update-category-default"
-                                    checked={updateCategoryDefault}
-                                    onChange={(e) => {
-                                        setUpdateCategoryDefault(e.target.checked);
-                                        if (!e.target.checked) setCascadeUpdate(false);
-                                    }}
-                                    className="w-4 h-4 text-primary focus:ring-primary border-gray-700 bg-gray-900 rounded cursor-pointer"
-                                />
-                                <label htmlFor="update-category-default" className="text-sm text-gray-400 cursor-pointer select-none font-medium">
-                                    Atualizar peso líquido padrão desta categoria
-                                </label>
-                            </div>
 
-                            {updateCategoryDefault && (
-                                <div className="flex items-center gap-2 ml-6 p-2 bg-yellow-900/10 border border-yellow-900/30 rounded-md animate-in fade-in slide-in-from-left-2">
-                                    <input
-                                        type="checkbox"
-                                        id="cascade-update"
-                                        checked={cascadeUpdate}
-                                        onChange={(e) => setCascadeUpdate(e.target.checked)}
-                                        className="w-4 h-4 text-yellow-500 focus:ring-yellow-500 border-gray-700 bg-gray-900 rounded cursor-pointer"
-                                    />
-                                    <label htmlFor="cascade-update" className="text-sm text-yellow-500/80 cursor-pointer select-none">
-                                        <span className="font-bold">Cascatear:</span> Aplicar este peso a TODAS as receitas existentes nesta categoria?
-                                    </label>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     {/* Ingredient Search */}
                     <div className="relative z-10">
@@ -711,8 +670,13 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                 <span className="text-white">R$ {(yieldUnits > 0 ? calculatedLaborCost / yieldUnits : 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between mt-1">
-                                <span className="text-gray-400">+ Embalagem (Unitário):</span>
-                                <span className="text-white">R$ {unitPackagingCost.toFixed(2)}</span>
+                                <div className="flex flex-col">
+                                    <span className="text-gray-400">+ Embalagem (Unitário):</span>
+                                    {isB2B && (
+                                        <span className="text-[10px] text-emerald-500 font-medium">B2B: 1 un / 2.5 rend.</span>
+                                    )}
+                                </div>
+                                <span className="text-white">R$ {(isB2B ? unitPackagingCost / 2.5 : unitPackagingCost).toFixed(2)}</span>
                             </div>
 
                             <div className="h-px bg-gray-700 my-3"></div>

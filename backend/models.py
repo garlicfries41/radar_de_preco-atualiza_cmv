@@ -126,6 +126,5 @@ class RecipeCategory(SQLModel, table=True):
     id: Optional[str] = Field(default=None, primary_key=True)
     name: str = Field(unique=True)
     anvisa_portion_g: Decimal = Field(default=Decimal("0.00"))
-    default_net_weight: Optional[Decimal] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

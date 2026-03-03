@@ -13,7 +13,6 @@ export interface RecipeCategory {
     id: string;
     name: string;
     anvisa_portion_g: number;
-    default_net_weight?: number;
     created_at: string;
 }
 
@@ -101,8 +100,6 @@ export interface RecipeInput {
     is_pre_preparo?: boolean;
     production_unit?: string;
     net_weight?: number;
-    update_category_default?: boolean;
-    cascade_update?: boolean;
     ingredients: {
         ingredient_id: string;
         quantity: number;
