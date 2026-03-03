@@ -1037,7 +1037,6 @@ def get_recipe_anvisa_label(recipe_id: str):
         factor_100g = Decimal("100.0") / finished_weight_g
         
         label_data = {
-        label_data = {
             "recipe_name": recipe["name"],
             "category_name": category["name"] if category else "Geral",
             "anvisa_portion_g": portion_g,
