@@ -9,9 +9,11 @@ export interface Ingredient {
 }
 
 export interface RecipeCategory {
-    id: number;
+    id: string;
     name: string;
     anvisa_portion_g: number;
+    default_net_weight?: number;
+    created_at: string;
 }
 
 export interface Suggestion {
@@ -80,7 +82,10 @@ export interface Recipe {
     cmv_per_kg: number;
     is_pre_preparo?: boolean;
     derived_ingredient_id?: string;
-    production_unit?: string;
+    production_unit: string;
+    net_weight?: number;
+    created_at: string;
+    last_calculated: string;
     ingredients?: RecipeIngredient[];
 }
 
@@ -92,12 +97,14 @@ export interface RecipeInput {
     labor_minutes: number;
     labor_cost: number;
     sku?: string;
+    is_pre_preparo?: boolean;
+    production_unit?: string;
+    net_weight?: number;
+    update_category_default?: boolean;
     ingredients: {
         ingredient_id: string;
         quantity: number;
     }[];
-    is_pre_preparo?: boolean;
-    production_unit?: string;
 }
 
 export type UploadResponse = Receipt;

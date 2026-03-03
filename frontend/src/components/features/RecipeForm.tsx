@@ -42,6 +42,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const [laborMinutes, setLaborMinutes] = useState(0);
     const [globalLaborRate, setGlobalLaborRate] = useState(0);
     const [loadedLaborCost, setLoadedLaborCost] = useState(0);
+    const [netWeight, setNetWeight] = useState<number | ''>('');
+    const [updateCategoryDefault, setUpdateCategoryDefault] = useState(false);
     const [items, setItems] = useState<RecipeItem[]>([]);
 
     // UI State
@@ -94,6 +96,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             if (data.production_unit) setProductionUnit(data.production_unit);
             setLoadedLaborCost(data.labor_cost || 0);
             setLaborMinutes(rate > 0 ? Math.round((data.labor_cost / rate) * 60) : 0);
+            setNetWeight(data.net_weight !== undefined && data.net_weight !== null ? data.net_weight : '');
 
             if (data.ingredients) {
                 const mappedItems = data.ingredients.map(i => ({
@@ -244,6 +247,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
             is_pre_preparo: isPrePreparo,
             production_unit: isPrePreparo ? productionUnit : 'KG',
+            net_weight: netWeight === '' ? undefined : Number(netWeight),
+            update_category_default: updateCategoryDefault,
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
                 quantity: isPackaging(i.category) ? Number(yieldUnits) : Number(i.quantity)
@@ -429,7 +434,16 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                 <label className="block text-sm text-gray-400 mb-1">Categoria de Produto (ANVISA)</label>
                                 <select
                                     value={categoryId}
-                                    onChange={e => setCategoryId(e.target.value)}
+                                    onChange={(e) => {
+                                        const catId = e.target.value;
+                                        setCategoryId(catId);
+
+                                        // Auto-fill net_weight from category default
+                                        const cat = categories.find(c => String(c.id) === catId);
+                                        if (cat?.default_net_weight) {
+                                            setNetWeight(cat.default_net_weight);
+                                        }
+                                    }}
                                     className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
                                 >
                                     <option value="">Selecione uma categoria...</option>
@@ -442,39 +456,63 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Portion, Weight and Production Unit */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Rendimento ({isPrePreparo ? 'Qtd.' : 'Unidades'})</label>
+                            <label className="block text-sm text-gray-400 mb-1">
+                                Rendimento ({isPrePreparo ? 'Qtd.' : 'Unidades'})
+                            </label>
                             <input
                                 type="number"
                                 min="0.001"
                                 step="any"
                                 value={yieldUnits}
-                                onChange={e => setYieldUnits(Number(e.target.value))}
+                                onChange={(e) => setYieldUnits(Number(e.target.value))}
                                 className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
                             />
                         </div>
-                        {isPrePreparo && (
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Unidade</label>
-                                <select
-                                    value={productionUnit}
-                                    onChange={e => setProductionUnit(e.target.value)}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
-                                >
-                                    <option value="KG">KG</option>
-                                    <option value="L">Litros (L)</option>
-                                    <option value="UN">Unidades (UN)</option>
-                                </select>
-                            </div>
-                        )}
+
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Tempo de Produção (Minutos)</label>
+                            <label className="block text-sm text-gray-400 mb-1">
+                                Peso Líquido (kg)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.001"
+                                value={netWeight}
+                                onChange={(e) => setNetWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                                placeholder="Ex: 0.500"
+                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                            />
+                            <p className="text-xs text-gray-500 mt-1 italic">
+                                O CMV continuará usando o peso bruto.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">
+                                Unidade de Produção
+                            </label>
+                            <select
+                                value={productionUnit}
+                                onChange={(e) => setProductionUnit(e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                            >
+                                <option value="KG">Kilograma (kg)</option>
+                                <option value="UN">Unidade (un)</option>
+                                <option value="L">Litro (L)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">
+                                Tempo de Produção (min)
+                            </label>
                             <input
                                 type="number"
                                 min="0"
                                 value={laborMinutes}
-                                onChange={e => setLaborMinutes(Number(e.target.value))}
+                                onChange={(e) => setLaborMinutes(Number(e.target.value))}
                                 disabled={globalLaborRate === 0}
                                 className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                             />
@@ -483,6 +521,21 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                             )}
                         </div>
                     </div>
+
+                    {categoryId && (
+                        <div className="flex items-center gap-2 mt-4 px-1">
+                            <input
+                                type="checkbox"
+                                id="update-category-default"
+                                checked={updateCategoryDefault}
+                                onChange={(e) => setUpdateCategoryDefault(e.target.checked)}
+                                className="w-4 h-4 text-primary focus:ring-primary border-gray-700 bg-gray-900 rounded cursor-pointer"
+                            />
+                            <label htmlFor="update-category-default" className="text-sm text-gray-400 cursor-pointer select-none">
+                                Atualizar peso padrão desta categoria para novas receitas
+                            </label>
+                        </div>
+                    )}
 
                     {/* Ingredient Search */}
                     <div className="relative z-10">

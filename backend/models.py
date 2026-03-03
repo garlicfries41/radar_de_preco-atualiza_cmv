@@ -16,6 +16,7 @@ class CategoryEnum(str, Enum):
     HORTIFRUTI = "HORTIFRUTI"
     ACOUGUE = "ACOUGUE"
     EMBALAGEM = "EMBALAGEM"
+    PRÉ_PREPARO = "PRÉ-PREPARO"
     OUTROS = "OUTROS"
 
 
@@ -34,6 +35,7 @@ class Ingredient(SQLModel, table=True):
     current_price: Decimal = Field(default=Decimal("0.00"))
     yield_coefficient: Decimal = Field(default=Decimal("1.0000"))
     unit: str = Field(default="UN")  # kg, L, un, pct
+    nutritional_ref_id: Optional[str] = Field(default=None)
     last_updated: datetime = Field(default_factory=datetime.utcnow)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -91,6 +93,7 @@ class Recipe(SQLModel, table=True):
     is_pre_preparo: bool = Field(default=False)
     derived_ingredient_id: Optional[str] = Field(default=None)
     production_unit: str = Field(default="KG")
+    net_weight: Optional[Decimal] = Field(default=None)
     last_calculated: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -115,3 +118,14 @@ class CMVHistory(SQLModel, table=True):
     labor_cost: Decimal = Field(default=Decimal("0.00"))
     labor_rate_applied: Decimal = Field(default=Decimal("0.00"))
     recorded_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class RecipeCategory(SQLModel, table=True):
+    __tablename__ = "recipe_categories"
+    
+    id: Optional[str] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True)
+    anvisa_portion_g: Decimal = Field(default=Decimal("0.00"))
+    default_net_weight: Optional[Decimal] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
