@@ -172,7 +172,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             unit: ingredient.unit,
             current_price: ingredient.current_price,
             yield_coefficient: ingredient.yield_coefficient || 1,
-            category: ingredient.category
+            category: ingredient.category,
+            nutritional_ref_id: ingredient.nutritional_ref_id
         }]);
         setSearch('');
         setShowSuggestions(false);
@@ -223,6 +224,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
         return c.includes('EMBALAGEM') || c.includes('EMBALAGENS');
     };
 
+    const isB2B = name.toUpperCase().includes('[B2B]');
+
     const totalIngredientsCost = items.reduce((sum, item) => {
         if (isPackaging(item.category)) return sum;
         const effectivePrice = getEffectivePrice(item.current_price, item.yield_coefficient || 1);
@@ -246,7 +249,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     }, 0);
 
     // 3. Batch Cost
-    const totalBatchCost = recipeFoodCost + (unitPackagingCost * yieldUnits);
+    const packagingMultiplier = isB2B ? (yieldUnits / 2.5) : yieldUnits;
+    const totalBatchCost = recipeFoodCost + (unitPackagingCost * packagingMultiplier);
 
     // 4. Unit Cost Final
     const costPerUnit = yieldUnits > 0 ? totalBatchCost / yieldUnits : 0;
@@ -270,7 +274,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             cascade_update: cascadeUpdate,
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
-                quantity: isPackaging(i.category) ? Number(yieldUnits) : Number(i.quantity)
+                quantity: isPackaging(i.category) ? (isB2B ? Number((yieldUnits / 2.5).toFixed(3)) : Number(yieldUnits)) : Number(i.quantity)
             }))
         };
 
@@ -655,13 +659,13 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                             <div className="mt-8 pt-6 border-t border-gray-700">
                                 <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <Package size={18} />
-                                    Embalagens (Qtd = Rendimento)
+                                    Embalagens {isB2B ? '(Qtd = Rend / 2.5)' : '(Qtd = Rendimento)'}
                                 </h3>
                                 <div className="space-y-2">
                                     {groupedItems.packaging.map((item) => (
                                         <ItemRow
                                             key={item.ingredient_id}
-                                            item={{ ...item, quantity: yieldUnits }}
+                                            item={{ ...item, quantity: isB2B ? Number((yieldUnits / 2.5).toFixed(3)) : yieldUnits }}
                                             index={items.indexOf(item)}
                                             onUpdate={updateItemQuantity}
                                             onRemove={removeItem}

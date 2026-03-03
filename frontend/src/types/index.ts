@@ -6,6 +6,7 @@ export interface Ingredient {
     current_price: number;
     yield_coefficient: number;
     unit: string;
+    nutritional_ref_id?: string | null;
 }
 
 export interface RecipeCategory {

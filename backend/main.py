@@ -805,6 +805,7 @@ def get_recipe(recipe_id: str):
 def update_recipe(recipe_id: str, payload: RecipeInput):
     """Update recipe details and ingredients."""
     logger.info(f"Updating recipe: {recipe_id}")
+    logger.info(f"Received payload category_id: {payload.category_id}, product_id: {payload.product_id}")
     
     try:
         # 1. Fetch current prices
@@ -1113,83 +1114,44 @@ def get_recipe_anvisa_label(recipe_id: str):
         raise HTTPException(500, f"Error generating label: {str(e)}")
 
 
-@app.get("/api/recipes/nutrition-report")
+@app.get("/api/nutrition/report")
 def get_nutrition_report():
     """
-    Get consolidated nutritional report for all recipes.
-    Returns values per 100g.
+    Get consolidated nutritional report for all recipes using two separate queries for reliability.
     """
     try:
-        # Join recipes with ingredients and nutritional ref
-        query = supabase.table("recipes").select("""
-            id,
-            name,
-            total_weight_kg,
-            yield_units,
-            net_weight,
-            production_unit,
-            recipe_ingredients(
-                quantity,
-                ingredients(
-                    nutritional_ref_id,
-                    nutritional_ref(*)
-                )
-            )
-        """).eq("is_pre_preparo", False).execute()
+        # Get nutrition data
+        nut_response = supabase.table("recipe_nutrition").select("*").execute()
+        # Get recipe names and types
+        rec_response = supabase.table("recipes").select("id, name, is_pre_preparo").execute()
+        
+        name_map = {r["id"]: r["name"] for r in rec_response.data}
+        # Filter (optional: you might want to show pre-preparos too, but usually users want products)
+        # For now let's show everything that has nutrition data
         
         report = []
-        for recipe in query.data:
-            yield_units = Decimal(str(recipe.get("yield_units") or 0))
-            net_weight = Decimal(str(recipe.get("net_weight") or 0)) if recipe.get("net_weight") else Decimal("0")
-            prod_unit = recipe.get("production_unit", "KG").upper()
-
-            if prod_unit == "KG" and yield_units > 0:
-                finished_weight_g = yield_units * 1000
-            elif yield_units > 0 and net_weight > 0:
-                finished_weight_g = yield_units * net_weight * 1000
-            else:
-                finished_weight_g = Decimal(str(recipe.get("total_weight_kg", 0))) * 1000
-
-            if finished_weight_g <= 0:
-                continue
-            
-            totals = {
-                "energy_kcal": Decimal("0.0"),
-                "protein_g": Decimal("0.0"),
-                "fiber_g": Decimal("0.0"),
-                "sugars_added_g": Decimal("0.0")
-            }
-            
-            for ring in recipe.get("recipe_ingredients", []):
-                qty_g = Decimal(str(ring["quantity"])) * 1000
-                ing = ring.get("ingredients")
-                if ing and ing.get("nutritional_ref"):
-                    ref = ing["nutritional_ref"]
-                    # Ref values are per 100g
-                    factor = qty_g / Decimal("100.0")
-                    totals["energy_kcal"] += Decimal(str(ref.get("energy_kcal", 0) or 0)) * factor
-                    totals["protein_g"] += Decimal(str(ref.get("protein_g", 0) or 0)) * factor
-                    totals["fiber_g"] += Decimal(str(ref.get("fiber_g", 0) or 0)) * factor
-                    totals["sugars_added_g"] += Decimal(str(ref.get("sugars_added_g", 0) or 0)) * factor
-            
-            # Normalize to 100g of final product
-            normalize_factor = Decimal("100.0") / finished_weight_g
-            
+        for row in nut_response.data:
+            recipe_id = row.get("recipe_id")
             report.append({
-                "id": recipe["id"],
-                "name": recipe["name"],
-                "energy_kcal": round(float(totals["energy_kcal"] * normalize_factor), 1),
-                "protein_g": round(float(totals["protein_g"] * normalize_factor), 1),
-                "fiber_g": round(float(totals["fiber_g"] * normalize_factor), 1),
-                "sugars_added_g": round(float(totals["sugars_added_g"] * normalize_factor), 1)
+                "id": recipe_id,
+                "name": name_map.get(recipe_id, "N/A"),
+                "energy_kcal": row.get("energy_kcal_100g", 0) or 0,
+                "carbs_g": row.get("carbs_g_100g", 0) or 0,
+                "sugars_total_g": row.get("sugars_total_g_100g", 0) or 0,
+                "sugars_added_g": row.get("sugars_added_g_100g", 0) or 0,
+                "protein_g": row.get("protein_g_100g", 0) or 0,
+                "lipid_g": row.get("lipid_g_100g", 0) or 0,
+                "saturated_fat_g": row.get("saturated_fat_g_100g", 0) or 0,
+                "trans_fat_g": row.get("trans_fat_g_100g", 0) or 0,
+                "fiber_g": row.get("fiber_g_100g", 0) or 0,
+                "sodium_mg": row.get("sodium_mg_100g", 0) or 0
             })
             
         return report
 
     except Exception as e:
-        logger.error(f"Failed to generate nutrition report: {e}")
-        raise HTTPException(500, f"Error generating report: {str(e)}")
-
+        logger.error(f"Failed to fetch nutrition report: {e}")
+        raise HTTPException(500, f"Error fetching report: {str(e)}")
 
 
 @app.get("/api/recipes")
