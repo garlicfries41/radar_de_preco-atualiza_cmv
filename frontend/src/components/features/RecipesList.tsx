@@ -248,10 +248,10 @@ export function RecipesList() {
                         className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors flex items-center justify-between gap-4"
                     >
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-bold text-white text-lg leading-tight truncate" title={recipe.name}>{recipe.name}</h3>
+                            <div className="flex items-start gap-2 flex-wrap">
+                                <h3 className="font-bold text-white text-lg leading-tight break-words flex-1 min-w-0" title={recipe.name}>{recipe.name}</h3>
                                 {cfg.badgeLabel && (
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cfg.badgeClass}`}>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 shrink-0 ${cfg.badgeClass}`}>
                                         {cfg.badgeLabel}
                                     </span>
                                 )}
