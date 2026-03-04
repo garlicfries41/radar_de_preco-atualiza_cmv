@@ -431,9 +431,16 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                             type="text"
                                             value={productSearch}
                                             onChange={e => {
-                                                setProductSearch(e.target.value);
+                                                const val = e.target.value;
+                                                setProductSearch(val);
                                                 setShowProductSuggestions(true);
-                                                if (e.target.value === '') {
+
+                                                // Se não houver produto selecionado, o nome da receita segue o que está sendo digitado
+                                                if (!productId) {
+                                                    setName(val);
+                                                }
+
+                                                if (val === '') {
                                                     setProductId('');
                                                     setName('');
                                                     setSku('');

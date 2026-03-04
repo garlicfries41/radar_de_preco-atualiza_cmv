@@ -65,7 +65,7 @@ export function RecipesList() {
             if (!recipeToClone) return;
 
             const cloneForm = {
-                name: `${recipeToClone.name} (Cópia)`,
+                name: '', // Nome em branco conforme solicitado
                 yield_units: recipeToClone.yield_units,
                 labor_minutes: recipeToClone.labor_minutes || 0,
                 labor_cost: recipeToClone.labor_cost || 0,
