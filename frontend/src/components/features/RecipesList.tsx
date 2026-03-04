@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { getRecipes, updateRecipe } from '../../services/api';
+import { getRecipes, updateRecipe, deleteRecipe, getRecipe, createRecipe } from '../../services/api';
 import type { Recipe } from '../../types';
-import { Loader2, ChefHat, Plus, Pencil, Trash2, Search, FlaskConical, Archive, ArrowLeft, TrendingUp, ArchiveRestore } from 'lucide-react';
+import { Loader2, ChefHat, Plus, Pencil, Trash2, Search, FlaskConical, Archive, ArrowLeft, TrendingUp, ArchiveRestore, Copy } from 'lucide-react';
 import { RecipeForm } from './RecipeForm';
-import { deleteRecipe } from '../../services/api';
 import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/text';
 
@@ -57,6 +56,41 @@ export function RecipesList() {
         e.stopPropagation();
         setEditingId(id);
         setIsCreating(true);
+    };
+
+    const handleClone = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        try {
+            const recipeToClone = await getRecipe(id);
+            if (!recipeToClone) return;
+
+            const cloneForm = {
+                name: `${recipeToClone.name} (Cópia)`,
+                yield_units: recipeToClone.yield_units,
+                labor_minutes: recipeToClone.labor_minutes || 0,
+                labor_cost: recipeToClone.labor_cost || 0,
+                is_pre_preparo: recipeToClone.is_pre_preparo,
+                production_unit: recipeToClone.production_unit || 'KG',
+                net_weight: recipeToClone.net_weight,
+                status: 'rascunho',
+                ingredients: recipeToClone.ingredients?.map(i => ({
+                    ingredient_id: i.ingredient_id,
+                    quantity: i.quantity
+                })) || []
+            };
+
+            await createRecipe(cloneForm);
+            toast.success('Receita clonada para o ReceitaLab!');
+
+            if (mode !== 'rascunho') {
+                switchMode('rascunho');
+            } else {
+                fetchRecipes();
+            }
+        } catch (error) {
+            console.error('Error cloning recipe:', error);
+            toast.error('Erro ao clonar receita');
+        }
     };
 
     const handleChangeStatus = async (e: React.MouseEvent, id: string, newStatus: string, label: string, openEdit = false) => {
@@ -264,6 +298,15 @@ export function RecipesList() {
                                 >
                                     <Pencil size={18} />
                                 </button>
+                                {(mode === 'ativo' || mode === 'rascunho') && (
+                                    <button
+                                        onClick={(e) => handleClone(e, recipe.id)}
+                                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors"
+                                        title="Clonar Receita"
+                                    >
+                                        <Copy size={18} />
+                                    </button>
+                                )}
                                 <button
                                     onClick={(e) => handleDelete(e, recipe.id)}
                                     className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
