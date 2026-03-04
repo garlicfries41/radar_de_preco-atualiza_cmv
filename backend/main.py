@@ -498,7 +498,7 @@ class RecipeInput(BaseModel):
     labor_cost: float = 0.0
     sku: Optional[str] = None
     category_id: Optional[str] = None
-    product_id: Optional[int] = None
+    product_id: Optional[str] = None
     is_pre_preparo: bool = False
     derived_ingredient_id: Optional[str] = None
     production_unit: Optional[str] = "KG"

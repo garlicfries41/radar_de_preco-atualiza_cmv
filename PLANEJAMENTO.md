@@ -1,24 +1,23 @@
 # Projeto: Radar de Preço - Atualiza CMV
-Status: Em Planejamento (Adição de Peso Líquido)
+Status: Estabilização e Refinamento de Lógica B2B
 
 ## Motivação
-O usuário identificou a necessidade de rastrear o **Peso Líquido** do produto final (receita), que pode diferir da soma dos pesos brutos dos ingredientes devido ao processo de produção. Esta informação é vital para cálculos precisos de CMV e engenharia de cardápio.
+Refinar as regras de negócio para produção B2B e simplificar o gerenciamento de categorias removendo lógicas redundantes (`default_net_weight`).
 
 ## Contexto e Ideias
-- Atualmente existe apenas o campo `total_weight_kg` na tabela `recipes`, calculado automaticamente como a soma dos ingredientes.
-- O usuário deseja inserir o Peso Líquido manualmente durante o cadastro da receita.
-- Precisamos decidir se o CMV por kg deve usar o Peso Líquido (se disponível) ou manter o peso bruto.
+- **Remoção de default_net_weight:** Identificado como desnecessário, causava confusão no cálculo automático. Lógica removida em favor de preenchimento manual no formulário.
+- **Lógica B2B [b2b]:** Embalagens para produtos B2B devem ser calculadas na proporção de 1 para cada 2,5 unidades de rendimento (frações).
+- **Tabela Nutricional ANVISA:** Ajustada para exibir colunas de Porção e 100g simultaneamente.
 
 ## Arquitetura e Decisões
-- Adicionar coluna `net_weight` na tabela `recipes` (Supabase).
-- Refletir este campo nos modelos SQLModel (`backend/models.py`).
-- Atualizar o endpoint de criação/atualização de receitas (`backend/main.py`) para aceitar e salvar este valor.
-- Atualizar a interface de formulário de receita (`frontend/src/components/features/RecipeForm.tsx`) para incluir o campo.
+- Exclusão da tabela `categories_portions` (substituída pela lógica direta em `recipe_categories`).
+- Implementação de detecção automática de B2B via nome da receita (`name.includes('B2B')`).
+- Cálculo de multiplicador de embalagem no frontend e backend sincronizado: `yield / 2.5` se B2B.
 
-## Plano de Ação
-1. [ ] Executar script SQL para adicionar `net_weight` à tabela `recipes`.
-2. [ ] Atualizar `backend/models.py`.
-3. [ ] Atualizar `backend/main.py` (Pydantic models e lógica de persistência).
-4. [ ] Atualizar `frontend/src/types/index.ts`.
-5. [ ] Adicionar campo no `RecipeForm.tsx`.
-6. [ ] Validar salvamento e exibição.
+## Plano de Ação (Concluído)
+1. [x] Remover `default_net_weight` do backend e frontend.
+2. [x] Excluir tabela `categories_portions` via SQL.
+3. [x] Ajustar detector `isB2B` para ser case-insensitive e inclusivo ([B2B]).
+4. [x] Implementar multiplicador `2.5` para embalagens B2B no Sidebar e no salvamento.
+5. [x] Corrigir alerta de dados nutricionais no frontend (ignorando pré-preparos e embalagens).
+6. [x] Garantir salvamento de `category_id` (ANVISA) no backend.
