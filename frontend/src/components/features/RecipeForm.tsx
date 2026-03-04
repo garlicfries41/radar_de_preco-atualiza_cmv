@@ -270,7 +270,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
             labor_minutes: Number(laborMinutes),
             labor_cost: Number(calculatedLaborCost.toFixed(2)),
             is_pre_preparo: isPrePreparo,
-            production_unit: isPrePreparo ? productionUnit : 'KG',
+            production_unit: productionUnit,
             net_weight: netWeight === '' ? undefined : Number(netWeight),
             status: recipeStatus,
             ingredients: items.map(i => ({
