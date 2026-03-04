@@ -27,3 +27,4 @@
 - [x] **Fase 5: Manutenção e Cadastro de Dados**
     - [x] Analisar imagem da tabela nutricional da Farinha de Tremoço
     - [x] Inserir Farinha de Tremoço e Farinha de Tremoço Pré-Cozida na tabela `nutritional_ref`
+    - [x] Vincular as referências nutricionais aos insumos na tabela `ingredients`

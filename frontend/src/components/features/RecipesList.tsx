@@ -1,24 +1,27 @@
 import { useState, useEffect } from 'react';
-import { getRecipes } from '../../services/api';
+import { getRecipes, updateRecipe } from '../../services/api';
 import type { Recipe } from '../../types';
-import { Loader2, ChefHat, Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Loader2, ChefHat, Plus, Pencil, Trash2, Search, FlaskConical, Archive, ArrowLeft, TrendingUp, ArchiveRestore } from 'lucide-react';
 import { RecipeForm } from './RecipeForm';
 import { deleteRecipe } from '../../services/api';
 import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/text';
 
+type Mode = 'ativo' | 'rascunho' | 'inativo';
+
 export function RecipesList() {
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState<Mode>('ativo');
     // View State
     const [isCreating, setIsCreating] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const fetchRecipes = async () => {
+    const fetchRecipes = async (status: Mode = mode) => {
         setLoading(true);
         try {
-            const data = await getRecipes();
+            const data = await getRecipes(status);
             setRecipes(data);
         } catch (error) {
             console.error(error);
@@ -29,18 +32,22 @@ export function RecipesList() {
     };
 
     useEffect(() => {
-        fetchRecipes();
-    }, []);
+        fetchRecipes(mode);
+    }, [mode]);
+
+    const switchMode = (newMode: Mode) => {
+        setMode(newMode);
+        setSearchTerm('');
+    };
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         if (!confirm('Tem certeza que deseja excluir esta receita?')) return;
-
         try {
             await deleteRecipe(id);
             toast.success('Receita excluída');
             fetchRecipes();
-        } catch (error) {
+        } catch {
             toast.error('Erro ao excluir receita');
         }
     };
@@ -49,6 +56,20 @@ export function RecipesList() {
         e.stopPropagation();
         setEditingId(id);
         setIsCreating(true);
+    };
+
+    const handleChangeStatus = async (e: React.MouseEvent, id: string, newStatus: string, label: string) => {
+        e.stopPropagation();
+        try {
+            // Fetch current recipe to build minimal update payload
+            const recipe = recipes.find(r => r.id === id);
+            if (!recipe) return;
+            await updateRecipe(id, { ...recipe, status: newStatus, ingredients: recipe.ingredients?.map(i => ({ ingredient_id: i.ingredient_id, quantity: i.quantity })) ?? [] });
+            toast.success(label);
+            fetchRecipes();
+        } catch {
+            toast.error('Erro ao atualizar status');
+        }
     };
 
     const closeForm = () => {
@@ -60,6 +81,7 @@ export function RecipesList() {
         return (
             <RecipeForm
                 recipeId={editingId}
+                defaultStatus={mode === 'rascunho' ? 'rascunho' : 'ativo'}
                 onClose={closeForm}
                 onSuccess={() => {
                     closeForm();
@@ -77,10 +99,48 @@ export function RecipesList() {
         );
     }
 
+    const modeConfig = {
+        ativo: {
+            title: 'Receitas & CMV',
+            emptyMsg: 'Nenhuma receita cadastrada.',
+            badgeClass: '',
+            badgeLabel: '',
+        },
+        rascunho: {
+            title: '⚗️ ReceitaLab',
+            emptyMsg: 'Nenhuma receita em teste.',
+            badgeClass: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+            badgeLabel: 'RASCUNHO',
+        },
+        inativo: {
+            title: '🗄️ Receitas Inativas',
+            emptyMsg: 'Nenhuma receita inativada.',
+            badgeClass: 'bg-red-500/20 text-red-400 border border-red-500/30',
+            badgeLabel: 'INATIVO',
+        },
+    };
+
+    const cfg = modeConfig[mode];
+    const filtered = recipes.filter(r =>
+        !r.is_pre_preparo && normalizeText(r.name).includes(normalizeText(searchTerm))
+    );
+
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="text-2xl font-bold text-white whitespace-nowrap">Receitas & CMV</h2>
+                <div className="flex items-center gap-3">
+                    {mode !== 'ativo' && (
+                        <button
+                            onClick={() => switchMode('ativo')}
+                            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                            title="Voltar para Receitas"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                    )}
+                    <h2 className="text-2xl font-bold text-white whitespace-nowrap">{cfg.title}</h2>
+                </div>
 
                 <div className="flex-1 max-w-md w-full relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -93,30 +153,73 @@ export function RecipesList() {
                     />
                 </div>
 
-                <button
-                    onClick={() => setIsCreating(true)}
-                    className="bg-primary hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
-                >
-                    <Plus size={20} />
-                    Nova Receita
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                    {mode === 'ativo' && (
+                        <>
+                            <button
+                                onClick={() => switchMode('rascunho')}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 transition-colors text-sm font-medium"
+                                title="ReceitaLab – receitas em teste"
+                            >
+                                <FlaskConical size={16} />
+                                ReceitaLab
+                            </button>
+                            <button
+                                onClick={() => switchMode('inativo')}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-700/50 text-gray-400 hover:bg-gray-700 border border-gray-600 transition-colors text-sm font-medium"
+                                title="Receitas Inativas"
+                            >
+                                <Archive size={16} />
+                                Inativas
+                            </button>
+                        </>
+                    )}
+
+                    <button
+                        onClick={() => setIsCreating(true)}
+                        className="bg-primary hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+                    >
+                        <Plus size={20} />
+                        {mode === 'rascunho' ? 'Novo Rascunho' : 'Nova Receita'}
+                    </button>
+                </div>
             </div>
 
+            {/* Mode description banner */}
+            {mode === 'rascunho' && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2 text-sm text-amber-300">
+                    ⚗️ Receitas em teste — sem vínculo com produtos. Use para explorar custos e valores nutricionais livremente.
+                </div>
+            )}
+            {mode === 'inativo' && (
+                <div className="bg-gray-700/40 border border-gray-600 rounded-lg px-4 py-2 text-sm text-gray-400">
+                    🗄️ Receitas inativadas não aparecem no painel principal. Reative quando necessário.
+                </div>
+            )}
+
+            {/* Recipe Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recipes.filter(r => !r.is_pre_preparo && normalizeText(r.name).includes(normalizeText(searchTerm))).map((recipe) => (
+                {filtered.map((recipe) => (
                     <div
                         key={recipe.id}
                         className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors flex items-center justify-between gap-4"
                     >
                         <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-white text-lg leading-tight truncate" title={recipe.name}>{recipe.name}</h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-bold text-white text-lg leading-tight truncate" title={recipe.name}>{recipe.name}</h3>
+                                {cfg.badgeLabel && (
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cfg.badgeClass}`}>
+                                        {cfg.badgeLabel}
+                                    </span>
+                                )}
+                            </div>
                             <p className="text-gray-400 text-sm mt-1 truncate">
                                 Rendimento: {recipe.yield_units} un
                                 {recipe.sku && <span className="ml-2 text-xs bg-gray-700 px-1.5 py-0.5 rounded">SKU: {recipe.sku}</span>}
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-6 shrink-0">
+                        <div className="flex items-center gap-4 shrink-0">
                             <div className="text-right">
                                 <div className="text-xs text-gray-400 leading-none mb-1">Custo UN</div>
                                 <div className="text-xl font-bold text-emerald-400 leading-none">
@@ -125,6 +228,26 @@ export function RecipesList() {
                             </div>
 
                             <div className="flex items-center gap-1 border-l border-gray-700 pl-4">
+                                {/* Promote (draft → active) */}
+                                {mode === 'rascunho' && (
+                                    <button
+                                        onClick={(e) => handleChangeStatus(e, recipe.id, 'ativo', 'Receita promovida para Ativa!')}
+                                        className="p-2 text-amber-400 hover:text-emerald-400 hover:bg-gray-700 rounded transition-colors"
+                                        title="Promover para Receitas Ativas"
+                                    >
+                                        <TrendingUp size={18} />
+                                    </button>
+                                )}
+                                {/* Reactivate (inactive → active) */}
+                                {mode === 'inativo' && (
+                                    <button
+                                        onClick={(e) => handleChangeStatus(e, recipe.id, 'ativo', 'Receita reativada!')}
+                                        className="p-2 text-gray-400 hover:text-emerald-400 hover:bg-gray-700 rounded transition-colors"
+                                        title="Reativar Receita"
+                                    >
+                                        <ArchiveRestore size={18} />
+                                    </button>
+                                )}
                                 <button
                                     onClick={(e) => handleEdit(e, recipe.id)}
                                     className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
@@ -144,15 +267,15 @@ export function RecipesList() {
                     </div>
                 ))}
 
-                {recipes.length === 0 && (
+                {filtered.length === 0 && (
                     <div className="col-span-full py-12 text-center text-gray-500 bg-gray-800/50 rounded-lg border border-dashed border-gray-700">
                         <ChefHat size={48} className="mx-auto mb-3 opacity-20" />
-                        <p>Nenhuma receita cadastrada.</p>
+                        <p>{cfg.emptyMsg}</p>
                         <button
                             onClick={() => setIsCreating(true)}
                             className="mt-4 text-primary hover:underline text-sm"
                         >
-                            Criar primeira receita
+                            {mode === 'rascunho' ? 'Criar primeiro rascunho' : 'Criar primeira receita'}
                         </button>
                     </div>
                 )}

@@ -84,6 +84,7 @@ export interface Recipe {
     derived_ingredient_id?: string;
     production_unit: string;
     net_weight?: number;
+    status?: string;
     created_at: string;
     last_calculated: string;
     ingredients?: RecipeIngredient[];
@@ -100,6 +101,7 @@ export interface RecipeInput {
     is_pre_preparo?: boolean;
     production_unit?: string;
     net_weight?: number;
+    status?: string;
     ingredients: {
         ingredient_id: string;
         quantity: number;

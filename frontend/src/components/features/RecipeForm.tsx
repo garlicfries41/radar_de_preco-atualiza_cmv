@@ -11,6 +11,7 @@ interface RecipeFormProps {
     onClose: () => void;
     onSuccess: () => void;
     isPrePreparo?: boolean;
+    defaultStatus?: string;
 }
 
 interface RecipeItem {
@@ -24,7 +25,7 @@ interface RecipeItem {
     nutritional_ref_id?: string | null;
 }
 
-export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false }: RecipeFormProps) {
+export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false, defaultStatus = 'ativo' }: RecipeFormProps) {
     const [loading, setLoading] = useState(false);
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [products, setProducts] = useState<{ id: number, product: string, sku: string | null, status: string | null }[]>([]);
@@ -44,6 +45,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
     const [loadedLaborCost, setLoadedLaborCost] = useState(0);
     const [netWeight, setNetWeight] = useState<number | ''>('');
     const [items, setItems] = useState<RecipeItem[]>([]);
+    const [recipeStatus, setRecipeStatus] = useState<string>(defaultStatus);
 
     // UI State
     const [search, setSearch] = useState('');
@@ -268,6 +270,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
             is_pre_preparo: isPrePreparo,
             production_unit: isPrePreparo ? productionUnit : 'KG',
             net_weight: netWeight === '' ? undefined : Number(netWeight),
+            status: recipeStatus,
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
                 quantity: isPackaging(i.category) ? (isB2B ? Number((yieldUnits / 2.5).toFixed(3)) : Number(yieldUnits)) : Number(i.quantity)
@@ -341,6 +344,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                     {recipeId ? (isPrePreparo ? 'Editar Pré-preparo' : 'Editar Receita') : (isPrePreparo ? 'Novo Pré-preparo' : 'Nova Receita')}
                 </h2>
                 <button
+                    data-save-btn
                     onClick={handleSave}
                     disabled={loading}
                     className="bg-primary hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
@@ -717,6 +721,23 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false 
                                         Selecione uma categoria acima para habilitar o rótulo.
                                     </p>
                                 )}
+
+                                {/* Inativar – botão discreto, apenas em edição */}
+                                <button
+                                    onClick={() => {
+                                        if (confirm('Inativar esta receita? Ela deixará de aparecer no painel principal.')) {
+                                            setRecipeStatus('inativo');
+                                            // trigger save with inativo status
+                                            setTimeout(() => {
+                                                (document.querySelector('[data-save-btn]') as HTMLButtonElement)?.click();
+                                            }, 50);
+                                        }
+                                    }}
+                                    type="button"
+                                    className="w-full mt-2 text-gray-500 hover:text-red-400 hover:bg-red-900/20 border border-transparent hover:border-red-800 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-all text-sm"
+                                >
+                                    Inativar receita
+                                </button>
                             </div>
                         )}
                     </div>

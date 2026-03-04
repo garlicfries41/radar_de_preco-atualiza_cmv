@@ -33,8 +33,8 @@ export const validateReceipt = async (receiptId: string, payload: ValidationPayl
     return response.data;
 };
 
-export const getRecipes = async () => {
-    const response = await api.get<Recipe[]>('/api/recipes');
+export const getRecipes = async (status: string = 'ativo') => {
+    const response = await api.get<Recipe[]>('/api/recipes', { params: { status } });
     return response.data;
 };
 
