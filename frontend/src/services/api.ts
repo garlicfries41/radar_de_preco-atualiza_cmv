@@ -54,7 +54,7 @@ export const getAnvisaLabel = async (recipeId: string) => {
 };
 
 export const getNutritionReport = async () => {
-    const response = await api.get<any[]>('/api/recipes/nutrition-report');
+    const response = await api.get<any[]>('/api/nutrition/report');
     return response.data;
 };
 
