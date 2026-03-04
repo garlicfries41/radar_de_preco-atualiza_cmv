@@ -16,6 +16,7 @@ export function RecipesList() {
     // View State
     const [isCreating, setIsCreating] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [promotingId, setPromotingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     const fetchRecipes = async (status: Mode = mode) => {
@@ -58,15 +59,21 @@ export function RecipesList() {
         setIsCreating(true);
     };
 
-    const handleChangeStatus = async (e: React.MouseEvent, id: string, newStatus: string, label: string) => {
+    const handleChangeStatus = async (e: React.MouseEvent, id: string, newStatus: string, label: string, openEdit = false) => {
         e.stopPropagation();
         try {
-            // Fetch current recipe to build minimal update payload
             const recipe = recipes.find(r => r.id === id);
             if (!recipe) return;
             await updateRecipe(id, { ...recipe, status: newStatus, ingredients: recipe.ingredients?.map(i => ({ ingredient_id: i.ingredient_id, quantity: i.quantity })) ?? [] });
             toast.success(label);
-            fetchRecipes();
+            if (openEdit) {
+                // After promoting: open edit form with product highlight
+                setPromotingId(id);
+                setEditingId(id);
+                setIsCreating(true);
+            } else {
+                fetchRecipes();
+            }
         } catch {
             toast.error('Erro ao atualizar status');
         }
@@ -75,13 +82,15 @@ export function RecipesList() {
     const closeForm = () => {
         setIsCreating(false);
         setEditingId(null);
+        setPromotingId(null);
     };
 
     if (isCreating) {
         return (
             <RecipeForm
                 recipeId={editingId}
-                defaultStatus={mode === 'rascunho' ? 'rascunho' : 'ativo'}
+                defaultStatus={promotingId ? 'ativo' : (mode === 'rascunho' ? 'rascunho' : 'ativo')}
+                highlightProduct={!!promotingId}
                 onClose={closeForm}
                 onSuccess={() => {
                     closeForm();
@@ -231,7 +240,7 @@ export function RecipesList() {
                                 {/* Promote (draft → active) */}
                                 {mode === 'rascunho' && (
                                     <button
-                                        onClick={(e) => handleChangeStatus(e, recipe.id, 'ativo', 'Receita promovida para Ativa!')}
+                                        onClick={(e) => handleChangeStatus(e, recipe.id, 'ativo', 'Receita promovida! Vincule um produto abaixo.', true)}
                                         className="p-2 text-amber-400 hover:text-emerald-400 hover:bg-gray-700 rounded transition-colors"
                                         title="Promover para Receitas Ativas"
                                     >

@@ -12,6 +12,7 @@ interface RecipeFormProps {
     onSuccess: () => void;
     isPrePreparo?: boolean;
     defaultStatus?: string;
+    highlightProduct?: boolean;
 }
 
 interface RecipeItem {
@@ -25,7 +26,7 @@ interface RecipeItem {
     nutritional_ref_id?: string | null;
 }
 
-export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false, defaultStatus = 'ativo' }: RecipeFormProps) {
+export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false, defaultStatus = 'ativo', highlightProduct = false }: RecipeFormProps) {
     const [loading, setLoading] = useState(false);
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [products, setProducts] = useState<{ id: number, product: string, sku: string | null, status: string | null }[]>([]);
@@ -46,6 +47,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
     const [netWeight, setNetWeight] = useState<number | ''>('');
     const [items, setItems] = useState<RecipeItem[]>([]);
     const [recipeStatus, setRecipeStatus] = useState<string>(defaultStatus);
+    const productInputRef = useRef<HTMLInputElement>(null);
 
     // UI State
     const [search, setSearch] = useState('');
@@ -328,6 +330,15 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
         });
     }, [items]);
 
+    useEffect(() => {
+        if (highlightProduct && productInputRef.current) {
+            setTimeout(() => {
+                productInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                productInputRef.current?.focus();
+            }, 300);
+        }
+    }, [highlightProduct]);
+
     if (loading && recipeId && !name) { // Only show full loader on initial fetch
         return <div className="p-8 text-center text-gray-400">Carregando...</div>;
     }
@@ -370,6 +381,16 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                 </div>
             )}
 
+            {highlightProduct && (
+                <div className="mb-4 p-4 rounded-lg bg-amber-900/40 border border-amber-600/50 flex items-start gap-3 animate-pulse">
+                    <span className="text-amber-400 text-xl">⚗️</span>
+                    <div>
+                        <p className="text-amber-300 font-bold text-sm">Receita promovida!</p>
+                        <p className="text-amber-200/80 text-sm">Selecione o <strong>Produto</strong> que esta receita representa para completar o vínculo com o sistema.</p>
+                    </div>
+                </div>
+            )}
+
             {missingNutritionIngredients.length > 0 && (
                 <div className="mb-6 p-4 rounded-lg bg-orange-900/40 border border-orange-700/50 flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-orange-400 font-bold">
@@ -402,10 +423,11 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                         ) : (
                             <>
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Produto (Receita)</label>
-                                    <div className="relative">
+                                    <label className="block text-sm mb-1 font-medium transition-colors" style={{ color: highlightProduct ? '#f59e0b' : '#9ca3af' }}>Produto (Receita){highlightProduct && ' ← Vincule aqui'}</label>
+                                    <div className={`relative rounded-md transition-all ${highlightProduct ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900' : ''}`}>
                                         <Search className="absolute left-2 text-gray-500 top-1/2 -translate-y-1/2" size={18} />
                                         <input
+                                            ref={productInputRef}
                                             type="text"
                                             value={productSearch}
                                             onChange={e => {
