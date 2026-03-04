@@ -578,6 +578,8 @@ def materialize_pre_preparo_nutrition(recipe_name: str, calc_ingredients: List[d
     total_trans_fat = Decimal("0")
     total_fiber = Decimal("0")
     total_sodium = Decimal("0")
+    total_sugars_total = Decimal("0")
+    total_sugars_added = Decimal("0")
     
     # We need to fetch the actual nutritional data for the refs.
     ref_ids = [item.get("nutritional_ref_id") for item in calc_ingredients if item.get("nutritional_ref_id")]
@@ -612,13 +614,15 @@ def materialize_pre_preparo_nutrition(recipe_name: str, calc_ingredients: List[d
         total_trans_fat += Decimal(str(ref_data.get("trans_fat_g") or 0)) * multiplier
         total_fiber += Decimal(str(ref_data.get("fiber_g") or 0)) * multiplier
         total_sodium += Decimal(str(ref_data.get("sodium_mg") or 0)) * multiplier
+        total_sugars_total += Decimal(str(ref_data.get("sugars_total_g") or 0)) * multiplier
+        total_sugars_added += Decimal(str(ref_data.get("sugars_added_g") or 0)) * multiplier
         has_any_data = True
         
     if not has_any_data:
         return existing_ref_id
         
     # Now divide by total_weight_g to get to 100g chunk
-    total_weight_g = Decimal(str(total_weight_kg)) * 1000
+    total_weight_g = Decimal(str(finished_weight_kg)) * 1000
     if total_weight_g <= 0: return existing_ref_id
     
     ratio_100g = Decimal("100") / total_weight_g
@@ -636,7 +640,9 @@ def materialize_pre_preparo_nutrition(recipe_name: str, calc_ingredients: List[d
         "saturated_fat_g": float(round(total_sat_fat * ratio_100g, 2)),
         "trans_fat_g": float(round(total_trans_fat * ratio_100g, 2)),
         "fiber_g": float(round(total_fiber * ratio_100g, 2)),
-        "sodium_mg": float(round(total_sodium * ratio_100g, 2))
+        "sodium_mg": float(round(total_sodium * ratio_100g, 2)),
+        "sugars_total_g": float(round(total_sugars_total * ratio_100g, 2)),
+        "sugars_added_g": float(round(total_sugars_added * ratio_100g, 2))
     }
     
     if existing_ref_id:
