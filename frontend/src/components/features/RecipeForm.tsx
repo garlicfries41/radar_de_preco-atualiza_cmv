@@ -422,6 +422,20 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                             </div>
                         ) : (
                             <>
+                                {/* Campo de nome manual: aparece quando não há produto vinculado */}
+                                {!productId && (
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm text-gray-400 mb-1">Nome da Receita</label>
+                                        <input
+                                            type="text"
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                            placeholder="Digite o nome da receita..."
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Vincule um produto abaixo para promover esta receita.</p>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm mb-1 font-medium transition-colors" style={{ color: highlightProduct ? '#f59e0b' : '#9ca3af' }}>Produto (Receita){highlightProduct && ' ← Vincule aqui'}</label>
                                     <div className={`relative rounded-md transition-all ${highlightProduct ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900' : ''}`}>
@@ -434,20 +448,12 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                                 const val = e.target.value;
                                                 setProductSearch(val);
                                                 setShowProductSuggestions(true);
-
-                                                // Se não houver produto selecionado, o nome da receita segue o que está sendo digitado
-                                                if (!productId) {
-                                                    setName(val);
-                                                }
-
                                                 if (val === '') {
                                                     setProductId('');
-                                                    setName('');
                                                     setSku('');
                                                 }
                                             }}
                                             onFocus={() => setShowProductSuggestions(true)}
-                                            // Delay blur to allow click on suggestion
                                             onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
                                             className="w-full bg-gray-900 border border-gray-700 rounded-md py-2 px-8 text-white focus:border-primary focus:outline-none"
                                             placeholder="Buscar produto..."
@@ -458,7 +464,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                                     <button
                                                         key={p.id}
                                                         type="button"
-                                                        onMouseDown={() => selectProduct(p)} // Use onMouseDown to prevent onBlur from firing first
+                                                        onMouseDown={() => selectProduct(p)}
                                                         className="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-start gap-4"
                                                     >
                                                         <span className="text-white whitespace-normal break-words text-sm leading-tight">{p.product}</span>
