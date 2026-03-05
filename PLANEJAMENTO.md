@@ -21,3 +21,4 @@ Refinar as regras de negócio para produção B2B e simplificar o gerenciamento 
 4. [x] Implementar multiplicador `2.5` para embalagens B2B no Sidebar e no salvamento.
 5. [x] Corrigir alerta de dados nutricionais no frontend (ignorando pré-preparos e embalagens).
 6. [x] Garantir salvamento de `category_id` (ANVISA) no backend.
+

@@ -80,6 +80,30 @@
 - Lasanha: 10 unidades, 12kg total → CMV: R$5/un, R$4.17/kg
 - Ravioli: 50 unidades, 5kg total → CMV: R$1.60/un, R$16/kg
 
+### `production_processes` (Catálogo de Lotes/Subprocessos)
+*Represents standard production processes and their fixed times.*
+```json
+{
+  "id": "uuid",
+  "name": "string (ex: 'Extrusão de Massa')",
+  "expected_duration_minutes": "integer",
+  "yield_notes": "string (opcional: 'Rende o suficiente para 100 lasanhas')"
+}
+```
+
+### `production_schedule`
+*The Weekly Agenda mapping processes to specific days.*
+```json
+{
+  "id": "uuid",
+  "planned_date": "date",
+  "process_id": "uuid (FK -> production_processes, nullable)",
+  "custom_item_name": "string (opcional para tarefas rápidas não tabeladas)",
+  "duration_minutes": "integer",
+  "status": "enum ('pending', 'done', 'cancelled')"
+}
+```
+
 ## 2. Behavioral Rules
 - **Batch Upload First:** Users can upload MULTIPLE receipts at once. All receipts stay in `pending_validation` queue. Validation happens later, at user's convenience.
 - **Mobile-First Design:** Interface MUST be fully responsive. Primary use case is photographing receipts with phone camera.
