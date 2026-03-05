@@ -51,31 +51,31 @@ export function SettingsView() {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
-            <div className="bg-gray-800 rounded-lg shadow border border-gray-700 p-6">
-                <h2 className="text-xl font-bold text-white mb-6">Configurações Globais</h2>
+            <div className="bg-surface rounded-xl shadow border border-border p-6">
+                <h2 className="text-xl font-bold text-text-primary font-serif mb-6">Configurações Globais</h2>
 
                 <div className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-text-secondary mb-2">
                             Custo de Mão de Obra por Hora (R$)
                         </label>
                         <div className="relative">
-                            <span className="absolute left-3 top-2 text-gray-500">R$</span>
+                            <span className="absolute left-3 top-2 text-text-tertiary">R$</span>
                             <input
                                 type="number"
                                 step="0.01"
                                 value={laborRate}
                                 onChange={(e) => setLaborRate(e.target.value)}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-md py-2 pl-9 pr-4 text-white focus:border-primary focus:outline-none"
+                                className="w-full bg-background border border-border rounded-lg py-2 pl-9 pr-4 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                                 placeholder="0.00"
                             />
                         </div>
-                        <p className="mt-2 text-sm text-gray-500">
+                        <p className="mt-2 text-sm text-text-tertiary">
                             Este valor será usado para calcular o custo de produção de todas as receitas baseado no tempo (em minutos) que você informar em cada uma.
                         </p>
                     </div>
 
-                    <div className="pt-4 border-t border-gray-700">
+                    <div className="pt-4 border-t border-border">
                         <button
                             onClick={handleSave}
                             disabled={loading}

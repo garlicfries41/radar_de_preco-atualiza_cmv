@@ -65,20 +65,20 @@ export function IngredientSelector({ value, onChange, className }: IngredientSel
                     }}
                     onFocus={() => setIsOpen(true)}
                     placeholder="Buscar ingrediente..."
-                    className="w-full pl-9 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    className="w-full pl-9 pr-4 py-2 bg-surface-alt border border-border rounded-lg text-text-primary placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                 />
-                <div className="absolute left-3 top-2.5 text-gray-400">
+                <div className="absolute left-3 top-2.5 text-text-secondary">
                     {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
                 </div>
             </div>
 
             {isOpen && results.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {results.map((ingredient) => (
                         <button
                             key={ingredient.id}
                             onClick={() => handleSelect(ingredient)}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-700 text-sm text-gray-200 flex items-center justify-between group"
+                            className="w-full text-left px-4 py-2 hover:bg-surface-alt text-sm text-gray-200 flex items-center justify-between group"
                         >
                             <span>{ingredient.name}</span>
                             {value === ingredient.id && <Check size={16} className="text-primary" />}

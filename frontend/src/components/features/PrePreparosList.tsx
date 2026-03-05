@@ -84,22 +84,22 @@ export function PrePreparosList() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="text-2xl font-bold text-white whitespace-nowrap">Pré-preparos (Sub-receitas)</h2>
+                <h2 className="text-2xl font-bold text-text-primary font-serif whitespace-nowrap">Pré-preparos (Sub-receitas)</h2>
 
                 <div className="flex-1 max-w-md w-full relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={20} />
                     <input
                         type="text"
                         placeholder="Buscar pré-preparos..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:ring-2 focus:ring-primary outline-none"
+                        className="w-full bg-surface border border-border rounded-xl pl-10 pr-4 py-2 text-text-primary focus:ring-2 focus:ring-primary outline-none"
                     />
                 </div>
 
                 <button
                     onClick={() => setIsCreating(true)}
-                    className="bg-primary hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+                    className="bg-accent hover:opacity-90 text-text-primary font-medium border border-border px-4 py-2 rounded-xl flex items-center gap-2 transition-colors whitespace-nowrap"
                 >
                     <Plus size={20} />
                     Novo Pré-preparo
@@ -110,34 +110,34 @@ export function PrePreparosList() {
                 {filteredRecipes.map((recipe) => (
                     <div
                         key={recipe.id}
-                        className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors flex items-center justify-between gap-4"
+                        className="bg-surface rounded-xl border border-border p-4 hover:border-primary transition-colors flex items-center justify-between gap-4"
                     >
                         <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-white text-lg leading-tight truncate" title={recipe.name}>{recipe.name}</h3>
-                            <p className="text-gray-400 text-sm mt-1 truncate">
+                            <h3 className="font-bold text-text-primary text-lg leading-tight truncate" title={recipe.name}>{recipe.name}</h3>
+                            <p className="text-text-secondary text-sm mt-1 truncate">
                                 Rendimento: {recipe.yield_units} {recipe.production_unit || 'KG'}
                             </p>
                         </div>
 
                         <div className="flex items-center gap-6 shrink-0">
                             <div className="text-right">
-                                <div className="text-xs text-gray-400 leading-none mb-1">Custo {recipe.production_unit || 'KG'}</div>
-                                <div className="text-xl font-bold text-emerald-400 leading-none">
+                                <div className="text-xs text-text-secondary leading-none mb-1">Custo {recipe.production_unit || 'KG'}</div>
+                                <div className="text-xl font-bold text-primary leading-none">
                                     R$ {recipe.cmv_per_unit?.toFixed(2) || '0.00'}
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1 border-l border-gray-700 pl-4">
+                            <div className="flex items-center gap-1 border-l border-border pl-4">
                                 <button
                                     onClick={(e) => handleEdit(e, recipe.id)}
-                                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                                    className="p-2 text-text-secondary hover:text-text-primary hover:bg-surface-alt rounded transition-colors"
                                     title="Editar"
                                 >
                                     <Pencil size={18} />
                                 </button>
                                 <button
                                     onClick={(e) => handleDelete(e, recipe.id)}
-                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
+                                    className="p-2 text-text-secondary hover:text-red-400 hover:bg-surface-alt rounded transition-colors"
                                     title="Excluir"
                                 >
                                     <Trash2 size={18} />
@@ -148,7 +148,7 @@ export function PrePreparosList() {
                 ))}
 
                 {filteredRecipes.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-gray-500 bg-gray-800/50 rounded-lg border border-dashed border-gray-700">
+                    <div className="col-span-full py-12 text-center text-text-tertiary bg-background rounded-xl border border-dashed border-border">
                         <ChefHat size={48} className="mx-auto mb-3 opacity-20" />
                         <p>Nenhum pré-preparo cadastrado.</p>
                         <button

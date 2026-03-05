@@ -127,7 +127,7 @@ export function AnvisaLabel({ data }: AnvisaLabelProps) {
             <div className="mt-4 flex gap-2 no-print">
                 <button
                     onClick={() => window.print()}
-                    className="flex-1 bg-black text-white p-2 rounded flex items-center justify-center gap-2 text-sm hover:bg-gray-800 transition-colors"
+                    className="flex-1 bg-black text-text-primary p-2 rounded flex items-center justify-center gap-2 text-sm hover:bg-surface transition-colors"
                 >
                     <Printer size={16} />
                     Imprimir

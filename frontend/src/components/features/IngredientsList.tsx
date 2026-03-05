@@ -33,9 +33,9 @@ export function IngredientsList() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Pesquisar ingredientes..."
-                        className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full pl-9 pr-4 py-2 bg-surface border border-border rounded-xl text-text-primary placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
-                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                    <Search className="absolute left-3 top-2.5 text-text-secondary" size={18} />
                 </div>
             </div>
 
@@ -44,9 +44,9 @@ export function IngredientsList() {
                     <Loader2 className="animate-spin text-primary" size={32} />
                 </div>
             ) : (
-                <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+                <div className="bg-surface rounded-xl overflow-hidden border border-border">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-700/50 text-gray-400">
+                        <thead className="bg-surface-alt/50 text-text-secondary">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Nome</th>
                                 <th className="px-4 py-3 font-medium">Categoria</th>
@@ -54,20 +54,20 @@ export function IngredientsList() {
                                 <th className="px-4 py-3 font-medium text-center">Unidade</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-700">
+                        <tbody className="divide-y divide-border">
                             {ingredients.map((item) => (
-                                <tr key={item.id} className="hover:bg-gray-700/30">
-                                    <td className="px-4 py-3 font-medium text-white">{item.name}</td>
-                                    <td className="px-4 py-3 text-gray-400">{item.category}</td>
-                                    <td className="px-4 py-3 text-right text-emerald-400 font-mono">
+                                <tr key={item.id} className="hover:bg-surface-alt/30">
+                                    <td className="px-4 py-3 font-medium text-text-primary">{item.name}</td>
+                                    <td className="px-4 py-3 text-text-secondary">{item.category}</td>
+                                    <td className="px-4 py-3 text-right text-primary font-mono">
                                         R$ {item.current_price?.toFixed(2)}
                                     </td>
-                                    <td className="px-4 py-3 text-center text-gray-500">{item.unit}</td>
+                                    <td className="px-4 py-3 text-center text-text-tertiary">{item.unit}</td>
                                 </tr>
                             ))}
                             {ingredients.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                                    <td colSpan={4} className="px-4 py-8 text-center text-text-tertiary">
                                         Nenhum ingrediente encontrado.
                                     </td>
                                 </tr>

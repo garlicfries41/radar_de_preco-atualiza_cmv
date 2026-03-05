@@ -103,25 +103,25 @@ export function CategorySelector({ value, onChange }: CategorySelectorProps) {
                     }}
                     onFocus={() => setIsOpen(true)}
                     placeholder="Categoria..."
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-primary h-10 pr-8"
+                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-border focus:ring-1 focus:ring-primary h-10 pr-8"
                 />
                 <ChevronDown
                     size={16}
-                    className="absolute right-2 top-3 text-gray-500 pointer-events-none"
+                    className="absolute right-2 top-3 text-text-tertiary pointer-events-none"
                 />
             </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
                     {loading && (
-                        <div className="px-3 py-2 text-gray-400 text-sm">Carregando...</div>
+                        <div className="px-3 py-2 text-text-secondary text-sm">Carregando...</div>
                     )}
 
                     {!loading && categories.map((cat) => (
                         <button
                             key={cat.id}
                             onClick={() => handleSelect(cat.name)}
-                            className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+                            className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-surface-alt transition-colors"
                         >
                             {cat.name}
                         </button>
@@ -130,7 +130,7 @@ export function CategorySelector({ value, onChange }: CategorySelectorProps) {
                     {!loading && showAddOption && (
                         <button
                             onClick={handleCreateNew}
-                            className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-gray-700 transition-colors flex items-center gap-2 border-t border-gray-700"
+                            className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-surface-alt transition-colors flex items-center gap-2 border-t border-border"
                         >
                             <Plus size={14} />
                             Criar "{search}"
@@ -138,7 +138,7 @@ export function CategorySelector({ value, onChange }: CategorySelectorProps) {
                     )}
 
                     {!loading && categories.length === 0 && !showAddOption && (
-                        <div className="px-3 py-2 text-gray-400 text-sm">
+                        <div className="px-3 py-2 text-text-secondary text-sm">
                             Nenhuma categoria encontrada
                         </div>
                     )}

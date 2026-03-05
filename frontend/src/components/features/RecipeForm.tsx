@@ -340,25 +340,25 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
     }, [highlightProduct]);
 
     if (loading && recipeId && !name) { // Only show full loader on initial fetch
-        return <div className="p-8 text-center text-gray-400">Carregando...</div>;
+        return <div className="p-8 text-center text-text-secondary">Carregando...</div>;
     }
 
     return (
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <div className="bg-surface rounded-lg border border-border p-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
-                <button onClick={onClose} className="text-gray-400 hover:text-white flex items-center gap-2">
+            <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
+                <button onClick={onClose} className="text-text-secondary hover:text-text-primary flex items-center gap-2">
                     <ArrowLeft size={20} />
                     Voltar
                 </button>
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-text-primary font-serif">
                     {recipeId ? (isPrePreparo ? 'Editar Pré-preparo' : 'Editar Receita') : (isPrePreparo ? 'Novo Pré-preparo' : 'Nova Receita')}
                 </h2>
                 <button
                     data-save-btn
                     onClick={handleSave}
                     disabled={loading}
-                    className="bg-primary hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                    className="bg-accent hover:opacity-90 text-text-primary font-medium border border-border px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
                 >
                     <Save size={20} />
                     Salvar
@@ -367,10 +367,10 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
 
             {showAnvisa && anvisaData && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-4 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-gray-800 z-10">
-                            <h3 className="text-lg font-bold text-white">Rótulo Nutricional ANVISA</h3>
-                            <button onClick={() => setShowAnvisa(false)} className="text-gray-400 hover:text-white">
+                    <div className="bg-surface border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-4 border-b border-border flex justify-between items-center sticky top-0 bg-surface z-10">
+                            <h3 className="text-lg font-bold text-text-primary">Rótulo Nutricional ANVISA</h3>
+                            <button onClick={() => setShowAnvisa(false)} className="text-text-secondary hover:text-text-primary">
                                 <ArrowLeft size={20} className="rotate-90 md:rotate-0" />
                             </button>
                         </div>
@@ -383,21 +383,21 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
 
             {highlightProduct && (
                 <div className="mb-4 p-4 rounded-lg bg-amber-900/40 border border-amber-600/50 flex items-start gap-3 animate-pulse">
-                    <span className="text-amber-400 text-xl">⚗️</span>
+                    <span className="text-amber-600 text-xl">⚗️</span>
                     <div>
-                        <p className="text-amber-300 font-bold text-sm">Receita promovida!</p>
-                        <p className="text-amber-200/80 text-sm">Selecione o <strong>Produto</strong> que esta receita representa para completar o vínculo com o sistema.</p>
+                        <p className="text-amber-800 font-bold text-sm">Receita promovida!</p>
+                        <p className="text-amber-700 text-sm">Selecione o <strong>Produto</strong> que esta receita representa para completar o vínculo com o sistema.</p>
                     </div>
                 </div>
             )}
 
             {missingNutritionIngredients.length > 0 && (
                 <div className="mb-6 p-4 rounded-lg bg-orange-900/40 border border-orange-700/50 flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-orange-400 font-bold">
+                    <div className="flex items-center gap-2 text-orange-600 font-bold">
                         <AlertTriangle size={20} />
                         Atenção: Impacto na Tabela Nutricional
                     </div>
-                    <p className="text-orange-200/80 text-sm">
+                    <p className="text-orange-700 text-sm">
                         Esta receita contém <strong>{missingNutritionIngredients.map(i => i.name).join(', ')}</strong>, que ainda {missingNutritionIngredients.length > 1 ? 'não possuem' : 'não possui'} dados nutricionais vinculados.
                         A porcentagem final e o valor energético do seu rótulo poderão ficar incorretos até que você vincule {missingNutritionIngredients.length > 1 ? 'os ingredientes-base' : 'o ingrediente-base'}.
                     </p>
@@ -411,12 +411,12 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
                         {isPrePreparo ? (
                             <div className="md:col-span-2">
-                                <label className="block text-sm text-gray-400 mb-1">Nome do Pré-preparo</label>
+                                <label className="block text-sm text-text-secondary mb-1">Nome do Pré-preparo</label>
                                 <input
                                     type="text"
                                     value={name}
                                     onChange={e => setName(e.target.value)}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                    className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                                     placeholder="Ex: Molho Bechamel"
                                 />
                             </div>
@@ -425,21 +425,21 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                 {/* Campo de nome manual: aparece quando não há produto vinculado */}
                                 {!productId && (
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm text-gray-400 mb-1">Nome da Receita</label>
+                                        <label className="block text-sm text-text-secondary mb-1">Nome da Receita</label>
                                         <input
                                             type="text"
                                             value={name}
                                             onChange={e => setName(e.target.value)}
-                                            className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                            className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                                             placeholder="Digite o nome da receita..."
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">Vincule um produto abaixo para promover esta receita.</p>
+                                        <p className="text-xs text-text-tertiary mt-1">Vincule um produto abaixo para promover esta receita.</p>
                                     </div>
                                 )}
                                 <div>
                                     <label className="block text-sm mb-1 font-medium transition-colors" style={{ color: highlightProduct ? '#f59e0b' : '#9ca3af' }}>Produto (Receita){highlightProduct && ' ← Vincule aqui'}</label>
-                                    <div className={`relative rounded-md transition-all ${highlightProduct ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900' : ''}`}>
-                                        <Search className="absolute left-2 text-gray-500 top-1/2 -translate-y-1/2" size={18} />
+                                    <div className={`relative rounded-md transition-all ${highlightProduct ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-surface' : ''}`}>
+                                        <Search className="absolute left-2 text-text-tertiary top-1/2 -translate-y-1/2" size={18} />
                                         <input
                                             ref={productInputRef}
                                             type="text"
@@ -455,38 +455,38 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                             }}
                                             onFocus={() => setShowProductSuggestions(true)}
                                             onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
-                                            className="w-full bg-gray-900 border border-gray-700 rounded-md py-2 px-8 text-white focus:border-primary focus:outline-none"
+                                            className="w-full bg-background border border-border rounded-md py-2 px-8 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                                             placeholder="Buscar produto..."
                                         />
                                         {showProductSuggestions && productSearch && (
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg overflow-hidden z-20 max-h-48 overflow-y-auto">
+                                            <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-md shadow-lg overflow-hidden z-20 max-h-48 overflow-y-auto">
                                                 {filteredProducts.map(p => (
                                                     <button
                                                         key={p.id}
                                                         type="button"
                                                         onMouseDown={() => selectProduct(p)}
-                                                        className="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-start gap-4"
+                                                        className="w-full text-left px-4 py-2 hover:bg-surface-alt flex justify-between items-start gap-4"
                                                     >
-                                                        <span className="text-white whitespace-normal break-words text-sm leading-tight">{p.product}</span>
-                                                        <span className={`text-xs px-2 py-0.5 whitespace-nowrap rounded-full shrink-0 ${p.status === 'ativo' ? 'bg-emerald-900/50 text-emerald-400' : p.status === 'inativo' ? 'bg-orange-900/50 text-orange-400' : 'bg-red-900/50 text-red-400'}`}>
+                                                        <span className="text-text-primary whitespace-normal break-words text-sm leading-tight">{p.product}</span>
+                                                        <span className={`text-xs px-2 py-0.5 whitespace-nowrap rounded-full shrink-0 ${p.status === 'ativo' ? 'bg-emerald-100 text-emerald-800' : p.status === 'inativo' ? 'bg-orange-900/50 text-orange-600' : 'bg-red-100 text-red-800'}`}>
                                                             {p.status || 'desconhecido'}
                                                         </span>
                                                     </button>
                                                 ))}
                                                 {filteredProducts.length === 0 && (
-                                                    <div className="px-4 py-3 text-gray-500 text-sm">Nenhum produto encontrado.</div>
+                                                    <div className="px-4 py-3 text-text-tertiary text-sm">Nenhum produto encontrado.</div>
                                                 )}
                                             </div>
                                         )}
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">SKU (Automático)</label>
+                                    <label className="block text-sm text-text-secondary mb-1">SKU (Automático)</label>
                                     <input
                                         type="text"
                                         value={sku}
                                         disabled
-                                        className="w-full bg-gray-900/50 border border-gray-700 rounded-md p-2 text-gray-500 focus:outline-none cursor-not-allowed"
+                                        className="w-full bg-surface border border-border rounded-md p-2 text-text-tertiary focus:outline-none cursor-not-allowed"
                                         placeholder="Vinculado ao produto"
                                     />
                                 </div>
@@ -494,18 +494,18 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                         )}
                         {!isPrePreparo && (
                             <div className="md:col-span-2">
-                                <label className="block text-sm text-gray-400 mb-1">Categoria de Produto (ANVISA)</label>
+                                <label className="block text-sm text-text-secondary mb-1">Categoria de Produto (ANVISA)</label>
                                 <select
                                     value={categoryId}
                                     onChange={(e) => setCategoryId(e.target.value)}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                    className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                                 >
                                     <option value="">Selecione uma categoria...</option>
                                     {categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name} ({cat.anvisa_portion_g}g)</option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-gray-500 mt-1">A categoria define a porção padrão para o rótulo nutricional.</p>
+                                <p className="text-xs text-text-tertiary mt-1">A categoria define a porção padrão para o rótulo nutricional.</p>
                             </div>
                         )}
                     </div>
@@ -513,7 +513,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                     {/* Portion, Weight and Production Unit */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">
+                            <label className="block text-sm text-text-secondary mb-1">
                                 Rendimento ({isPrePreparo ? 'Qtd.' : 'Unidades'})
                             </label>
                             <input
@@ -522,12 +522,12 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                 step="any"
                                 value={yieldUnits}
                                 onChange={(e) => setYieldUnits(Number(e.target.value))}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">
+                            <label className="block text-sm text-text-secondary mb-1">
                                 Peso Líquido (kg)
                             </label>
                             <input
@@ -536,21 +536,21 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                 value={netWeight}
                                 onChange={(e) => setNetWeight(e.target.value === '' ? '' : Number(e.target.value))}
                                 placeholder="Ex: 0.500"
-                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                             />
-                            <p className="text-xs text-gray-500 mt-1 italic">
+                            <p className="text-xs text-text-tertiary mt-1 italic">
                                 O CMV continuará usando o peso bruto.
                             </p>
                         </div>
 
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">
+                            <label className="block text-sm text-text-secondary mb-1">
                                 Unidade de Produção
                             </label>
                             <select
                                 value={productionUnit}
                                 onChange={(e) => setProductionUnit(e.target.value)}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none"
+                                className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
                             >
                                 <option value="KG">Kilograma (kg)</option>
                                 <option value="UN">Unidade (un)</option>
@@ -559,7 +559,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                         </div>
 
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">
+                            <label className="block text-sm text-text-secondary mb-1">
                                 Tempo de Produção (min)
                             </label>
                             <input
@@ -568,7 +568,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                 value={laborMinutes}
                                 onChange={(e) => setLaborMinutes(Number(e.target.value))}
                                 disabled={globalLaborRate === 0}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-md p-2 text-white focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                             />
                             {globalLaborRate === 0 && (
                                 <p className="text-xs text-yellow-500 mt-1">Configure o valor da mão de obra nas configurações primeiro.</p>
@@ -580,9 +580,9 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
 
                     {/* Ingredient Search */}
                     <div className="relative z-10">
-                        <label className="block text-sm text-gray-400 mb-1">Adicionar Ingrediente / Embalagem</label>
-                        <div className="flex items-center bg-gray-900 border border-gray-700 rounded-md px-3">
-                            <Search className="text-gray-500" size={18} />
+                        <label className="block text-sm text-text-secondary mb-1">Adicionar Ingrediente / Embalagem</label>
+                        <div className="flex items-center bg-background border border-border rounded-md px-3">
+                            <Search className="text-text-tertiary" size={18} />
                             <input
                                 type="text"
                                 ref={searchInputRef}
@@ -594,22 +594,22 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                 }}
                                 onFocus={() => setShowSuggestions(true)}
                                 onKeyDown={handleSearchKeyDown}
-                                className="w-full bg-transparent border-none p-2 text-white focus:outline-none"
+                                className="w-full bg-transparent border-none p-2 text-text-primary focus:outline-none"
                                 placeholder="Busque por nome..."
                             />
                         </div>
 
                         {showSuggestions && search && filteredIngredients.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg overflow-hidden">
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-md shadow-lg overflow-hidden">
                                 {filteredIngredients.map((ing, index) => (
                                     <button
                                         key={ing.id}
                                         onClick={() => addItem(ing)}
-                                        className={`w-full text-left px-4 py-3 hover:bg-gray-700 flex justify-between items-center group ${focusedSuggestIndex === index ? 'bg-gray-700' : ''}`}
+                                        className={`w-full text-left px-4 py-3 hover:bg-surface-alt flex justify-between items-center group ${focusedSuggestIndex === index ? 'bg-gray-700' : ''}`}
                                     >
                                         <div>
-                                            <span className="text-white block">{ing.name || 'Desconhecido'}</span>
-                                            <span className="text-xs text-gray-500">
+                                            <span className="text-text-primary block">{ing.name || 'Desconhecido'}</span>
+                                            <span className="text-xs text-text-tertiary">
                                                 {ing.category || 'OUTROS'} • R$ {(ing.current_price || 0).toFixed(2)}/{ing.unit || 'UN'}
                                                 {ing.yield_coefficient && ing.yield_coefficient !== 1 && ` • Fator: ${ing.yield_coefficient}`}
                                             </span>
@@ -626,7 +626,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                         {/* Food Ingredients */}
                         {groupedItems.food.length > 0 && (
                             <div>
-                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Ingredientes</h3>
+                                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">Ingredientes</h3>
                                 <div className="space-y-2">
                                     {groupedItems.food.map((item, localIndex) => (
                                         <ItemRow
@@ -654,7 +654,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
 
                         {/* Packaging */}
                         {groupedItems.packaging.length > 0 && (
-                            <div className="mt-8 pt-6 border-t border-gray-700">
+                            <div className="mt-8 pt-6 border-t border-border">
                                 <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <Package size={18} />
                                     Embalagens {isB2B ? '(Qtd = Rend / 2.5)' : '(Qtd = Rendimento)'}
@@ -675,7 +675,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                         )}
 
                         {items.length === 0 && (
-                            <div className="text-center py-8 border-2 border-dashed border-gray-700 rounded-lg text-gray-500">
+                            <div className="text-center py-8 border-2 border-dashed border-border rounded-lg text-text-tertiary">
                                 Nenhum ingrediente adicionado
                             </div>
                         )}
@@ -684,8 +684,8 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
 
                 {/* Summary Sidebar */}
                 <div className="lg:col-span-1">
-                    <div className="bg-gray-900 rounded-lg p-6 sticky top-6 border border-gray-700">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <div className="bg-background rounded-lg p-6 sticky top-6 border border-border">
+                        <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
                             <Calculator size={20} className="text-primary" />
                             Resumo de Custos
                         </h3>
@@ -693,47 +693,47 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                         <div className="text-sm">
                             {/* Lote */}
                             <div className="flex justify-between">
-                                <span className="text-gray-400">Ingredientes (Lote):</span>
-                                <span className="text-white">R$ {totalIngredientsCost.toFixed(2)}</span>
+                                <span className="text-text-secondary">Ingredientes (Lote):</span>
+                                <span className="text-text-primary">R$ {totalIngredientsCost.toFixed(2)}</span>
                             </div>
 
                             <div className="h-px bg-gray-700 my-3"></div>
 
                             {/* Unitários */}
                             <div className="flex justify-between">
-                                <span className="text-gray-400">Ingredientes (Unitário):</span>
-                                <span className="text-white">R$ {(yieldUnits > 0 ? totalIngredientsCost / yieldUnits : 0).toFixed(2)}</span>
+                                <span className="text-text-secondary">Ingredientes (Unitário):</span>
+                                <span className="text-text-primary">R$ {(yieldUnits > 0 ? totalIngredientsCost / yieldUnits : 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between mt-1">
-                                <span className="text-gray-400">+ Mão de Obra (Unitário):</span>
-                                <span className="text-white">R$ {(yieldUnits > 0 ? calculatedLaborCost / yieldUnits : 0).toFixed(2)}</span>
+                                <span className="text-text-secondary">+ Mão de Obra (Unitário):</span>
+                                <span className="text-text-primary">R$ {(yieldUnits > 0 ? calculatedLaborCost / yieldUnits : 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between mt-1">
                                 <div className="flex flex-col">
-                                    <span className="text-gray-400">+ Embalagem (Unitário):</span>
+                                    <span className="text-text-secondary">+ Embalagem (Unitário):</span>
                                     {isB2B && (
                                         <span className="text-[10px] text-emerald-500 font-medium">B2B: 1 un / 2.5 rend.</span>
                                     )}
                                 </div>
-                                <span className="text-white">R$ {(isB2B ? unitPackagingCost / 2.5 : unitPackagingCost).toFixed(2)}</span>
+                                <span className="text-text-primary">R$ {(isB2B ? unitPackagingCost / 2.5 : unitPackagingCost).toFixed(2)}</span>
                             </div>
 
                             <div className="h-px bg-gray-700 my-3"></div>
 
                             {/* Totais */}
                             <div className="flex justify-between text-lg">
-                                <span className="text-gray-300 font-bold">Custo total (Lote):</span>
+                                <span className="text-text-secondary font-bold">Custo total (Lote):</span>
                                 <span className="text-emerald-400 font-bold">R$ {totalBatchCost.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between items-center bg-gray-800 p-3 rounded-md mt-4 mb-2">
-                                <span className="text-gray-300">Custo final ({isPrePreparo ? productionUnit : 'UN'}):</span>
-                                <span className="text-xl font-bold text-white">R$ {costPerUnit.toFixed(2)}</span>
+                            <div className="flex justify-between items-center bg-surface p-3 rounded-md mt-4 mb-2">
+                                <span className="text-text-secondary">Custo final ({isPrePreparo ? productionUnit : 'UN'}):</span>
+                                <span className="text-xl font-bold text-text-primary font-serif">R$ {costPerUnit.toFixed(2)}</span>
                             </div>
 
                             <div className="h-px bg-gray-700 my-3"></div>
 
                             {/* Info Adicional */}
-                            <div className="text-gray-400 mt-2">
+                            <div className="text-text-secondary mt-2">
                                 Rendimento: {yieldUnits} unidades
                             </div>
                         </div>
@@ -743,7 +743,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                 <button
                                     onClick={handleGenerateAnvisa}
                                     disabled={!categoryId}
-                                    className={`w-full text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold ${categoryId
+                                    className={`w-full text-text-primary px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold ${categoryId
                                         ? 'bg-blue-600 hover:bg-blue-700'
                                         : 'bg-gray-700 cursor-not-allowed opacity-50'
                                         }`}
@@ -752,7 +752,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                     Gerar Rótulo ANVISA
                                 </button>
                                 {!categoryId && (
-                                    <p className="text-xs text-orange-400 text-center">
+                                    <p className="text-xs text-orange-600 text-center">
                                         Selecione uma categoria acima para habilitar o rótulo.
                                     </p>
                                 )}
@@ -769,7 +769,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                                         }
                                     }}
                                     type="button"
-                                    className="w-full mt-2 text-gray-500 hover:text-red-400 hover:bg-red-900/20 border border-transparent hover:border-red-800 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-all text-sm"
+                                    className="w-full mt-2 text-text-tertiary hover:text-red-400 hover:bg-red-900/20 border border-transparent hover:border-red-800 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-all text-sm"
                                 >
                                     Inativar receita
                                 </button>
@@ -784,10 +784,10 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
 
 function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false, inputRef, onKeyDown }: { item: RecipeItem, index: number, onUpdate: (i: number, q: number) => void, onRemove: (i: number) => void, isPackaging?: boolean, inputRef?: React.Ref<HTMLInputElement>, onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void }) {
     return (
-        <div className={`flex items-center gap-4 p-3 rounded-md border transition-colors ${isPackaging ? 'bg-blue-900/10 border-blue-900/30 hover:border-blue-900/50' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'}`}>
+        <div className={`flex items-center gap-4 p-3 rounded-md border transition-colors ${isPackaging ? 'bg-blue-900/10 border-blue-900/30 hover:border-blue-900/50' : 'bg-surface border border-border-light hover:border-border'}`}>
             <div className="flex-1">
-                <div className={`font-medium ${isPackaging ? 'text-blue-200' : 'text-white'}`}>{item.name || 'Desconhecido'}</div>
-                <div className="text-xs text-gray-500">
+                <div className={`font-medium ${isPackaging ? 'text-blue-200' : 'text-text-primary'}`}>{item.name || 'Desconhecido'}</div>
+                <div className="text-xs text-text-tertiary">
                     R$ {(item.current_price || 0).toFixed(2)} / {item.unit || 'UN'}
                     {item.yield_coefficient !== 1 && (
                         <span className="text-yellow-500 ml-2" title={`Preço Efetivo: R$ ${((item.current_price || 0) / (item.yield_coefficient || 1)).toFixed(2)} (${item.yield_coefficient < 1 ? 'Perda/Rendimento' : 'Conversão'}: ${item.yield_coefficient})`}>
@@ -808,19 +808,19 @@ function ItemRow({ item, index, onUpdate, onRemove, isPackaging = false, inputRe
                         value={item.quantity}
                         onChange={e => onUpdate(index, Number(e.target.value))}
                         readOnly={isPackaging}
-                        className={`w-full border rounded px-2 py-1 text-right text-white focus:outline-none ${isPackaging ? 'bg-gray-800/50 border-gray-700 text-gray-400 cursor-not-allowed hidden md:block' : 'bg-gray-800 border-gray-700 focus:border-primary'}`}
+                        className={`w-full border rounded px-2 py-1 text-right text-text-primary focus:outline-none ${isPackaging ? 'bg-surface/50 border-border text-text-secondary cursor-not-allowed hidden md:block' : 'bg-surface border-border focus:border-border focus:ring-1 focus:ring-primary'}`}
                         placeholder="Qtd"
                         title={isPackaging ? "A quantidade de embalagem acompanha automaticamente o rendimento da receita." : ""}
                     />
-                    {isPackaging && <div className="text-right text-sm text-gray-400 md:hidden">{item.quantity}</div>}
+                    {isPackaging && <div className="text-right text-sm text-text-secondary md:hidden">{item.quantity}</div>}
                 </div>
-                <div className="text-sm text-gray-400 w-8">{item.unit === 'UN' || item.unit === 'un' || isPackaging ? 'un' : item.unit}</div>
+                <div className="text-sm text-text-secondary w-8">{item.unit === 'UN' || item.unit === 'un' || isPackaging ? 'un' : item.unit}</div>
                 <div className="w-24 text-right font-mono text-emerald-400">
                     R$ {(Number(item.quantity || 0) * (item.yield_coefficient > 0 ? (item.current_price || 0) / item.yield_coefficient : (item.current_price || 0))).toFixed(2)}
                 </div>
                 <button
                     onClick={() => onRemove(index)}
-                    className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-gray-800 rounded transition-colors"
+                    className="p-1.5 text-text-tertiary hover:text-red-400 hover:bg-surface rounded transition-colors"
                 >
                     <Trash2 size={16} />
                 </button>

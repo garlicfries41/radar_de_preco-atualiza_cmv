@@ -60,19 +60,19 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
     return (
         <div className="w-full max-w-lg mx-auto pb-20">
             {/* Header */}
-            <div className="sticky top-0 bg-gray-900 z-10 pb-4 pt-2">
+            <div className="sticky top-0 bg-background z-10 pb-4 pt-2">
                 <div className="flex items-center mb-4">
-                    <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-white">
+                    <button onClick={onBack} className="p-2 -ml-2 text-text-secondary hover:text-text-primary">
                         <ArrowLeft size={24} />
                     </button>
                     <h2 className="text-xl font-bold ml-2">Validar Itens</h2>
-                    <span className="ml-auto text-sm text-gray-400">
+                    <span className="ml-auto text-sm text-text-secondary">
                         {linkedCount}/{items.length}
                     </span>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-2 bg-surface rounded-full overflow-hidden">
                     <div
                         className="h-full bg-primary transition-all duration-300"
                         style={{ width: `${progress}%` }}
@@ -92,14 +92,14 @@ export function ValidationInterface({ data, onBack, onSuccess }: ValidationInter
                 ))}
 
                 {items.length === 0 && (
-                    <div className="text-center py-10 text-gray-500">
+                    <div className="text-center py-10 text-text-tertiary">
                         Nenhum item para validar.
                     </div>
                 )}
             </div>
 
             {/* Footer Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-gray-800">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border-light">
                 <div className="max-w-lg mx-auto flex gap-3">
                     <Button
                         fullWidth

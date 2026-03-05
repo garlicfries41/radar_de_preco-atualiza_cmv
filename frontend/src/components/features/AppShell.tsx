@@ -19,39 +19,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         MODULES.find((m) => location.pathname.startsWith(m.href)) ?? MODULES[0];
 
     return (
-        <div className="min-h-svh bg-[#f9fafb] text-[#111827]">
+        <div className="min-h-svh bg-background text-text-primary font-sans">
             {/* ─── Top Header (Mobile & Desktop) ─── */}
-            <header className="sticky top-0 z-30 bg-white border-b border-[#e5e7eb] flex items-center justify-between px-4 h-14 md:h-16">
+            <header className="sticky top-0 z-30 bg-surface border-b border-border flex items-center justify-between px-4 h-14 md:h-16">
                 {/* Logo */}
-                <div className="flex items-center gap-2.5 font-semibold text-[#111827]">
-                    <div className="w-7 h-7 bg-[#16a34a] rounded-lg flex items-center justify-center">
-                        <LayoutDashboard size={15} className="text-white" />
+                <div className="flex items-center gap-2.5 font-semibold text-text-primary">
+                    <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-sm border border-border">
+                        <LayoutDashboard size={18} className="text-primary-foreground" />
                     </div>
-                    <span className="text-sm font-bold tracking-tight hidden sm:block">Pastaz ERP</span>
+                    <span className="text-xl font-bold tracking-tight hidden sm:block font-serif">Pastaz ERP</span>
                 </div>
 
                 {/* Module Switcher — Dropdown */}
                 <div className="relative group">
-                    <button className="flex items-center gap-1.5 text-sm font-medium text-[#111827] bg-[#f9fafb] border border-[#e5e7eb] rounded-lg px-3 py-1.5 hover:bg-[#f0fdf4] hover:border-[#bbf7d0] transition-all">
-                        <activeModule.icon size={15} className="text-[#16a34a]" />
+                    <button className="flex items-center gap-2 text-sm font-semibold text-text-primary bg-surface-alt border border-border rounded-xl px-4 py-2 hover:bg-accent hover:border-border transition-all shadow-sm">
+                        <activeModule.icon size={16} className="text-primary" />
                         {activeModule.label}
-                        <ChevronDown size={13} className="text-[#9ca3af] ml-0.5" />
+                        <ChevronDown size={14} className="text-text-secondary ml-1" />
                     </button>
 
                     {/* Dropdown Menu */}
-                    <div className="absolute right-0 mt-1 w-52 bg-white border border-[#e5e7eb] rounded-xl shadow-lg shadow-black/5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 overflow-hidden">
                         {MODULES.map((mod) => (
                             <Link
                                 key={mod.id}
                                 to={mod.href}
                                 className={clsx(
-                                    'flex items-center gap-2.5 px-4 py-3 text-sm font-medium transition-colors',
+                                    'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b border-border-light last:border-0',
                                     location.pathname.startsWith(mod.href)
-                                        ? 'bg-[#f0fdf4] text-[#16a34a]'
-                                        : 'text-[#374151] hover:bg-[#f9fafb]'
+                                        ? 'bg-accent text-text-primary'
+                                        : 'text-text-secondary hover:bg-surface-alt'
                                 )}
                             >
-                                <mod.icon size={16} />
+                                <mod.icon size={16} className={location.pathname.startsWith(mod.href) ? 'text-primary' : 'text-text-tertiary'} />
                                 {mod.label}
                             </Link>
                         ))}

@@ -110,7 +110,7 @@ export function CameraUpload({ onUploadSuccess }: CameraUploadProps) {
                         <p className="text-[#9ca3af] text-sm mt-1">ou selecione da galeria</p>
                     </div>
                 ) : (
-                    <div className="w-full relative rounded-lg overflow-hidden border border-gray-600">
+                    <div className="w-full relative rounded-xl overflow-hidden border border-border">
                         <img
                             src={preview}
                             alt="Preview"
@@ -118,7 +118,7 @@ export function CameraUpload({ onUploadSuccess }: CameraUploadProps) {
                         />
                         <button
                             onClick={clearSelection}
-                            className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+                            className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-black/80 text-text-primary rounded-full transition-colors"
                         >
                             <X size={20} />
                         </button>

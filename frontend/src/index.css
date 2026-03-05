@@ -1,54 +1,41 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
 
 /* ===================================================
-   PASTAZ ERP — Design System (HelloBonsai Style)
-   Tema: Clean, Green, Minimal
+   PASTAZ ERP — Design System (Flow/Wispr Style)
+   Tema: Cream, Lavender, Deep Forest Green
 =================================================== */
 
 @theme {
-  /* Paleta Principal */
-  --color-brand-50: #f0fdf4;
-  --color-brand-100: #dcfce7;
-  --color-brand-200: #bbf7d0;
-  --color-brand-300: #86efac;
-  --color-brand-400: #4ade80;
-  --color-brand-500: #22c55e;
-  --color-brand-600: #16a34a;
-  --color-brand-700: #15803d;
-  --color-brand-800: #166534;
-  --color-brand-900: #14532d;
+  /* Cores Principais do JSON */
+  --color-primary: #034F46;
+  --color-primary-foreground: #FFFFFF;
 
-  /* Alias 'primary' para compatibilidade com componentes existentes (bg-primary, text-primary...) */
-  --color-primary: #16a34a;
-  --color-primary-foreground: #ffffff;
+  --color-accent: #F0D7FF;
+  --color-accent-foreground: #1A1A1A;
 
-  /* Neutros */
-  --color-surface: #ffffff;
-  --color-surface-alt: #f9fafb;
-  --color-border: #e5e7eb;
-  --color-border-strong: #d1d5db;
+  --color-background: #FFFFEB;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary: #6b7280;
 
-  /* Texto */
-  --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
-  --color-text-tertiary: #9ca3af;
+  --color-border: #1A1A1A;
+  /* Black borders for buttons/cards */
+  --color-border-light: #d1d5db;
+  /* Softer borders for internal dividers */
 
-  /* Sidebar */
-  --color-sidebar-bg: #ffffff;
-  --color-sidebar-border: #e5e7eb;
-  --color-sidebar-active-bg: #f0fdf4;
-  --color-sidebar-active-text: #16a34a;
-  --color-sidebar-text: #6b7280;
-  --color-sidebar-hover-bg: #f9fafb;
+  /* Tipografia */
+  --font-sans: 'Figtree', system-ui, sans-serif;
+  --font-serif: 'EB Garamond', Georgia, serif;
 }
 
 :root {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 400;
   line-height: 1.5;
   color-scheme: light;
   color: var(--color-text-primary);
-  background-color: var(--color-surface-alt);
+  background-color: var(--color-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -64,7 +51,7 @@ body {
   min-height: 100svh;
 }
 
-/* Override scrollbar for sidebar overflow */
+/* Ocultar scrollbar mantendo funcionalidade */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -76,6 +63,8 @@ body {
 
 /* Transições suaves globais */
 button,
-a {
-  transition: background-color 150ms ease, color 150ms ease, opacity 150ms ease;
+a,
+input,
+select {
+  transition: all 150ms ease;
 }

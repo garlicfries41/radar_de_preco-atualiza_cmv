@@ -130,15 +130,15 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-4 flex-1 w-full md:w-auto">
-                    <h2 className="text-xl font-semibold text-[#111827] whitespace-nowrap">Ingredientes</h2>
+                    <h2 className="text-2xl font-semibold text-text-primary whitespace-nowrap font-serif">Ingredientes</h2>
                     <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" size={16} />
                         <input
                             type="text"
                             placeholder="Buscar..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-white border border-[#e5e7eb] rounded-lg pl-9 pr-3 py-1.5 text-[#111827] text-sm focus:ring-1 focus:ring-[#16a34a] outline-none placeholder-[#9ca3af] transition-shadow"
+                            className="w-full bg-surface border border-border rounded-xl pl-9 pr-3 py-2 text-text-primary text-sm focus:ring-1 focus:ring-primary outline-none placeholder:text-text-tertiary transition-shadow"
                         />
                     </div>
                 </div>
@@ -146,9 +146,9 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                 <div className="flex gap-2 w-full md:w-auto justify-end">
                     <button
                         onClick={() => setShowPendingOnly(!showPendingOnly)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${showPendingOnly
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-white text-[#6b7280] hover:text-[#111827] border border-[#e5e7eb]'
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${showPendingOnly
+                            ? 'bg-[#ffe4e6] text-[#be123c] border-[#be123c]' /* A light red for active 'pendencies' */
+                            : 'bg-background text-text-primary border-border hover:bg-surface'
                             }`}
                     >
                         <Filter size={16} />
@@ -157,7 +157,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                     </button>
                     <button
                         onClick={() => setShowAddForm(!showAddForm)}
-                        className="flex items-center gap-2 bg-[#15803d] text-white px-4 py-2 rounded-lg hover:bg-[#166534] transition-colors whitespace-nowrap shadow-sm"
+                        className="flex items-center gap-2 bg-accent text-text-primary border border-border px-4 py-2 rounded-xl hover:opacity-90 font-medium transition-opacity whitespace-nowrap"
                     >
                         <Plus size={18} />
                         <span className="hidden sm:inline">Novo Ingrediente</span>
@@ -168,8 +168,8 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
 
             {/* Add Form */}
             {showAddForm && (
-                <div className="bg-[#f0fdf4] p-4 rounded-xl border border-[#bbf7d0]">
-                    <h3 className="text-[#111827] font-semibold mb-3">Novo Ingrediente</h3>
+                <div className="bg-surface p-4 rounded-xl border border-border">
+                    <h3 className="text-text-primary font-semibold mb-3 font-serif text-lg">Novo Ingrediente</h3>
                     <div className="grid grid-cols-5 gap-3">
                         <div className="col-span-1">
                             <input
@@ -177,7 +177,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                 placeholder="Nome"
                                 value={newIngredient.name}
                                 onChange={(e) => setNewIngredient({ ...newIngredient, name: e.target.value })}
-                                className="bg-white border border-[#d1d5db] rounded-lg px-3 py-2 text-[#111827] w-full focus:ring-2 focus:ring-[#16a34a] outline-none"
+                                className="bg-surface border border-border-light rounded-xl px-3 py-2 text-text-primary w-full focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                             />
                         </div>
                         <CategorySelector
@@ -189,7 +189,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                             placeholder="Preço"
                             value={newIngredient.current_price}
                             onChange={(e) => setNewIngredient({ ...newIngredient, current_price: parseFloat(e.target.value) })}
-                            className="bg-white border border-[#d1d5db] rounded-lg px-3 py-2 text-[#111827] focus:ring-2 focus:ring-[#16a34a] outline-none"
+                            className="bg-surface border border-border-light rounded-xl px-3 py-2 text-text-primary focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                             step="0.01"
                         />
                         <div className="flex gap-2">
@@ -198,7 +198,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                 placeholder="Fator (ex: 0.95 ou 19.44)"
                                 value={newIngredient.yield_coefficient}
                                 onChange={(e) => setNewIngredient({ ...newIngredient, yield_coefficient: parseFloat(e.target.value) })}
-                                className="bg-white border border-[#d1d5db] rounded-lg px-3 py-2 text-[#111827] w-2/3 focus:ring-2 focus:ring-[#16a34a] outline-none"
+                                className="bg-surface border border-border-light rounded-xl px-3 py-2 text-text-primary w-2/3 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                                 step="0.01"
                                 min="0.0001"
                                 title="Fator de Rendimento ou Conversão (ex: 0.95 = 95%, 19.44 = cx 360 ovos)"
@@ -206,7 +206,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                             <select
                                 value={newIngredient.unit}
                                 onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value })}
-                                className="bg-white border border-[#d1d5db] rounded-lg px-3 py-2 text-[#111827] w-1/3 focus:ring-2 focus:ring-[#16a34a] outline-none"
+                                className="bg-surface border border-border-light rounded-xl px-3 py-2 text-text-primary w-1/3 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                             >
                                 {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
@@ -215,13 +215,13 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                     <div className="flex gap-2 mt-4">
                         <button
                             onClick={createIngredient}
-                            className="bg-[#15803d] text-white px-4 py-2 rounded-lg hover:bg-[#166534] font-medium transition-colors"
+                            className="bg-accent text-text-primary border border-border px-4 py-2 rounded-xl hover:opacity-90 font-medium transition-opacity"
                         >
                             Salvar
                         </button>
                         <button
                             onClick={() => setShowAddForm(false)}
-                            className="bg-white text-[#374151] border border-[#d1d5db] px-4 py-2 rounded-lg hover:bg-[#f9fafb] font-medium transition-colors"
+                            className="bg-background text-text-primary border border-border px-4 py-2 rounded-xl hover:bg-surface font-medium transition-colors"
                         >
                             Cancelar
                         </button>
@@ -230,21 +230,21 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
             )}
 
             {/* Table */}
-            <div className="bg-white shadow-sm border border-[#e5e7eb] rounded-xl overflow-hidden">
+            <div className="bg-surface shadow-sm border border-border rounded-2xl overflow-hidden">
                 <table className="w-full">
-                    <thead className="bg-[#f9fafb] border-b border-[#e5e7eb]">
+                    <thead className="bg-background border-b border-border-light">
                         <tr>
-                            <th className="text-left px-4 py-3 text-[#6b7280] text-sm font-semibold">Nome</th>
-                            <th className="text-left px-4 py-3 text-[#6b7280] text-sm font-semibold">Categoria</th>
-                            <th className="text-left px-4 py-3 text-[#6b7280] text-sm font-semibold">Preço</th>
-                            <th className="text-left px-4 py-3 text-[#6b7280] text-sm font-semibold" title="Fator de Rendimento">Rend.</th>
-                            <th className="text-left px-4 py-3 text-[#6b7280] text-sm font-semibold">Unidade</th>
-                            <th className="text-center px-4 py-3 text-[#6b7280] text-sm font-semibold w-24">Ações</th>
+                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Nome</th>
+                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Categoria</th>
+                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Preço</th>
+                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold" title="Fator de Rendimento">Rend.</th>
+                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Unidade</th>
+                            <th className="text-center px-4 py-3 text-text-secondary text-sm font-semibold w-24">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredIngredients.map((ing) => (
-                            <tr key={ing.id} className="border-t border-[#e5e7eb] hover:bg-[#f9fafb] transition-colors">
+                            <tr key={ing.id} className="border-t border-border-light hover:bg-background transition-colors">
                                 {editingId === ing.id ? (
                                     <>
                                         <td className="px-4 py-2">
@@ -252,7 +252,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                                 type="text"
                                                 value={editData.name || ''}
                                                 onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                                                className="w-full bg-white border border-[#d1d5db] rounded px-2 py-1.5 text-[#111827] text-sm focus:ring-1 focus:ring-[#16a34a] outline-none"
+                                                className="w-full bg-surface border border-border-light rounded-md px-2 py-1.5 text-text-primary text-sm focus:ring-1 focus:ring-primary outline-none"
                                             />
                                         </td>
                                         <td className="px-4 py-2">
@@ -266,7 +266,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                                 type="number"
                                                 value={editData.current_price || 0}
                                                 onChange={(e) => setEditData({ ...editData, current_price: parseFloat(e.target.value) })}
-                                                className="w-full bg-white border border-[#d1d5db] rounded px-2 py-1.5 text-[#111827] text-sm focus:ring-1 focus:ring-[#16a34a] outline-none"
+                                                className="w-full bg-surface border border-border-light rounded-md px-2 py-1.5 text-text-primary text-sm focus:ring-1 focus:ring-primary outline-none"
                                                 step="0.01"
                                             />
                                         </td>
@@ -275,7 +275,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                                 type="number"
                                                 value={editData.yield_coefficient ?? 1}
                                                 onChange={(e) => setEditData({ ...editData, yield_coefficient: parseFloat(e.target.value) })}
-                                                className="w-full bg-white border border-[#d1d5db] rounded px-2 py-1.5 text-[#111827] text-sm focus:ring-1 focus:ring-[#16a34a] outline-none"
+                                                className="w-full bg-surface border border-border-light rounded-md px-2 py-1.5 text-text-primary text-sm focus:ring-1 focus:ring-primary outline-none"
                                                 step="0.01"
                                                 min="0.0001"
                                                 title="Fator de Rendimento ou Conversão"
@@ -285,7 +285,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                             <select
                                                 value={editData.unit || ''}
                                                 onChange={(e) => setEditData({ ...editData, unit: e.target.value })}
-                                                className="w-full bg-white border border-[#d1d5db] rounded px-2 py-1.5 text-[#111827] text-sm focus:ring-1 focus:ring-[#16a34a] outline-none"
+                                                className="w-full bg-surface border border-border-light rounded-md px-2 py-1.5 text-text-primary text-sm focus:ring-1 focus:ring-primary outline-none"
                                             >
                                                 <option value="">Selecione</option>
                                                 {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -294,14 +294,14 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                         <td className="px-4 py-2 text-center">
                                             <button
                                                 onClick={saveEdit}
-                                                className="text-[#15803d] hover:text-[#166534] p-1 transition-colors"
+                                                className="text-primary hover:text-opacity-80 p-1 transition-colors"
                                                 title="Salvar"
                                             >
                                                 <Save size={18} />
                                             </button>
                                             <button
                                                 onClick={cancelEdit}
-                                                className="text-[#9ca3af] hover:text-[#374151] p-1 ml-1 transition-colors"
+                                                className="text-text-tertiary hover:text-text-primary p-1 ml-1 transition-colors"
                                                 title="Cancelar"
                                             >
                                                 ✕
@@ -310,7 +310,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                     </>
                                 ) : (
                                     <>
-                                        <td className="px-4 py-3 text-[#111827] font-medium">
+                                        <td className="px-4 py-3 text-text-primary font-medium">
                                             {ing.name}
                                             {isPending(ing) && (
                                                 <span title="Dados incompletos">
@@ -318,14 +318,14 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-[#4b5563]">{ing.category || '-'}</td>
-                                        <td className="px-4 py-3 text-[#111827]">R$ {ing.current_price?.toFixed(2) || '0.00'}</td>
-                                        <td className="px-4 py-3 text-[#4b5563]">{ing.yield_coefficient || '1.0'}</td>
-                                        <td className="px-4 py-3 text-[#4b5563]">{ing.unit || '-'}</td>
+                                        <td className="px-4 py-3 text-text-secondary">{ing.category || '-'}</td>
+                                        <td className="px-4 py-3 text-text-primary">R$ {ing.current_price?.toFixed(2) || '0.00'}</td>
+                                        <td className="px-4 py-3 text-text-secondary">{ing.yield_coefficient || '1.0'}</td>
+                                        <td className="px-4 py-3 text-text-secondary">{ing.unit || '-'}</td>
                                         <td className="px-4 py-3 text-center">
                                             <button
                                                 onClick={() => startEdit(ing)}
-                                                className="text-[#9ca3af] hover:text-[#15803d] p-1 transition-colors"
+                                                className="text-text-tertiary hover:text-primary p-1 transition-colors"
                                                 title="Editar"
                                             >
                                                 <Pencil size={16} />
@@ -339,7 +339,7 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
                 </table>
 
                 {ingredients.length === 0 && (
-                    <div className="text-center py-12 text-[#6b7280]">
+                    <div className="text-center py-12 text-text-tertiary">
                         Nenhum ingrediente cadastrado.
                     </div>
                 )}
