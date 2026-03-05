@@ -62,14 +62,14 @@ export function CameraUpload({ onUploadSuccess }: CameraUploadProps) {
 
     if (result) {
         return (
-            <div className="w-full max-w-md bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+            <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-sm border border-[#e5e7eb]">
                 <div className="text-center mb-6">
-                    <div className="mx-auto bg-green-900/30 text-green-400 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                    <div className="mx-auto bg-[#f0fdf4] text-[#16a34a] w-16 h-16 rounded-full flex items-center justify-center mb-4">
                         <Upload size={32} />
                     </div>
-                    <h2 className="text-xl font-bold text-white">Recibo Processado!</h2>
-                    <p className="text-gray-400 mt-1">{result.market_name || 'Mercado Desconhecido'}</p>
-                    <div className="mt-4 text-2xl font-bold text-emerald-400">
+                    <h2 className="text-xl font-bold text-[#111827]">Recibo Processado!</h2>
+                    <p className="text-[#6b7280] mt-1">{result.market_name || 'Mercado Desconhecido'}</p>
+                    <div className="mt-4 text-2xl font-bold text-[#16a34a]">
                         R$ {result.total_amount?.toFixed(2)}
                     </div>
                 </div>
@@ -87,7 +87,7 @@ export function CameraUpload({ onUploadSuccess }: CameraUploadProps) {
     }
 
     return (
-        <div className="w-full max-w-md bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+        <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-sm border border-[#e5e7eb]">
             <div className="flex flex-col items-center">
                 <input
                     type="file"
@@ -101,13 +101,13 @@ export function CameraUpload({ onUploadSuccess }: CameraUploadProps) {
                 {!preview ? (
                     <div
                         onClick={handleCameraClick}
-                        className="w-full h-64 border-2 border-dashed border-gray-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-gray-800/50 transition-colors group"
+                        className="w-full h-56 border-2 border-dashed border-[#d1d5db] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-[#16a34a] hover:bg-[#f0fdf4] transition-colors group"
                     >
-                        <div className="p-4 bg-gray-700 rounded-full mb-4 group-hover:bg-gray-600 transition-colors">
-                            <Camera size={48} className="text-gray-400 group-hover:text-primary transition-colors" />
+                        <div className="p-4 bg-[#f0fdf4] rounded-full mb-4 group-hover:bg-[#dcfce7] transition-colors">
+                            <Camera size={40} className="text-[#16a34a]" />
                         </div>
-                        <p className="text-gray-300 font-medium">Tirar Foto do Recibo</p>
-                        <p className="text-gray-500 text-sm mt-2">ou selecione da galeria</p>
+                        <p className="text-[#374151] font-medium">Tirar Foto do Recibo</p>
+                        <p className="text-[#9ca3af] text-sm mt-1">ou selecione da galeria</p>
                     </div>
                 ) : (
                     <div className="w-full relative rounded-lg overflow-hidden border border-gray-600">

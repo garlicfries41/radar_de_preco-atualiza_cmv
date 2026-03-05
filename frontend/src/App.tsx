@@ -1,119 +1,33 @@
-import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { CameraUpload } from './components/features/CameraUpload'
-import { ValidationInterface } from './components/features/ValidationInterface';
-import { DashboardLayout } from './components/features/DashboardLayout';
-import { SettingsView } from './components/features/SettingsView';
-import { IngredientsTable } from './components/features/IngredientsTable';
-import { RecipesList } from './components/features/RecipesList';
-import { PrePreparosList } from './components/features/PrePreparosList';
-import { NutritionalTableView } from './components/features/NutritionalTableView';
-import type { UploadResponse } from './types'
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { AppShell } from './components/features/AppShell';
+import { CatalogoModule } from './components/features/CatalogoModule';
+import { ProducaoModule } from './components/features/ProducaoModule';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'upload' | 'ingredients' | 'pre_preparos' | 'recipes' | 'nutritional_table' | 'settings'>('upload');
-  const [view, setView] = useState<'list' | 'validation'>('list');
-  const [receiptData, setReceiptData] = useState<UploadResponse | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
-
-  useEffect(() => {
-    fetchPendingCount();
-  }, [activeTab]);
-
-  const fetchPendingCount = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/ingredients/pending`);
-      const data = await res.json();
-      setPendingCount(data.length);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleUploadSuccess = (data: UploadResponse) => {
-    setReceiptData(data);
-    setView('validation');
-  };
-
-  const handleValidationSuccess = () => {
-    setView('list');
-    setReceiptData(null);
-    fetchPendingCount();
-  };
-
-  const renderContent = () => {
-    if (activeTab === 'ingredients') {
-      return <IngredientsTable onIngredientUpdate={fetchPendingCount} />;
-    }
-
-    if (activeTab === 'pre_preparos') {
-      return (
-        <div>
-          <PrePreparosList />
-        </div>
-      );
-    }
-
-    if (activeTab === 'recipes') {
-      return (
-        <div>
-          <RecipesList />
-        </div>
-      );
-    }
-
-    if (activeTab === 'nutritional_table') {
-      return <NutritionalTableView />;
-    }
-
-    if (activeTab === 'settings') {
-      return <SettingsView />;
-    }
-
-    // Upload Tab
-    if (view === 'validation' && receiptData) {
-      return (
-        <ValidationInterface
-          data={receiptData}
-          onBack={() => setView('list')}
-          onSuccess={handleValidationSuccess}
-        />
-      );
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="mb-8 text-center max-w-md">
-          <h2 className="text-2xl font-bold mb-2">Enviar Notas</h2>
-          <p className="text-gray-400">Tire fotos ou faça upload de notas fiscais para atualizar preços automaticamente.</p>
-        </div>
-        <CameraUpload onUploadSuccess={handleUploadSuccess} />
-      </div>
-    );
-  };
-
   return (
-    <DashboardLayout
-      activeTab={activeTab}
-      onTabChange={(tab) => {
-        setActiveTab(tab);
-        if (tab !== 'upload') {
-          setView('list');
-        }
-      }}
-      pendingCount={pendingCount}
-    >
-      {renderContent()}
-      <Toaster position="bottom-center" toastOptions={{
-        style: {
-          background: '#333',
-          color: '#fff',
-        },
-      }} />
-    </DashboardLayout>
+    <BrowserRouter>
+      <AppShell>
+        <Routes>
+          <Route path="/" element={<Navigate to="/catalogo/upload" replace />} />
+          <Route path="/catalogo/*" element={<CatalogoModule />} />
+          <Route path="/producao/*" element={<ProducaoModule />} />
+          <Route path="*" element={<Navigate to="/catalogo/upload" replace />} />
+        </Routes>
+      </AppShell>
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: '#1f2937',
+            color: '#f9fafb',
+            borderRadius: '10px',
+            fontSize: '14px',
+          },
+        }}
+      />
+    </BrowserRouter>
   );
 }
 
-export default App
+export default App;
