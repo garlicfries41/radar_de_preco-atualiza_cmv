@@ -45,6 +45,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
     const [globalLaborRate, setGlobalLaborRate] = useState(0);
     const [loadedLaborCost, setLoadedLaborCost] = useState(0);
     const [netWeight, setNetWeight] = useState<number | ''>('');
+    const [sauceYieldKg, setSauceYieldKg] = useState<number | ''>('');
     const [items, setItems] = useState<RecipeItem[]>([]);
     const [recipeStatus, setRecipeStatus] = useState<string>(defaultStatus);
     const productInputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +118,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
             setLoadedLaborCost(data.labor_cost || 0);
             setLaborMinutes(rate > 0 ? Math.round((data.labor_cost / rate) * 60) : 0);
             setNetWeight(data.net_weight !== undefined && data.net_weight !== null ? data.net_weight : '');
+            setSauceYieldKg(data.sauce_yield_kg !== undefined && data.sauce_yield_kg !== null ? data.sauce_yield_kg : '');
 
             if (data.ingredients) {
                 const mappedItems = data.ingredients.map(i => ({
@@ -272,6 +274,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
             is_pre_preparo: isPrePreparo,
             production_unit: productionUnit,
             net_weight: netWeight === '' ? undefined : Number(netWeight),
+            sauce_yield_kg: sauceYieldKg === '' ? undefined : Number(sauceYieldKg),
             status: recipeStatus,
             ingredients: items.map(i => ({
                 ingredient_id: i.ingredient_id,
@@ -511,7 +514,7 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                     </div>
 
                     {/* Portion, Weight and Production Unit */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label className="block text-sm text-text-secondary mb-1">
                                 Rendimento ({isPrePreparo ? 'Qtd.' : 'Unidades'})
@@ -540,6 +543,23 @@ export function RecipeForm({ recipeId, onClose, onSuccess, isPrePreparo = false,
                             />
                             <p className="text-xs text-text-tertiary mt-1 italic">
                                 O CMV continuará usando o peso bruto.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm text-text-secondary mb-1">
+                                Rend. Molho/Recheio (kg)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.001"
+                                value={sauceYieldKg}
+                                onChange={(e) => setSauceYieldKg(e.target.value === '' ? '' : Number(e.target.value))}
+                                placeholder="opcional"
+                                className="w-full bg-background border border-border rounded-md p-2 text-text-primary focus:border-border focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <p className="text-xs text-text-tertiary mt-1 italic">
+                                Rendimento proporcional do molho/recheio desta receita.
                             </p>
                         </div>
 

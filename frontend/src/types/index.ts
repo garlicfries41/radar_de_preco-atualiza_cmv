@@ -84,6 +84,7 @@ export interface Recipe {
     derived_ingredient_id?: string;
     production_unit: string;
     net_weight?: number;
+    sauce_yield_kg?: number | null;
     status?: string;
     created_at: string;
     last_calculated: string;
@@ -101,6 +102,7 @@ export interface RecipeInput {
     is_pre_preparo?: boolean;
     production_unit?: string;
     net_weight?: number;
+    sauce_yield_kg?: number;
     status?: string;
     ingredients: {
         ingredient_id: string;
