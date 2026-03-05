@@ -230,16 +230,16 @@ export function IngredientsTable({ onIngredientUpdate }: { onIngredientUpdate?: 
             )}
 
             {/* Table */}
-            <div className="bg-surface shadow-sm border border-border rounded-2xl overflow-hidden">
+            <div className="bg-surface shadow-md border-2 border-border rounded-2xl overflow-hidden">
                 <table className="w-full">
-                    <thead className="bg-background border-b border-border-light">
+                    <thead className="bg-[#034F46] border-b-2 border-border">
                         <tr>
-                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Nome</th>
-                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Categoria</th>
-                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Preço</th>
-                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold" title="Fator de Rendimento">Rend.</th>
-                            <th className="text-left px-4 py-3 text-text-secondary text-sm font-semibold">Unidade</th>
-                            <th className="text-center px-4 py-3 text-text-secondary text-sm font-semibold w-24">Ações</th>
+                            <th className="text-left px-4 py-3 text-white text-sm font-semibold">Nome</th>
+                            <th className="text-left px-4 py-3 text-white text-sm font-semibold">Categoria</th>
+                            <th className="text-left px-4 py-3 text-white text-sm font-semibold">Preço</th>
+                            <th className="text-left px-4 py-3 text-white text-sm font-semibold" title="Fator de Rendimento">Rend.</th>
+                            <th className="text-left px-4 py-3 text-white text-sm font-semibold">Unidade</th>
+                            <th className="text-center px-4 py-3 text-white text-sm font-semibold w-24">Ações</th>
                         </tr>
                     </thead>
                     <tbody>

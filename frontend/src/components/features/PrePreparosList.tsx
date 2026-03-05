@@ -110,7 +110,7 @@ export function PrePreparosList() {
                 {filteredRecipes.map((recipe) => (
                     <div
                         key={recipe.id}
-                        className="bg-surface rounded-xl border border-border p-4 hover:border-primary transition-colors flex items-center justify-between gap-4"
+                        className="bg-surface rounded-xl border-2 border-border p-4 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center justify-between gap-4"
                     >
                         <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-text-primary text-lg leading-tight truncate" title={recipe.name}>{recipe.name}</h3>

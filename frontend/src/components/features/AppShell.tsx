@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 {/* Module Switcher — Dropdown */}
                 <div className="relative group">
-                    <button className="flex items-center gap-2 text-sm font-semibold text-text-primary bg-surface-alt border border-border rounded-xl px-4 py-2 hover:bg-accent hover:border-border transition-all shadow-sm">
+                    <button className="flex items-center gap-2 text-sm font-semibold text-text-primary bg-surface hover:bg-accent border border-border rounded-xl px-4 py-2 hover:bg-accent hover:border-border transition-all shadow-sm">
                         <activeModule.icon size={16} className="text-primary" />
                         {activeModule.label}
                         <ChevronDown size={14} className="text-text-secondary ml-1" />
@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b border-border-light last:border-0',
                                     location.pathname.startsWith(mod.href)
                                         ? 'bg-accent text-text-primary'
-                                        : 'text-text-secondary hover:bg-surface-alt'
+                                        : 'text-text-secondary hover:bg-accent hover:text-text-primary'
                                 )}
                             >
                                 <mod.icon size={16} className={location.pathname.startsWith(mod.href) ? 'text-primary' : 'text-text-tertiary'} />

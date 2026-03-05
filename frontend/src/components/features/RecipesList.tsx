@@ -245,7 +245,7 @@ export function RecipesList() {
                 {filtered.map((recipe) => (
                     <div
                         key={recipe.id}
-                        className="bg-surface rounded-2xl border border-border p-5 hover:border-primary hover:shadow-md transition-all flex items-center justify-between gap-4"
+                        className="bg-surface rounded-2xl border-2 border-border p-5 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center justify-between gap-4"
                     >
                         <div className="flex-1 min-w-0">
                             <div className="flex items-start gap-2 flex-wrap">

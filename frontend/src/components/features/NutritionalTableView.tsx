@@ -121,22 +121,22 @@ export function NutritionalTableView() {
                 </div>
             </div>
 
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="bg-surface rounded-xl border-2 border-border overflow-hidden shadow-md">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-background border-b border-border">
-                                <th className="px-6 py-4 text-sm font-semibold text-text-secondary">Produto</th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Energia<br /><span className="text-[10px] text-text-tertiary">(kcal)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Carbos.<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Açúcar Tot.<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Açúcar Adic.<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Proteína<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Gord. Tot.<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Gord. Sat.<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Gord. Trans<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Fibra<br /><span className="text-[10px] text-text-tertiary">(g)</span></th>
-                                <th className="px-4 py-4 text-sm font-semibold text-text-secondary text-right">Sódio<br /><span className="text-[10px] text-text-tertiary">(mg)</span></th>
+                            <tr className="bg-[#034F46] border-b-2 border-border">
+                                <th className="px-6 py-4 text-sm font-semibold text-white">Produto</th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Energia<br /><span className="text-[10px] text-white/80">(kcal)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Carbos.<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Açúcar Tot.<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Açúcar Adic.<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Proteína<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Gord. Tot.<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Gord. Sat.<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Gord. Trans<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Fibra<br /><span className="text-[10px] text-white/80">(g)</span></th>
+                                <th className="px-4 py-4 text-sm font-semibold text-white text-right">Sódio<br /><span className="text-[10px] text-white/80">(mg)</span></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">

@@ -79,7 +79,7 @@ export function SettingsView() {
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className={`flex items-center gap-2 bg-primary text-gray-900 px-4 py-2 rounded font-medium transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
+                            className={`flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-medium transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
                         >
                             <Save size={18} />
                             {loading ? 'Salvando...' : 'Salvar Configurações'}
