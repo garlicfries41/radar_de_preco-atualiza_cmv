@@ -20,12 +20,12 @@ import type { UploadResponse } from '../../types';
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 const NAV_ITEMS = [
-    { path: 'upload', label: 'Upload', icon: Upload },
-    { path: 'ingredientes', label: 'Ingredientes', icon: ShoppingBasket },
-    { path: 'pre-preparos', label: 'Pré-preparos', icon: ChefHat },
-    { path: 'receitas', label: 'Receitas', icon: ChefHat },
-    { path: 'nutricao', label: 'Nutrição', icon: Apple },
-    { path: 'configuracoes', label: 'Config.', icon: Settings },
+    { path: '/catalogo/upload', label: 'Upload', icon: Upload },
+    { path: '/catalogo/ingredientes', label: 'Ingredientes', icon: ShoppingBasket },
+    { path: '/catalogo/pre-preparos', label: 'Pré-preparos', icon: ChefHat },
+    { path: '/catalogo/receitas', label: 'Receitas', icon: ChefHat },
+    { path: '/catalogo/nutricao', label: 'Nutrição', icon: Apple },
+    { path: '/catalogo/configuracoes', label: 'Config.', icon: Settings },
 ];
 
 export function CatalogoModule() {
@@ -79,7 +79,7 @@ export function CatalogoModule() {
                     >
                         <item.icon size={15} strokeWidth={1.75} />
                         {item.label}
-                        {item.path === 'ingredientes' && pendingCount > 0 && (
+                        {item.path === '/catalogo/ingredientes' && pendingCount > 0 && (
                             <span className="ml-1 bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                                 {pendingCount}
                             </span>

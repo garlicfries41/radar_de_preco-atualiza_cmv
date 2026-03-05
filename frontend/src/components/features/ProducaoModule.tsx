@@ -8,9 +8,9 @@ import { NavLink, Routes, Route } from 'react-router-dom';
 import { clsx } from 'clsx';
 
 const NAV_ITEMS = [
-    { path: 'lotes', label: 'Lotes do Dia', icon: ClipboardList },
-    { path: 'novo', label: 'Novo Lote', icon: PlusCircle },
-    { path: 'tempo', label: 'Cronômetro', icon: Timer },
+    { path: '/producao/lotes', label: 'Lotes do Dia', icon: ClipboardList },
+    { path: '/producao/novo', label: 'Novo Lote', icon: PlusCircle },
+    { path: '/producao/tempo', label: 'Cronômetro', icon: Timer },
 ];
 
 export function ProducaoModule() {
