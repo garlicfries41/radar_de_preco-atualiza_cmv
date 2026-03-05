@@ -1,0 +1,678 @@
+{
+  "name": "Novos Pedidos Bling -> Supabase UPSERT",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        1168
+      ],
+      "id": "3fd3aced-40ef-4597-89e8-6a08a75e2bf3",
+      "name": "When Executed by Another Workflow",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "tableId": "orders_raw",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "order_id",
+              "fieldValue": "={{ $json.order_id }}"
+            },
+            {
+              "fieldId": "customer_id",
+              "fieldValue": "={{ $json.customer_id }}"
+            },
+            {
+              "fieldId": "order_date",
+              "fieldValue": "={{ $json.order_date }}"
+            },
+            {
+              "fieldId": "payload_raw",
+              "fieldValue": "={{ $json.payload_raw }}"
+            },
+            {
+              "fieldId": "payload_std",
+              "fieldValue": "={{ $json.payload_std }}"
+            },
+            {
+              "fieldId": "synced_at",
+              "fieldValue": "={{ $json.synced_at }}"
+            },
+            {
+              "fieldId": "status_id",
+              "fieldValue": "={{ $json.status_id }}"
+            },
+            {
+              "fieldId": "status_value",
+              "fieldValue": "={{ $json.status_value }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        944
+      ],
+      "id": "86c0d0cd-cf96-4112-be21-ef1c4a21c247",
+      "name": "Create a row at orders_raw1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ilW5vqnhknLvAC0b",
+          "name": "CRM Pastaz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.all();\n\n// Tenta obter body_event de forma robusta\nlet body_event = null;\n\n// 1. Tenta do nó gatilho\ntry {\n  const triggerItems = $items(\"When Executed by Another Workflow\");\n  if (triggerItems && triggerItems.length > 0) {\n    body_event = triggerItems[0].json.body_event;\n  }\n} catch (e) {}\n\n// 2. Se falhar, tenta do nó \"If\" (o usuário chamou de If2, mas pelo JSON é \"If\")\nif (!body_event) {\n  try {\n    const ifItems = $items(\"If2\");\n    if (ifItems && ifItems.length > 0) {\n      body_event = ifItems[0].json.body_event;\n    }\n  } catch (e) {}\n}\n\n// 3. Fallback final via seletor $()\nif (!body_event) {\n  try {\n    const triggerNode = $(\"When Executed by Another Workflow\");\n    if (triggerNode) {\n      body_event = triggerNode.first().json.body_event;\n    }\n  } catch (e) {}\n}\n\nreturn input.map(({ json }) => {\n  const d = json.data ?? json;\n\n  const items = (d.itens ?? []).map((it) => {\n    const qty = Number(it.quantidade ?? 0);\n    const unit = Number(it.valor ?? 0);\n    return {\n      quantity: qty,\n      cost_price: 0,\n      product_id: it.produto?.id ?? null,\n      unit_price: unit,\n      description: it.descricao ?? null,\n      total_price: qty * unit,\n      product_code: it.codigo ?? null,\n      item_discount: Number(it.desconto ?? 0),\n    };\n  });\n\n  // Parsing Delivery Date\n  const isValidDate = (s) => typeof s === \"string\" && /^\\d{4}-\\d{2}-\\d{2}$/.test(s) && s !== \"0000-00-00\";\n  const delivery_date = isValidDate(d.dataPrevista) ? d.dataPrevista : null;\n\n  // Parsing Delivery Period (Slot)\n  let slot = String(d.observacoes ?? \"\").trim().toLowerCase();\n  const validSlots = [\"manha\", \"manhã\", \"tarde\", \"noite\", \"feira\"];\n  let delivery_period = validSlots.includes(slot) ? slot : null;\n  \n  if (delivery_period === \"manhã\") delivery_period = \"manha\";\n\n  const etiqueta = d.transporte?.etiqueta ?? {};\n\n  const payload_std = {\n    items,\n    order: {\n      id: d.id ?? null,\n      date: d.data ?? null,\n      status_id: d.situacao?.id ?? null,\n      status_value: d.situacao?.valor ?? null,\n      status_text: d.situacao?.nome ?? null,\n      order_number: d.numero ?? null,\n      store_number: d.numeroLoja ?? null,\n      delivery_date: delivery_date,\n      delivery_period: delivery_period\n    },\n    totals: {\n      shipping: Number(d.transporte?.frete ?? 0),\n      items_total: Number(d.totalProdutos ?? 0),\n      order_total: Number(d.total ?? 0),\n      order_discount: Number(d.desconto?.valor ?? 0),\n      other_expenses: Number(d.outrasDespesas ?? 0),\n    },\n    customer: {\n      id: d.contato?.id ?? null,\n      name: d.contato?.nome ?? null,\n      tax_id: d.contato?.numeroDocumento ?? null,\n      address: {\n        address: etiqueta.endereco ?? null,\n        number: etiqueta.numero ?? null,\n        complement: etiqueta.complemento ?? null,\n        neighborhood: etiqueta.bairro ?? null,\n        city: etiqueta.municipio ?? null,\n        state: etiqueta.uf ?? null,\n        postal_code: etiqueta.cep ?? null,\n      },\n    },\n  };\n\n  return {\n    json: {\n      order_id: String(d.id ?? \"\"),\n      customer_id: String(d.contato?.id ?? \"\"),\n      order_date: d.data ?? null,\n      status_id: d.situacao?.id ?? null,\n      status_value: d.situacao?.valor ?? null,\n      synced_at: new Date().toISOString(),\n      body_event: body_event,\n      payload_raw: d,\n      payload_std: payload_std\n    },\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        1152
+      ],
+      "id": "0418d43d-bc98-4d59-ad49-24e04a32cd2d",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "content": "**Code** \n\nParametriza os dados para inseri-los no supabase na tabela orders_raw.\n",
+        "height": 384,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1392,
+        976
+      ],
+      "typeVersion": 1,
+      "id": "1bdb3d22-b92d-494d-8757-2c8d198d720f",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "**Supabase** \n\nCria linhas por novo pedido no supabase na tabela orders_raw.\n",
+        "height": 384,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2048,
+        768
+      ],
+      "typeVersion": 1,
+      "id": "c751c0cf-75be-43d7-92e4-44f8ac5bb163",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "56caf45e-74e3-44b5-8822-358104d6c7e1",
+              "leftValue": "={{ $json.data.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        384,
+        1168
+      ],
+      "id": "c9933097-f2ff-4945-9418-330e16f514bd",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b60f91e2-1baa-4ca6-84d8-707afd2d5428",
+              "leftValue": "={{ $json.data.transporte.etiqueta.endereco }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        1168
+      ],
+      "id": "d22f05d9-455a-4224-b209-4d0b8b7c7340",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bling.com.br/Api/v3/contatos/{{ $json.data.contato.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          },
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        1456
+      ],
+      "id": "53886cf3-2da6-44b4-a149-9243494d2473",
+      "name": "Pega Detalhes Clientes1",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const contact = $input.item.json.data;\nconst order = $('If4').item.json.data;\n\nconst newOrder = JSON.parse(JSON.stringify(order));\n\nconst contactAddr = contact.endereco?.geral || {};\n\nif (!newOrder.transporte) newOrder.transporte = {};\nif (!newOrder.transporte.etiqueta) newOrder.transporte.etiqueta = {};\n\nnewOrder.transporte.etiqueta.endereco = contactAddr.endereco;\nnewOrder.transporte.etiqueta.numero = contactAddr.numero;\nnewOrder.transporte.etiqueta.complemento = contactAddr.complemento;\nnewOrder.transporte.etiqueta.bairro = contactAddr.bairro;\nnewOrder.transporte.etiqueta.municipio = contactAddr.municipio;\nnewOrder.transporte.etiqueta.uf = contactAddr.uf;\nnewOrder.transporte.etiqueta.cep = contactAddr.cep;\n\nreturn { data: newOrder };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        1456
+      ],
+      "id": "050aeaf6-1ecc-4743-a025-6d4eaf92432d",
+      "name": "Normaliza Endereco1"
+    },
+    {
+      "parameters": {
+        "content": "**HTTP request**\n\nConsulta detalhes do cliente.",
+        "height": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        880,
+        1296
+      ],
+      "typeVersion": 1,
+      "id": "12941db3-02bb-4191-b07b-c4be71c00232",
+      "name": "Sticky Note20"
+    },
+    {
+      "parameters": {
+        "content": "**Code**\n\nPega endereço do cliente e adiciona no pedido.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1136,
+        1296
+      ],
+      "typeVersion": 1,
+      "id": "0b7c320b-09be-43aa-8759-6e807c4cfd80",
+      "name": "Sticky Note21"
+    },
+    {
+      "parameters": {
+        "content": "**Condicional**\n\nSe pedido tem endereço, segue o fluxo. Se não, segue fluxo que busca o endereço padrão do cliente.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        624,
+        992
+      ],
+      "typeVersion": 1,
+      "id": "c509aef6-52c9-4884-8714-018eacb77674",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2554dd86-060d-4633-bd34-f58479dd479e",
+              "leftValue": "={{ $('When Executed by Another Workflow').item.json.body.event }}",
+              "rightValue": "order.created",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1760,
+        1152
+      ],
+      "id": "63912f1e-f18a-4334-87f6-b2c2665aa49c",
+      "name": "If5"
+    },
+    {
+      "parameters": {
+        "content": "**Supabase** \n\nAtualiza linha do pedido no supabase na tabela orders_raw.\n",
+        "height": 384,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2048,
+        1216
+      ],
+      "typeVersion": 1,
+      "id": "2f9cc44d-4b02-4dab-95b5-9274c32e151c",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "orders_raw",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "order_id",
+              "condition": "eq",
+              "keyValue": "data.id"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "order_id",
+              "fieldValue": "={{ $json.order_id }}"
+            },
+            {
+              "fieldId": "customer_id",
+              "fieldValue": "={{ $json.customer_id }}"
+            },
+            {
+              "fieldId": "order_date",
+              "fieldValue": "={{ $json.order_date }}"
+            },
+            {
+              "fieldId": "payload_raw",
+              "fieldValue": "={{ $json.payload_raw }}"
+            },
+            {
+              "fieldId": "payload_std",
+              "fieldValue": "={{ $json.payload_std }}"
+            },
+            {
+              "fieldId": "synced_at",
+              "fieldValue": "={{ $json.synced_at }}"
+            },
+            {
+              "fieldId": "status_id",
+              "fieldValue": "={{ $json.status_id }}"
+            },
+            {
+              "fieldId": "status_value",
+              "fieldValue": "={{ $json.status_value }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        1392
+      ],
+      "id": "835a6d9f-4349-4423-b742-b8e8ce52a56b",
+      "name": "Update a row at orders_raw1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ilW5vqnhknLvAC0b",
+          "name": "CRM Pastaz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**Condicional**\n\nSe order_id não é nulo, segue. Se não, encerra",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        304,
+        992
+      ],
+      "typeVersion": 1,
+      "id": "e404dc11-9022-4e87-adbe-a769a6dc3c58",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "data": {
+            "id": 25128180547,
+            "numero": 5747,
+            "numeroLoja": "",
+            "data": "2026-02-20",
+            "dataSaida": "2026-02-20",
+            "dataPrevista": "0000-00-00",
+            "totalProdutos": 100,
+            "total": 100,
+            "contato": {
+              "id": 15723325843,
+              "nome": "Cliente Feira",
+              "tipoPessoa": "F",
+              "numeroDocumento": ""
+            },
+            "situacao": {
+              "id": 6,
+              "valor": 0
+            },
+            "loja": {
+              "id": 203579228,
+              "unidadeNegocio": {
+                "id": 593810
+              }
+            },
+            "numeroPedidoCompra": "",
+            "outrasDespesas": 0,
+            "observacoes": "Feira",
+            "observacoesInternas": "",
+            "desconto": {
+              "valor": 0,
+              "unidade": "REAL"
+            },
+            "categoria": {
+              "id": 10646576489
+            },
+            "notaFiscal": {
+              "id": 0
+            },
+            "tributacao": {
+              "totalICMS": 0,
+              "totalIPI": 0
+            },
+            "itens": [
+              {
+                "id": 19169990189,
+                "codigo": "LASANHA05",
+                "unidade": "UN",
+                "quantidade": 1,
+                "desconto": 0,
+                "valor": 65,
+                "aliquotaIPI": 0,
+                "descricao": "Lasanha de Costela",
+                "descricaoDetalhada": "",
+                "produto": {
+                  "id": 13783018689
+                },
+                "comissao": {
+                  "base": 65,
+                  "aliquota": 0,
+                  "valor": 0
+                },
+                "naturezaOperacao": {
+                  "id": 0
+                }
+              },
+              {
+                "id": 19169990190,
+                "codigo": "NHOQUE02",
+                "unidade": "UN",
+                "quantidade": 1,
+                "desconto": 0,
+                "valor": 35,
+                "aliquotaIPI": 0,
+                "descricao": "Nhoque de Mandioquinha Salsa",
+                "descricaoDetalhada": "",
+                "produto": {
+                  "id": 15860037890
+                },
+                "comissao": {
+                  "base": 35,
+                  "aliquota": 0,
+                  "valor": 0
+                },
+                "naturezaOperacao": {
+                  "id": 0
+                }
+              }
+            ],
+            "parcelas": [],
+            "transporte": {
+              "fretePorConta": 0,
+              "frete": 0,
+              "quantidadeVolumes": 0,
+              "pesoBruto": 0,
+              "prazoEntrega": 0,
+              "contato": {
+                "id": 0,
+                "nome": ""
+              },
+              "etiqueta": {
+                "nome": "",
+                "endereco": "",
+                "numero": "",
+                "complemento": "",
+                "municipio": "",
+                "uf": "",
+                "cep": "",
+                "bairro": "",
+                "nomePais": ""
+              },
+              "volumes": []
+            },
+            "vendedor": {
+              "id": 0
+            },
+            "intermediador": {
+              "cnpj": "",
+              "nomeUsuario": ""
+            },
+            "taxas": {
+              "taxaComissao": 0,
+              "custoFrete": 0,
+              "valorBase": 0
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pega Detalhes Clientes1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Detalhes Clientes1": {
+      "main": [
+        [
+          {
+            "node": "Normaliza Endereco1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza Endereco1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "Create a row at orders_raw1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update a row at orders_raw1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "1ZhNJUgBnkJ8PXJTlbGqk",
+    "timeSavedPerExecution": 0
+  },
+  "versionId": "2a1e30ca-7f7c-422c-a017-d12845b45fb4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8f713aad88dc64c3e6b82d84105370d897b662e4807b7e419435eaa33c64320d"
+  },
+  "id": "p6smOUy9sBAn9s7V",
+  "tags": [
+    {
+      "updatedAt": "2026-01-20T16:32:19.842Z",
+      "createdAt": "2026-01-20T16:32:19.842Z",
+      "id": "V67hmcn4uOslM62P",
+      "name": "Bling"
+    },
+    {
+      "updatedAt": "2026-01-20T16:32:23.683Z",
+      "createdAt": "2026-01-20T16:32:23.683Z",
+      "id": "lIi9XXpTQbz2nMi0",
+      "name": "Supabase"
+    }
+  ]
+}

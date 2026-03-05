@@ -1,0 +1,849 @@
+{
+  "name": "Evento Calendar: Pedido Bling -> Google Calendar",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -192,
+        832
+      ],
+      "id": "970246aa-1593-4528-a2df-27926a98000b",
+      "name": "When Executed by Another Workflow",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const contact = $input.item.json.data;\nconst order = $('If7').item.json.data;\n\nconst newOrder = JSON.parse(JSON.stringify(order));\n\nconst contactAddr = contact.endereco?.geral || {};\n\nif (!newOrder.transporte) newOrder.transporte = {};\nif (!newOrder.transporte.etiqueta) newOrder.transporte.etiqueta = {};\n\nnewOrder.transporte.etiqueta.endereco = contactAddr.endereco;\nnewOrder.transporte.etiqueta.numero = contactAddr.numero;\nnewOrder.transporte.etiqueta.complemento = contactAddr.complemento;\nnewOrder.transporte.etiqueta.bairro = contactAddr.bairro;\nnewOrder.transporte.etiqueta.municipio = contactAddr.municipio;\nnewOrder.transporte.etiqueta.uf = contactAddr.uf;\nnewOrder.transporte.etiqueta.cep = contactAddr.cep;\n\nreturn { data: newOrder };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        1280
+      ],
+      "id": "79276a16-2eb9-4fa8-a3b5-f3328a554e06",
+      "name": "Normaliza Endereco"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node (JavaScript) - Calendar payload\n// Agora: usa SOMENTE order.observacoes para decidir o horário\n// Regra extra: se tiver \"feira\" em observacoes -> 09:00 às 19:00\n\nconst order = $json.data ?? $json;\n\nconst numeroPedido = order.numero ?? \"—\";\nconst cliente = order?.contato?.nome || \"Cliente\";\n\nconst obs = String(order.observacoes ?? \"\").toLowerCase();\nconst isFeira = obs.includes(\"feira\");\n\n// Horário\nlet range;\nif (isFeira) {\n  range = { start: \"09:00\", end: \"19:00\" };\n} else if (obs.includes(\"manhã\") || obs.includes(\"manha\")) {\n  range = { start: \"09:30\", end: \"11:30\" };\n} else if (obs.includes(\"tarde\")) {\n  range = { start: \"13:00\", end: \"15:00\" };\n} else if (obs.includes(\"noite\")) {\n  range = { start: \"19:00\", end: \"21:00\" };\n} else {\n  // fallback defensivo (se você preferir interromper o fluxo, eu mudo pra return [])\n  range = { start: \"09:30\", end: \"11:30\" };\n}\n\nconst toIsoLocal = (yyyy_mm_dd, hhmm) => `${yyyy_mm_dd}T${hhmm}:00`;\n\n// Endereço\nconst et = order?.transporte?.etiqueta || {};\nconst enderecoLinha = [et.endereco, et.numero, et.complemento].filter(Boolean).join(\", \");\nconst bairro = et.bairro || \"\";\nconst cidade = et.municipio || \"\";\nconst uf = et.uf || \"\";\nconst cep = et.cep || \"\";\n\nconst enderecoFmt = enderecoLinha\n  ? [\n      enderecoLinha,\n      [bairro, cidade].filter(Boolean).join(\", \") + (uf ? ` - ${uf}` : \"\"),\n      cep ? `CEP: ${cep}` : \"\",\n    ].filter(Boolean).join(\"\\n\")\n  : \"não informado\";\n\n// Itens\nconst itensFmt = (order.itens || [])\n  .map((it) => `${Number(it.quantidade) || 0} x ${it.descricao || it.codigo || \"Item\"}`)\n  .join(\"\\n\") || \"—\";\n\n// Summary / Description\nconst summary = `${isFeira ? \"Feira\" : \"Entrega\"} Pedido #${numeroPedido} — ${cliente}`;\n\nconst description =\n`Pedido: #${numeroPedido}\nCliente: ${cliente}\nHorário: ${range.start} - ${range.end}\n\nEndereço:\n${enderecoFmt}\n\nItens:\n${itensFmt}`;\n\nreturn [{\n  summary,\n  description,\n  location: enderecoLinha || undefined,\n\n  start: {\n    dateTime: toIsoLocal(order.dataPrevista, range.start),\n    timeZone: \"America/Sao_Paulo\",\n  },\n  end: {\n    dateTime: toIsoLocal(order.dataPrevista, range.end),\n    timeZone: \"America/Sao_Paulo\",\n  },\n\n  bling_order_id: String(order.id ?? \"\"),\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        688
+      ],
+      "id": "cfa8f6f3-5cea-4e84-b3fa-12a262129366",
+      "name": "Code in JavaScript2",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "content": "**Workflow call**\n\nAcionado por outro fluxo",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -256,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "fd690a37-8abe-4d52-8cf2-39d9b13e750f",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "**Code**\n\nParametriza a mensagem para criar o evento no calendar.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1328,
+        528
+      ],
+      "typeVersion": 1,
+      "id": "93c32454-caa4-4fc1-a821-ef39713de05b",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "**Cria evento**\n\nCria evento no calendar.",
+        "height": 368,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1584,
+        528
+      ],
+      "typeVersion": 1,
+      "id": "9c97375d-8ca4-43d8-8455-fd701480794e",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "75bf3ec9-db71-47f1-bf62-0bcebea72f82",
+              "leftValue": "={{ $json.data.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        32,
+        832
+      ],
+      "id": "f5a4b595-b840-4aba-a33d-6582b7f1b14a",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "content": "**Condicional**\n\nSe vier valor nulo, interrompe fluxo.",
+        "height": 368,
+        "width": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "0ab02a31-d665-482a-8c5b-29ef0b6a6639",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "61d95f8f-a6ec-46e5-80bb-f7a43d566507",
+              "leftValue": "={{ $json.data.dataPrevista }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4bbec365-7424-4a0f-a155-567c2d90ec84",
+              "leftValue": "={{ $json.data.dataPrevista }}",
+              "rightValue": "0000-00-00",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "05e672c1-044c-46a4-a3d1-c777f49b0d0e",
+              "leftValue": "={{ ['manha','manhã','tarde','noite','feira'].includes(($json.data?.observacoes ?? $json.observacoes ?? '').toString().toLowerCase().trim()) }}",
+              "rightValue": "={{ ['manha','manhã','tarde','noite'].includes(($json.data?.observacoes ?? $json.observacoes ?? '').toString().toLowerCase().trim()) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        880
+      ],
+      "id": "e73e98c6-5ddd-4ed2-923c-5fb6979441ba",
+      "name": "If5"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/1467152405392261153/4NcTHR8WfCVmMQ6Yr6ujhZykY7dtYCE6Uqextl_YIQRvtq-Qm2PHhsodV9NQq6aIc0-9",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1920,
+        1088
+      ],
+      "id": "902087f9-a228-44a3-b8b2-b0ecfbc900aa",
+      "name": "HTTP Request2",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code node (para o ramo \"sem data/horário\")\n// Entrada: $json.data (Bling) ou $json\n\nconst order = $json.data ?? $json;\n\nconst numero = order?.numero ?? \"—\";\nconst cliente = order?.contato?.nome ?? \"Cliente\";\n\nconst content =\n`Pedido '${numero}' do cliente '${cliente}' foi criado sem horário de entrega.\nSe necessário, o evento terá que ser criado manualmente no calendário!`;\n\nreturn [{ content, bling_order_id: String(order?.id ?? \"\") }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        1088
+      ],
+      "id": "df279d7b-3d2f-44a3-ba72-404419cfc722",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "content": "**Code**\n\nParametriza a mensagem para a notificação de que foi criado um pedido sem horário de entrega.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1584,
+        928
+      ],
+      "typeVersion": 1,
+      "id": "c3d65173-248c-4775-8621-7e52310d9b8c",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {
+        "content": "**Webhook discord**\n\nAciona o webhook do canal de alertas do discord..",
+        "height": 368,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1840,
+        928
+      ],
+      "typeVersion": 1,
+      "id": "2f06a4cc-d7ce-4335-8771-69739774b0bd",
+      "name": "Sticky Note15"
+    },
+    {
+      "parameters": {
+        "content": "**Condicional**\n\nSe campo  'dataPrevista' está vazio ou \"0000-00-00\", ou o campo 'observacoes' não for \"manha\", \"manhã\", \"tarde\" ou \"noite\", true -> encaminha alerta.\nDo contrário, false -> evento criado no calendario.",
+        "height": 464
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1072,
+        624
+      ],
+      "typeVersion": 1,
+      "id": "98936806-d969-49aa-9d00-c4a800f968a9",
+      "name": "Sticky Note16"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "905cb2ef-a248-4432-823c-3b48a7d285bb",
+              "leftValue": "={{ $json.data.loja.id }}",
+              "rightValue": 203579228,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1392,
+        1088
+      ],
+      "id": "881ef6bb-e9ec-42a9-a33e-8c56ad0cabab",
+      "name": "If6"
+    },
+    {
+      "parameters": {
+        "content": "**Condicional**\n\nSe a loja for Feira do Agua Verde, não vai criar a notificação de pedido sem horário de entrega.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1328,
+        928
+      ],
+      "typeVersion": 1,
+      "id": "cc36558d-8dd6-4ebb-9674-cca36fe4bb46",
+      "name": "Sticky Note17"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent('97b208ff66f7d8e5056a5d3a5a4e3ef17ed17cadb5e8944a5c770c6e08cdecfd@group.calendar.google.com') + '/events' }}\n",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  summary: $json.summary,\n  description: $json.description,\n  location: $json.location,\n  start: {\n    dateTime: $json.start.dateTime,   // ex: \"2026-02-05T09:30:00-03:00\"\n    timeZone: \"America/Sao_Paulo\",\n  },\n  end: {\n    dateTime: $json.end.dateTime,     // ex: \"2026-02-05T11:30:00-03:00\"\n    timeZone: \"America/Sao_Paulo\",\n  },\n}) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1648,
+        688
+      ],
+      "id": "7e24dafc-067b-44ec-bf16-1325e5515beb",
+      "name": "HTTP Request3",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "qG2267z7xxI8B8q0",
+          "name": "Google Calendar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bling.com.br/Api/v3/contatos/{{ $json.data.contato.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          },
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        1280
+      ],
+      "id": "1bbff4d3-b460-4089-a86e-c828734cef3b",
+      "name": "Pega Detalhes Clientes1",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b60f91e2-1baa-4ca6-84d8-707afd2d5428",
+              "leftValue": "={{ $json.data.transporte.etiqueta.endereco }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        832
+      ],
+      "id": "c0401fc2-da06-4f98-817d-6d905a1c6cfe",
+      "name": "If7"
+    },
+    {
+      "parameters": {
+        "content": "**Condicional**\n\nSe pedido tem endereço, segue o fluxo. Se não, segue fluxo que busca o endereço padrão do cliente.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        336,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "a08755f8-de5c-49ce-bf0c-680e7e4e70ad",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**HTTP request**\n\nConsulta detalhes do cliente.",
+        "height": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        496,
+        1136
+      ],
+      "typeVersion": 1,
+      "id": "febb9d23-d918-4f5b-8530-8b6d2d0c1273",
+      "name": "Sticky Note18"
+    },
+    {
+      "parameters": {
+        "content": "**Code**\n\nPega endereço do cliente e adiciona no pedido.",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        800,
+        1136
+      ],
+      "typeVersion": 1,
+      "id": "a6b57d4d-8815-4d78-b358-3d4194e2a562",
+      "name": "Sticky Note19"
+    },
+    {
+      "parameters": {
+        "content": "## Importante: \nSe veio do woocommerce, não deve entrar nesse fluxo.\nPedidos do woocommerce tem integração nativa do app Woo Delivery",
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -464,
+        368
+      ],
+      "typeVersion": 1,
+      "id": "fa94ce77-7b63-411f-8535-75c3cba6a910",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "data": {
+            "id": 25142641732,
+            "numero": 5753,
+            "numeroLoja": "15968_15968",
+            "data": "2026-02-22",
+            "dataSaida": "2026-02-22",
+            "dataPrevista": "2026-02-23",
+            "totalProdutos": 260,
+            "total": 260,
+            "contato": {
+              "id": 15176667985,
+              "nome": "cynthia juruena",
+              "tipoPessoa": "F",
+              "numeroDocumento": "00545428041"
+            },
+            "situacao": {
+              "id": 6,
+              "valor": 0
+            },
+            "loja": {
+              "id": 203550641,
+              "unidadeNegocio": {
+                "id": 566090
+              }
+            },
+            "numeroPedidoCompra": "",
+            "outrasDespesas": 0,
+            "observacoes": "manha",
+            "observacoesInternas": "",
+            "desconto": {
+              "valor": 0,
+              "unidade": "REAL"
+            },
+            "categoria": {
+              "id": 10646576489
+            },
+            "notaFiscal": {
+              "id": 0
+            },
+            "tributacao": {
+              "totalICMS": 0,
+              "totalIPI": 0
+            },
+            "itens": [
+              {
+                "id": 19177824338,
+                "codigo": "LASANHA05",
+                "unidade": "UN",
+                "quantidade": 1,
+                "desconto": 0,
+                "valor": 65,
+                "aliquotaIPI": 0,
+                "descricao": "Lasanha de Costela",
+                "descricaoDetalhada": "",
+                "produto": {
+                  "id": 13783018689
+                },
+                "comissao": {
+                  "base": 0,
+                  "aliquota": 0,
+                  "valor": 0
+                },
+                "naturezaOperacao": {
+                  "id": 0
+                }
+              },
+              {
+                "id": 19177824339,
+                "codigo": "LASANHA01",
+                "unidade": "UN",
+                "quantidade": 1,
+                "desconto": 0,
+                "valor": 60,
+                "aliquotaIPI": 0,
+                "descricao": "Lasanha Bolonhesa",
+                "descricaoDetalhada": "",
+                "produto": {
+                  "id": 10647331647
+                },
+                "comissao": {
+                  "base": 0,
+                  "aliquota": 0,
+                  "valor": 0
+                },
+                "naturezaOperacao": {
+                  "id": 0
+                }
+              },
+              {
+                "id": 19177824340,
+                "codigo": "RECHEADA07",
+                "unidade": "UN",
+                "quantidade": 1,
+                "desconto": 0,
+                "valor": 45,
+                "aliquotaIPI": 0,
+                "descricao": "Ravioli de Boeuf Bourguignon",
+                "descricaoDetalhada": "",
+                "produto": {
+                  "id": 15652716695
+                },
+                "comissao": {
+                  "base": 0,
+                  "aliquota": 0,
+                  "valor": 0
+                },
+                "naturezaOperacao": {
+                  "id": 0
+                }
+              },
+              {
+                "id": 19177824341,
+                "codigo": "RECHEADA20",
+                "unidade": "UN",
+                "quantidade": 1,
+                "desconto": 0,
+                "valor": 55,
+                "aliquotaIPI": 0,
+                "descricao": "Ravioli de Cordeiro com Mascarpone",
+                "descricaoDetalhada": "",
+                "produto": {
+                  "id": 16146806177
+                },
+                "comissao": {
+                  "base": 0,
+                  "aliquota": 0,
+                  "valor": 0
+                },
+                "naturezaOperacao": {
+                  "id": 0
+                }
+              },
+              {
+                "id": 19177824342,
+                "codigo": "NHOQUE02",
+                "unidade": "UN",
+                "quantidade": 1,
+                "desconto": 0,
+                "valor": 35,
+                "aliquotaIPI": 0,
+                "descricao": "Nhoque de Mandioquinha Salsa",
+                "descricaoDetalhada": "",
+                "produto": {
+                  "id": 15860037890
+                },
+                "comissao": {
+                  "base": 0,
+                  "aliquota": 0,
+                  "valor": 0
+                },
+                "naturezaOperacao": {
+                  "id": 0
+                }
+              }
+            ],
+            "parcelas": [
+              {
+                "id": 18924283326,
+                "dataVencimento": "2026-03-24",
+                "valor": 260,
+                "observacoes": "Total Parcelas: 1 | Método pagamento: Cartão de Crédito | Pedidos Vinculados: 15968_15968",
+                "caut": "",
+                "formaPagamento": {
+                  "id": 1377540
+                }
+              }
+            ],
+            "transporte": {
+              "fretePorConta": 0,
+              "frete": 0,
+              "quantidadeVolumes": 1,
+              "pesoBruto": 0,
+              "prazoEntrega": 0,
+              "contato": {
+                "id": 0,
+                "nome": ""
+              },
+              "etiqueta": {
+                "nome": "cynthia juruena",
+                "endereco": "Rua Pedro Rolim De Moura",
+                "numero": "45",
+                "complemento": "31A",
+                "municipio": "Curitiba",
+                "uf": "PR",
+                "cep": "80030250",
+                "bairro": "",
+                "nomePais": ""
+              },
+              "volumes": []
+            },
+            "vendedor": {
+              "id": 0
+            },
+            "intermediador": {
+              "cnpj": "",
+              "nomeUsuario": ""
+            },
+            "taxas": {
+              "taxaComissao": 0,
+              "custoFrete": 0,
+              "valorBase": 0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza Endereco": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "If7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "If6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If6": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Detalhes Clientes1": {
+      "main": [
+        [
+          {
+            "node": "Normaliza Endereco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If7": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pega Detalhes Clientes1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Sao_Paulo",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "1ZhNJUgBnkJ8PXJTlbGqk",
+    "timeSavedPerExecution": 2
+  },
+  "versionId": "5e2dbb51-a68a-44bd-ab53-407b6bc4d9ea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8f713aad88dc64c3e6b82d84105370d897b662e4807b7e419435eaa33c64320d"
+  },
+  "id": "lGNoF45uoPj5f2fS",
+  "tags": [
+    {
+      "updatedAt": "2026-01-20T16:32:19.842Z",
+      "createdAt": "2026-01-20T16:32:19.842Z",
+      "id": "V67hmcn4uOslM62P",
+      "name": "Bling"
+    },
+    {
+      "updatedAt": "2026-01-27T19:31:58.887Z",
+      "createdAt": "2026-01-27T19:31:58.887Z",
+      "id": "ehBcSDOlmbOpCdxH",
+      "name": "Calendar"
+    }
+  ]
+}

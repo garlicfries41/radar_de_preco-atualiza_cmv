@@ -1,0 +1,754 @@
+{
+  "name": "DRE: 1: Processamento das Vendas",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ehJ-htsluk3VmvbB-Y6ndVxIVugqXQdmvf7njYbmQFA",
+          "mode": "list",
+          "cachedResultName": "[n8n] DRE: 1: Processamento das Vendas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ehJ-htsluk3VmvbB-Y6ndVxIVugqXQdmvf7njYbmQFA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $today.minus({ months: 1 }).setLocale('pt-BR').toFormat('MMMM') }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Pedido",
+              "displayName": "Pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Nome",
+              "displayName": "Nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Produtos",
+              "displayName": "Produtos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Quantidade",
+              "displayName": "Quantidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Preço",
+              "displayName": "Preço",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Frete",
+              "displayName": "Frete",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total",
+              "displayName": "Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Promoções",
+              "displayName": "Promoções",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Loja",
+              "displayName": "Loja",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CMV Total",
+              "displayName": "CMV Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Resumo de Vendas",
+              "displayName": "Resumo de Vendas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Data Atualização",
+              "displayName": "Data Atualização",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "locationDefine": {
+            "values": {}
+          },
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1296,
+        -192
+      ],
+      "name": "Append to sheet1",
+      "id": "55a116c6-d91d-419d-98fb-123d81046868",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bgYjY4ApZDuS1XXH",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtMinute": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -928,
+        -192
+      ],
+      "id": "558522bd-636e-48d6-8c0e-6894464f1954",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bling.com.br/Api/v3/pedidos/vendas/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          },
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        816,
+        -192
+      ],
+      "id": "3416fcfe-9d6f-44be-a7d1-ecbcc077e6b4",
+      "name": "Pega Detalhes Bling",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**HTTP request**\n\nConsulta detalhes do pedido do bling para ter dados completos.",
+        "height": 368,
+        "width": 224,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        752,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "18692d6a-9ac2-43df-aa04-2bdc69fb5c8d",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bling.com.br/Api/v3/pedidos/vendas/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "dataInicial",
+              "value": "={{ $today.minus({ months: 2 }).startOf('month').toFormat('yyyy-MM-dd')}}"
+            },
+            {
+              "name": "dataFinal",
+              "value": "={{ $today.minus({ months: 2 }).endOf('month').toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          },
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96,
+        -192
+      ],
+      "id": "3b5a22d7-c824-470e-b3dc-181292f63b3f",
+      "name": "Pega Detalhes Bling1",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**HTTP request**\n\nConsulta pedidos do bling no mês anterior.",
+        "height": 368,
+        "width": 224,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        32,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "b60f7dc2-e1f1-4ca4-b56b-49ce7750da88",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "products",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        -400
+      ],
+      "id": "16c77bda-bd4a-41fc-a96d-f1457f31b43a",
+      "name": "Get product prices",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ilW5vqnhknLvAC0b",
+          "name": "CRM Pastaz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\n  LÓGICA PRINCIPAL - FECHAMENTO FINANCEIRO (V4: ROBUSTEZ DE PREÇOS)\n*/\n\n// 1) Puxar Preços diretamente da tabela de Produtos (Evita perdas no Merge)\nconst productsData = $items(\"Get product prices\").length ? $items(\"Get product prices\") : [];\nconst mergeData = $items(\"Merge\").length ? $items(\"Merge\") : [];\nconst referenceMap = {};\n\n// Popular preços e skus\nfor (const item of productsData) {\n  if (!item || !item.json) continue;\n  const rawSku = String(item.json.sku || \"\").trim().toUpperCase();\n  if (rawSku) {\n    referenceMap[rawSku] = {\n      preco_tabela: parseFloat(item.json.product_price || 0), \n      preco_revenda: parseFloat(item.json.preco_revenda || 0),\n      cmv: 0 \n    };\n  }\n}\n\n// Complementar com CMV (da junção com recipes no Merge)\nfor (const item of mergeData) {\n  if (!item || !item.json) continue;\n  const rawSku = String(item.json.sku || \"\").trim().toUpperCase();\n  if (rawSku && referenceMap[rawSku]) {\n    referenceMap[rawSku].cmv = parseFloat(item.json.cmv_per_unit || 0);\n  }\n}\n\n// 2) Mapear Canais\nconst mapCanais = (lojaId) => {\n  const idStr = String(lojaId || \"\");\n  if (idStr === \"203550641\") return \"Site\";\n  if (idStr === \"205956042\") return \"PJ - Restaurante e Catering\";\n  if (idStr === \"204199378\") return \"PJ - Revenda\";\n  if ([\"203579228\", \"205239196\", \"204165243\"].includes(idStr)) return \"Feiras\";\n  return \"Atendimento por chat\"; \n};\n\nconst getAllPedidos = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  return [data];\n};\n\nconst output = [];\nconst dataAtualizacao = new Date().toLocaleDateString('pt-BR');\n\nconst storeOrderCounts = {};\nfor (const item of $input.all()) {\n  const pedidos = getAllPedidos(item.json?.data || item.json);\n  for (const pedido of pedidos) {\n    if (!pedido || !pedido.itens) continue;\n    const lojaNome = mapCanais(pedido.loja?.id);\n    if (!storeOrderCounts[lojaNome]) {\n      storeOrderCounts[lojaNome] = new Set();\n    }\n    storeOrderCounts[lojaNome].add(pedido.numero || pedido.id);\n  }\n}\n\nconst resumos = Object.entries(storeOrderCounts).map(([loja, set]) => `${loja}: ${set.size}`);\n\nlet rowIndex = 0;\n\nfor (const item of $input.all()) {\n  const pedidos = getAllPedidos(item.json?.data || item.json);\n  \n  for (const pedido of pedidos) {\n    if (!pedido || !pedido.itens) continue;\n    \n    const lojaNome = mapCanais(pedido.loja?.id);\n    const fretePedido = parseFloat(pedido.transporte?.frete || 0);\n    const descontoPedido = parseFloat(pedido.desconto?.valor || 0);\n    \n    let totalValorBrutoItensBling = 0;\n    for (const it of pedido.itens) {\n      totalValorBrutoItensBling += parseFloat(it.valor || 0) * parseFloat(it.quantidade || 0);\n    }\n    const baseProporcao = totalValorBrutoItensBling > 0 ? totalValorBrutoItensBling : 1;\n\n    for (const itemProduto of pedido.itens) {\n      if (!itemProduto) continue;\n      \n      const skuBling = String(itemProduto.codigo || \"\").trim().toUpperCase();\n      const valorBling = parseFloat(itemProduto.valor || 0);\n      const quantidade = parseFloat(itemProduto.quantidade || 0);\n      const valorLinhaBrutoBling = valorBling * quantidade;\n      \n      const refData = referenceMap[skuBling] || { preco_tabela: 0, preco_revenda: 0, cmv: 0 };\n      \n      let precoPreenchido;\n      \n      // Regra de Preço V4: Prioridade absoluta para a tabela do Supabase\n      if (lojaNome === \"PJ - Revenda\" && refData.preco_revenda > 0) {\n        precoPreenchido = refData.preco_revenda;\n      } else if (refData.preco_tabela > 0) {\n        precoPreenchido = refData.preco_tabela;\n      } else {\n        // Se não houver nada na tabela, usa o valor do Bling\n        precoPreenchido = valorBling;\n      }\n      \n      const freteProporcional = (valorLinhaBrutoBling / baseProporcao) * fretePedido;\n      const descontoProporcional = (valorLinhaBrutoBling / baseProporcao) * descontoPedido;\n\n      // Cálculo Final: Total Bruto (por faturamento teórico)\n      const totalLinhaBruto = precoPreenchido * quantidade;\n      \n      // Promoções = (Preço Tabela Total - Preço Real Pago Total) + Desconto de Cabeçalho do Pedido\n      const promocoes = (totalLinhaBruto - valorLinhaBrutoBling) + descontoProporcional;\n      \n      const cmvTotal = quantidade * refData.cmv;\n\n      let resumoCell = rowIndex < resumos.length ? resumos[rowIndex] : \"\";\n      let dataCell = rowIndex === 0 ? dataAtualizacao : \"\";\n\n      output.push({\n        json: {\n          \"Pedido\": pedido.numero || pedido.id || \"\",\n          \"Nome\": pedido.contato?.nome || \"\",\n          \"Produtos\": itemProduto.descricao,\n          \"Quantidade\": quantidade,\n          \"Preço Unit. Tabela\": Number(precoPreenchido.toFixed(2)),\n          \"Valor Unit. Bling\": Number(valorBling.toFixed(2)),\n          \"Frete\": Number(freteProporcional.toFixed(2)),\n          \"Desconto Pedido\": Number(descontoProporcional.toFixed(2)),\n          \"Total Bruto\": Number(totalLinhaBruto.toFixed(2)),\n          \"Promoções\": Number(promocoes.toFixed(2)),\n          \"Loja\": lojaNome,\n          \"CMV Total\": Number(cmvTotal.toFixed(2)),\n          \"Resumo de Vendas\": resumoCell,\n          \"Data Atualização\": dataCell\n        }\n      });\n      rowIndex++;\n    }\n  }\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -192
+      ],
+      "id": "5cdbce02-e12d-4daf-96b4-933ba1e29082",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "recipes",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        32
+      ],
+      "id": "c6b128cc-35c7-4c9e-bd98-41f8d8dbdc25",
+      "name": "Get CMV",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ilW5vqnhknLvAC0b",
+          "name": "CRM Pastaz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "id",
+              "field2": "product_id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -384,
+        -192
+      ],
+      "id": "42d5bf24-8587-4e05-a59d-ef1dd4aab7af",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": {
+          "__rl": true,
+          "value": "1ehJ-htsluk3VmvbB-Y6ndVxIVugqXQdmvf7njYbmQFA",
+          "mode": "list",
+          "cachedResultName": "[n8n] DRE: 1: Processamento das Vendas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ehJ-htsluk3VmvbB-Y6ndVxIVugqXQdmvf7njYbmQFA/edit?usp=drivesdk"
+        },
+        "title": "={{ $today.minus({ months: 2 }).setLocale('pt-BR').toFormat('MMMM') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -144,
+        -192
+      ],
+      "id": "71c469c9-82f4-4979-94b9-eb25926bd50e",
+      "name": "Create sheet",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bgYjY4ApZDuS1XXH",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        336,
+        -192
+      ],
+      "name": "Item Lists (Split)",
+      "id": "3fb31a0a-f586-439b-a7f0-0f2eef1370e7"
+    },
+    {
+      "parameters": {
+        "content": "**Google Sheets**\n\nCria aba na planilha para o mês atual.",
+        "height": 368,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -208,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "e3223b3b-5085-4ccb-b867-481f1ee057fd",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "**Merge**\n\nUne as informações das tabelas do supabase.",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -448,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "01f6d11d-1b60-469d-a0f3-c210cfec49fa",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "**Split**\n\nTira os pedidos de dentro do item 'data'",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        272,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "7821641b-dd84-4337-978d-93998872ad39",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "**Code**\n\nCódigo que cria a tabela e faz os cálculos.",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        992,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "9d4859b6-e36b-450d-8af7-ac266e723898",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "**Google Sheets**\n\nAlimenta a aba criada anteriormente com os dados processados pelo código.",
+        "height": 368,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1232,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "5d582540-9d5a-4dc7-a3b3-95a93b12d64e",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "**Trigger**\n\nDispara no primeiro dia de cada mês.",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -992,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "b431a7b9-2566-46d3-8230-069d5b4a685b",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "**Supabase**\n\nConsulta a tabela products.",
+        "height": 368,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -720,
+        -544
+      ],
+      "typeVersion": 1,
+      "id": "06377566-152d-4f3c-98c5-89dfc6c1b008",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "**Supabase**\n\nConsulta a tabela recipes.",
+        "height": 368,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -720,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "a7761509-9288-4077-8474-e074429a7637",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a63a4c55-d180-448e-90d6-eeff276bcb88",
+              "leftValue": "={{ $json.situacao.id }}",
+              "rightValue": 12,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        576,
+        -192
+      ],
+      "id": "45ef9285-3196-4228-803c-db5eebed8bc6",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "content": "**Filtro**\n\nTira os pedidos cancelados",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        512,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "7e6bfa9f-551b-488c-8d8e-154f66167b89",
+      "name": "Sticky Note10"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get product prices",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get CMV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get product prices": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get CMV": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Create sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create sheet": {
+      "main": [
+        [
+          {
+            "node": "Pega Detalhes Bling1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Detalhes Bling1": {
+      "main": [
+        [
+          {
+            "node": "Item Lists (Split)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item Lists (Split)": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Detalhes Bling": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append to sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Pega Detalhes Bling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "1ZhNJUgBnkJ8PXJTlbGqk",
+    "timeSavedPerExecution": 30
+  },
+  "versionId": "8b0c14ae-1a26-4320-a03c-0558d464b67d",
+  "meta": {
+    "instanceId": "8f713aad88dc64c3e6b82d84105370d897b662e4807b7e419435eaa33c64320d"
+  },
+  "id": "HAaZ5xof1V4xgNVTA-DSN",
+  "tags": []
+}

@@ -1,0 +1,613 @@
+{
+  "name": "Novos Clientes Bling -> Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -64,
+        176
+      ],
+      "id": "298f9170-35ff-460c-b602-55d6a19706f4",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        656,
+        176
+      ],
+      "id": "c535c171-084b-4866-bd66-b6ad2f9a57d9",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "sync_state",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key",
+              "condition": "eq",
+              "keyValue": "bling_customers_raw_last_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        176,
+        176
+      ],
+      "id": "248227a4-23fe-4301-a80b-2d4fa4b3126d",
+      "name": "Get last sync",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ilW5vqnhknLvAC0b",
+          "name": "CRM Pastaz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bling.com.br/Api/v3/contatos/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          },
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        176
+      ],
+      "id": "321efc57-196f-4009-b873-0d8f3938e238",
+      "name": "Pega Detalhes Pedidos",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "customers_raw",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "customer_id",
+              "fieldValue": "={{ $json.customer_id }}"
+            },
+            {
+              "fieldId": "payload_raw",
+              "fieldValue": "={{ $json.payload_raw }}"
+            },
+            {
+              "fieldId": "payload_std",
+              "fieldValue": "={{ $json.payload_std }}"
+            },
+            {
+              "fieldId": "synced_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        176
+      ],
+      "id": "2ca3d1cd-8a6b-4db4-9cfd-552ca40ff754",
+      "name": "Create a row at orders_raw",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ilW5vqnhknLvAC0b",
+          "name": "CRM Pastaz"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node (Run Once for All Items)\nconst inputItems = $input.all();\n\nfunction buildStd(raw) {\n  const addr =\n    raw?.endereco?.geral?.endereco\n      ? raw.endereco.geral\n      : (raw?.endereco?.cobranca ?? {});\n\n  return {\n    customer: {\n      id: raw?.id ?? null,\n      name: raw?.nome ?? null,\n      code: raw?.codigo ?? null,\n      status: raw?.situacao ?? null,\n      tax_id: raw?.numeroDocumento ?? null,\n      phone: raw?.telefone || raw?.celular || null,\n      email: raw?.email ?? null,\n      notes: raw?.observacoes ?? null,\n      address: {\n        address: addr?.endereco ?? null,\n        number: addr?.numero ?? null,\n        complement: addr?.complemento ?? null,\n        neighborhood: addr?.bairro ?? null,\n        city: addr?.municipio ?? null,\n        state: addr?.uf ?? null,\n        postal_code: addr?.cep ?? null,\n        country: addr?.pais ?? null,\n      },\n    },\n  };\n}\n\nreturn inputItems.map((item) => {\n  const raw = item.json?.data ?? item.json ?? {};\n\n  const payload_std = buildStd(raw);\n\n  return {\n    json: {\n      customer_id: raw?.id != null ? String(raw.id) : null,\n      payload_raw: raw,          // só o objeto da API, sem estrutura n8n\n      payload_std,\n    },\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        176
+      ],
+      "id": "7c01d21f-ea35-446f-a8b3-99eb5b86e8f0",
+      "name": "Code in JavaScript",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "sync_state",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key",
+              "condition": "eq",
+              "keyValue": "bling_customers_raw_last_id"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "cutoff_date",
+              "fieldValue": "={{ $json.max_customer_id }}"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{$now.toISO()}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        176
+      ],
+      "id": "293a2c68-8ca2-4c1e-af43-180e6f66e691",
+      "name": "Update a row",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "ilW5vqnhknLvAC0b",
+          "name": "CRM Pastaz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**Trigger** \n\nDiariamente as 00:30",
+        "height": 384,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -128,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "37644848-8e16-43b0-829f-4f3b2b5c7e11",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**Supabase** \n\nConsulta a data da última sincronização na tabela sync_state",
+        "height": 384,
+        "width": 224,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        112,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "115d2ebc-abfc-4848-9ad9-c656f3cf15ba",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "**Bling** \n\nConsulta as vendas a partir de D+1 da data adquirida no passo anterior.",
+        "height": 384,
+        "width": 224,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        352,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "ec1d008b-8222-42d5-8373-ca2af81b6d73",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "**Split out** \n\n",
+        "height": 384,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        592,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "7cdd6efd-c73a-4032-8acd-565e15b8857d",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "**Bling** \n\nConsulta detalhes dos clientes identificados como novos.",
+        "height": 384,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1072,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "368b3bee-865c-4878-9de3-612363eb7aa5",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "**Code** \n\nParametriza os dados para inseri-los no supabase na tabela orders_raw.\n",
+        "height": 384,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1328,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "a08b54d6-85aa-4d35-a1e3-278999c633aa",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "**Supabase** \n\nCria linhas por novo pedido no supabase na tabela orders_raw.\n",
+        "height": 384,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1568,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "2f4f531d-24e4-4573-b4fd-1be3df2477fb",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "**Supabase** \n\nUpdate do cutoff_id no supabase na tabela sync_state.\n",
+        "height": 384,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2048,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "5f7778e4-9d09-4f3e-9f24-e1e753aa34e1",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "url": "https://api.bling.com.br/Api/v3/contatos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limite",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "pagina",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{$response.body.data.length < 100}}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        416,
+        176
+      ],
+      "id": "ccfb2077-551f-4c22-83b0-270e630a1b37",
+      "name": "Pega Clientes Bling",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fabdb232-eb01-4a5e-a65a-e2137b91a9ba",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "={{ $('Get last sync').item.json.cutoff_date }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        176
+      ],
+      "id": "d50b0e9d-4722-4cbe-bcd3-efaa724a5cb6",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "max",
+              "field": "customer_id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        1872,
+        176
+      ],
+      "id": "c202e136-e4fb-4cc7-a02d-d37c67a452f4",
+      "name": "Summarize"
+    },
+    {
+      "parameters": {
+        "content": "**Filter** \n\nMantém só os ids maiores que o cutoff_id",
+        "height": 384,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        832,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "5becdbca-6c7a-423a-bab7-936ba45c1065",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "**Máx** \n\nIdentifica o maior ID\n",
+        "height": 384,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1808,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "2f84b1c6-752b-458c-905f-4ce169b4839c",
+      "name": "Sticky Note8"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get last sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get last sync": {
+      "main": [
+        [
+          {
+            "node": "Pega Clientes Bling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Detalhes Pedidos": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row at orders_raw": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a row at orders_raw",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Clientes Bling": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Pega Detalhes Pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "1ZhNJUgBnkJ8PXJTlbGqk"
+  },
+  "versionId": "5ff8a289-bcb7-4e63-81f2-90a9fddcb494",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8f713aad88dc64c3e6b82d84105370d897b662e4807b7e419435eaa33c64320d"
+  },
+  "id": "6HxDzntyfnxKHrl2",
+  "tags": [
+    {
+      "updatedAt": "2026-01-20T16:32:19.842Z",
+      "createdAt": "2026-01-20T16:32:19.842Z",
+      "id": "V67hmcn4uOslM62P",
+      "name": "Bling"
+    },
+    {
+      "updatedAt": "2026-01-20T16:32:23.683Z",
+      "createdAt": "2026-01-20T16:32:23.683Z",
+      "id": "lIi9XXpTQbz2nMi0",
+      "name": "Supabase"
+    }
+  ]
+}

@@ -1,0 +1,471 @@
+{
+  "name": "Notificação Estoque Bling -> Discord",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://api.bling.com.br/Api/v3/produtos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limite",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "pagina",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{$response.body.data.length < 100}}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        176,
+        -80
+      ],
+      "id": "19886766-322d-411a-8cbb-72c5efab0e14",
+      "name": "Pega produtos do bling",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -80
+      ],
+      "id": "093eaa80-5f6e-40d9-967b-7ef20a9c260a",
+      "name": "Separa os produtos em objetos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gera linhas no formato: \"1. [CODIGO - ]NOME (QTD)\"\nconst linhas = items.map((i, idx) => {\n  const j = i.json;\n  const nome = ((j.produto ?? j.nome ?? '') + '').replace(/\\n/g, ' ');\n  const codigo = j.codigo ?? j.id ?? '';\n  const qtd = Number(\n    j.saldoVirtualTotal_num ??\n    j.saldoVirtualTotal ??\n    (j.estoque ? j.estoque.saldoVirtualTotal : 0) ??\n    0\n  );\n  const prefixo = codigo ? (codigo + ' - ') : '';\n  return '(' + qtd + ') x ' + nome ;\n});\n\n// Quebra em blocos de ate ~3500 chars para o Slack\nconst chunks = [];\nlet atual = [];\nlet tamanho = 0;\n\nfor (const linha of linhas) {\n  const add = linha.length + 1; // + \\n\n  if (tamanho + add > 3500) {\n    chunks.push(atual.join('\\n'));\n    atual = [linha];\n    tamanho = add;\n  } else {\n    atual.push(linha);\n    tamanho += add;\n  }\n}\nif (atual.length) {\n  chunks.push(atual.join('\\n'));\n}\n\n// Retorna 1 item por mensagem\nreturn chunks.map(texto => ({ json: { texto } }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        -80
+      ],
+      "id": "e1b20789-9165-4110-88be-beb808fd8d06",
+      "name": "Monta Slack Chunks"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        -80
+      ],
+      "id": "e9142454-1298-4219-a659-435f7811dd75",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "saldoVirtualTotal_num"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -80
+      ],
+      "id": "4aacff1f-ac42-4e0a-8d34-ed544ee870a1",
+      "name": "Ordenação ascendente"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9485ccb8-509c-4f50-926e-e8edaae3c57b",
+              "name": "produto",
+              "value": "={{ $json.nome }}",
+              "type": "string"
+            },
+            {
+              "id": "c9c48c3c-9a48-43fb-8afc-f028fbc778ac",
+              "name": "saldoVirtualTotal_num",
+              "value": "={{ $json.estoque.saldoVirtualTotal }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        -80
+      ],
+      "id": "39a8740b-2483-4343-9089-5666281a3c55",
+      "name": "formata dados"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "80f8c452-7bcc-4965-8200-28c8af54ba12",
+              "leftValue": "={{ $json.nome }}",
+              "rightValue": "germer",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "426b9df5-1416-421a-b1a5-3304f986d55f",
+              "leftValue": "={{ $json.nome }}",
+              "rightValue": "travessa",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "e84fd761-c3ac-4d1c-a210-93249c31f1ee",
+              "leftValue": "={{ $json.nome }}",
+              "rightValue": "descartável",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "7b2e90ab-6a1f-421c-8705-fc318fff7300",
+              "leftValue": "={{ $json.nome }}",
+              "rightValue": "b2b",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -80
+      ],
+      "id": "841f22b3-f2ab-45ed-9678-c26dfc3e6cbc",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/1463600327864356995/HLgcjXLDCZpsizr20fo1Ij8EcWhRAOFoD2YATOj0sFQTq4yM2tsQykWSYUDtMtnTbgLc",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.texto }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1712,
+        -80
+      ],
+      "id": "38a77797-5c37-43e4-806e-f96d47c5bfe5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "content": "**Trigger** \n\nTodo dia as 5 da manhã.",
+        "height": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -160,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "29ad4f6d-62c3-4ae2-b446-de97fef4d631",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "**HTTP request** \n\nConsulta dos produtos no bling.",
+        "height": 304,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        96,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "6f0c2e4b-f456-43b2-9d05-8aadf0bee4bd",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**Split out** \n\nConsulta dos produtos no bling.",
+        "height": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        352,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "8bb97707-9cf0-4a5a-aaee-ad512b7b59d0",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "**Filter** \n\nRetira itens que possuam no nome os temos: GERMER, TRAVESSA, DESCARTÁVEL E B2B",
+        "height": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        608,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "da162004-a529-4458-afc9-27a4a9ad5d7f",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "**Formata dados** \n\nParametriza para conseguirmos ordenar no passo seguinte.",
+        "height": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        864,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "9d3ffbdc-9696-4cd8-aded-db2c46ba2767",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "**Ordenar** \n\nOrdena do menos em estoque para o mais.",
+        "height": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1120,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "80b55679-222b-4cf7-b14b-7eb62f754c8d",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "**Code** \n\nParametriza a mensagem que será enviada ao Discord.",
+        "height": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1376,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "9e2d2180-9dc3-4bd7-bc22-5f7287b29f83",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "**HTTP request** \n\nComunica com o webhook do canal de estoque no discord.",
+        "height": 304,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1632,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "906668b1-c15e-4bfa-ac11-ca86fa41454b",
+      "name": "Sticky Note7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Pega produtos do bling": {
+      "main": [
+        [
+          {
+            "node": "Separa os produtos em objetos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separa os produtos em objetos": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta Slack Chunks": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Pega produtos do bling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ordenação ascendente": {
+      "main": [
+        [
+          {
+            "node": "Monta Slack Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "formata dados": {
+      "main": [
+        [
+          {
+            "node": "Ordenação ascendente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "formata dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "1ZhNJUgBnkJ8PXJTlbGqk",
+    "timeSavedPerExecution": 5
+  },
+  "versionId": "bc55e1a3-2934-48d5-8064-aa177d6ad7f8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8f713aad88dc64c3e6b82d84105370d897b662e4807b7e419435eaa33c64320d"
+  },
+  "id": "ag0ePZoHWtDzEstu",
+  "tags": [
+    {
+      "updatedAt": "2026-01-20T16:32:19.842Z",
+      "createdAt": "2026-01-20T16:32:19.842Z",
+      "id": "V67hmcn4uOslM62P",
+      "name": "Bling"
+    },
+    {
+      "updatedAt": "2026-01-27T01:04:16.459Z",
+      "createdAt": "2026-01-27T01:04:16.459Z",
+      "id": "bFaT7vgvFz8Kwwok",
+      "name": "Discord"
+    }
+  ]
+}

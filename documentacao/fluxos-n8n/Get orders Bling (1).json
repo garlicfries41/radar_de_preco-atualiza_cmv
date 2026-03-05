@@ -1,0 +1,534 @@
+{
+  "name": "Get orders Bling",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "**Webhook pedido**\n\nWebhook que capta o pedido adicionado ao bling.",
+        "height": 368,
+        "width": 224,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -960,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "f12b5603-7b99-4d4a-ad63-24cacf1ae236",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "**Filtro**\n\nSe id da loja é woocommerce, chama fluxo Order Woo.\nSe não encontra, chama fluxo Order Bling.",
+        "height": 368,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        464,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "0c29833a-555a-47cb-9a9d-5374cd32b63e",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bling-geral",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -912,
+        720
+      ],
+      "id": "563c4b81-c50c-4aff-a24c-f738350ff3b7",
+      "name": "Webhook1",
+      "webhookId": "2a967a80-0efa-4f0d-aa6e-99aaf4afbce0"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Mfpot6xLnO8cQqbkZlRny",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Mfpot6xLnO8cQqbkZlRny",
+          "cachedResultName": "Notificação: Pedido Bling -> Discord"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "bling_order_id": "={{ String($json.body.data.id) }}"
+          },
+          "matchingColumns": [
+            "bling_order_id"
+          ],
+          "schema": [
+            {
+              "id": "bling_order_id",
+              "displayName": "bling_order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        512
+      ],
+      "id": "ca6c82f7-cefc-40ac-9c3e-04916857dfe8",
+      "name": "Call 'Notificação: Pedido Bling -> Discord'"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "97c07460-2db8-45cc-9a34-579bbdda788c",
+              "leftValue": "={{ $json.data.loja.id }}",
+              "rightValue": "=203550641",
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        720
+      ],
+      "id": "9f81329a-d70a-4147-b3dd-c6e677381f62",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d24d990d-3cc2-42a1-a8ba-fe174c4df2d3",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "=order.created",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        272,
+        720
+      ],
+      "id": "832d429a-c29a-4c66-ba21-daf732c34b75",
+      "name": "Filter1"
+    },
+    {
+      "parameters": {
+        "content": "**Filtro**\n\nSó permite pedidos criados. Updates não passam.",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        208,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "df4e803e-9681-4126-b998-afd8c996032a",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "**Call Sub-workflows**\n\nSe encontra número da loja, chama fluxo Order Woo pra dar update no pedido no Bling.\nSe não encontra, chama direto o fluxo de notificação do Discord e a criação de evento no Calendar.",
+        "height": 816,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        368
+      ],
+      "typeVersion": 1,
+      "id": "c589822d-c3b6-4ac9-9cf6-2e4e34ee1327",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EWYJBMpfKsXZvNcS",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EWYJBMpfKsXZvNcS",
+          "cachedResultName": "GET order Woo -> Update order Bling"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [
+            "bling_order_id"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        992
+      ],
+      "id": "5a8bd937-fcc6-41e3-92cc-8a505d997579",
+      "name": "Call GET order Woo -> Update order Bling"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "p6smOUy9sBAn9s7V",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/p6smOUy9sBAn9s7V",
+          "cachedResultName": "Novos Pedidos Bling -> Supabase UPSERT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [
+            "bling_order_id"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        272,
+        1056
+      ],
+      "id": "8d277c4f-9c4d-4032-ae2e-ae3b631a3410",
+      "name": "Call Create/Update order Supabase",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d24d990d-3cc2-42a1-a8ba-fe174c4df2d3",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "=order",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -608,
+        720
+      ],
+      "id": "727f9235-5b4b-4848-a013-b13f1a2974fe",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "content": "**Filtro**\n\nSó permite pedidos. Criação ou atualização de produtos não passam.",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -672,
+        576
+      ],
+      "typeVersion": 1,
+      "id": "ba1751c3-aeb7-4cec-bc8e-76fbdaadccfe",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "lGNoF45uoPj5f2fS",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/lGNoF45uoPj5f2fS",
+          "cachedResultName": "Evento Calendar: Pedido Bling -> Google Calendar"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [
+            "bling_order_id"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        752
+      ],
+      "id": "dd8991ea-755a-4031-a3e5-8037bd56285d",
+      "name": "Call 'Notificação: Pedido Bling -> Calendar"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.bling.com.br/Api/v3/pedidos/vendas/{{ $json.body.data.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.BLING_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          },
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -128,
+        720
+      ],
+      "id": "950d32bc-d674-4d28-ad71-696e61e62670",
+      "name": "Pega Detalhes Bling",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "mLiAy28UdSQMgq2Z",
+          "name": "Bling - Order from bling"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**HTTP request**\n\nConsulta detalhes do pedido do bling para ter dados completos.",
+        "height": 368,
+        "width": 208,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -176,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "46710413-cd9d-4be4-a5e4-e9ee6f74ed54",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2ac67812-c0d5-44a2-bda7-ff47fafa30c3",
+              "name": "body.event",
+              "value": "={{ $('Webhook1').item.json.body.event }}",
+              "type": "string"
+            },
+            {
+              "id": "7e5ef989-5f61-4827-8a6a-30ca2ffacee6",
+              "name": "body.data.numeroLoja",
+              "value": "={{ $('Webhook1').item.json.body.data.numeroLoja }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        80,
+        720
+      ],
+      "id": "8830238b-8c03-4178-a02e-1b40850c6f01",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Call 'Notificação: Pedido Bling -> Discord'",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call 'Notificação: Pedido Bling -> Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call GET order Woo -> Update order Bling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Pega Detalhes Bling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Detalhes Bling": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call Create/Update order Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "1ZhNJUgBnkJ8PXJTlbGqk",
+    "timeSavedPerExecution": 0
+  },
+  "versionId": "2f697cbe-0259-4aea-926b-ccd72ddda219",
+  "meta": {
+    "instanceId": "8f713aad88dc64c3e6b82d84105370d897b662e4807b7e419435eaa33c64320d"
+  },
+  "id": "ZvmPywdoqA6ZJ3PS",
+  "tags": [
+    {
+      "updatedAt": "2026-01-20T16:32:19.842Z",
+      "createdAt": "2026-01-20T16:32:19.842Z",
+      "id": "V67hmcn4uOslM62P",
+      "name": "Bling"
+    }
+  ]
+}
