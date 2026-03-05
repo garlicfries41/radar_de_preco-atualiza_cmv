@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import {
     Upload,
@@ -63,7 +63,7 @@ export function CatalogoModule() {
     return (
         <div>
             {/* Sub Navigation */}
-            <nav className="flex gap-1 overflow-x-auto no-scrollbar mb-6 pb-0.5 border-b border-[#e5e7eb]">
+            <nav className="flex gap-1 overflow-x-auto no-scrollbar mb-6 border-b border-[#e5e7eb]">
                 {NAV_ITEMS.map((item) => (
                     <NavLink
                         key={item.path}
@@ -123,17 +123,9 @@ export function CatalogoModule() {
                 <Route path="receitas/*" element={<RecipesList />} />
                 <Route path="nutricao" element={<NutritionalTableView />} />
                 <Route path="configuracoes" element={<SettingsView />} />
-                <Route path="*" element={<Navigate to="upload" replace />} />
+                {/* Redirect any unknown sub-path to upload */}
+                <Route path="*" element={<Navigate to="/catalogo/upload" replace />} />
             </Routes>
         </div>
     );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-function Navigate({ to, replace }: { to: string; replace?: boolean }) {
-    const nav = useNavigate();
-    useEffect(() => {
-        nav(to, { replace });
-    }, [nav, to, replace]);
-    return null;
 }

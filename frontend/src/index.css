@@ -18,6 +18,10 @@
   --color-brand-800: #166534;
   --color-brand-900: #14532d;
 
+  /* Alias 'primary' para compatibilidade com componentes existentes (bg-primary, text-primary...) */
+  --color-primary: #16a34a;
+  --color-primary-foreground: #ffffff;
+
   /* Neutros */
   --color-surface: #ffffff;
   --color-surface-alt: #f9fafb;
@@ -61,10 +65,17 @@ body {
 }
 
 /* Override scrollbar for sidebar overflow */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* Transições suaves globais */
-button, a {
+button,
+a {
   transition: background-color 150ms ease, color 150ms ease, opacity 150ms ease;
 }
