@@ -94,6 +94,19 @@ class ValidateReceiptInput(BaseModel):
     items: List[ValidateItemInput]
 
 
+class ProductionProcessInput(BaseModel):
+    name: str
+    expected_duration_minutes: int
+    yield_notes: Optional[str] = None
+
+
+class ProductionScheduleInput(BaseModel):
+    planned_date: datetime
+    process_id: Optional[str] = None
+    custom_item_name: Optional[str] = None
+    duration_minutes: int
+    status: Optional[str] = "pending"
+
 # ============= Endpoints =============
 
 @app.get("/api/health")
@@ -1149,6 +1162,124 @@ def list_recipes(status: Optional[str] = "ativo"):
         .execute()
     
     return response.data
+
+# ============= Production Endpoints =============
+
+@app.get("/api/production/processes")
+def list_production_processes():
+    """List all standard production processes."""
+    try:
+        response = supabase.table("production_processes").select("*").order("name").execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"Error fetching production processes: {e}")
+        raise HTTPException(500, f"Erro ao buscar processos de produção: {str(e)}")
+
+
+@app.post("/api/production/processes")
+def create_production_process(process: ProductionProcessInput):
+    """Create a new standard production process."""
+    try:
+        response = supabase.table("production_processes").insert(process.model_dump(exclude_unset=True)).execute()
+        return response.data[0]
+    except Exception as e:
+        logger.error(f"Error creating production process: {e}")
+        raise HTTPException(500, f"Erro ao criar processo de produção: {str(e)}")
+
+
+@app.put("/api/production/processes/{process_id}")
+def update_production_process(process_id: str, process: ProductionProcessInput):
+    """Update a standard production process."""
+    try:
+        update_data = process.model_dump(exclude_unset=True)
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        response = supabase.table("production_processes").update(update_data).eq("id", process_id).execute()
+        if not response.data:
+            raise HTTPException(404, "Processo não encontrado")
+        return response.data[0]
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        logger.error(f"Error updating production process: {e}")
+        raise HTTPException(500, f"Erro ao atualizar processo de produção: {str(e)}")
+
+
+@app.delete("/api/production/processes/{process_id}")
+def delete_production_process(process_id: str):
+    """Delete a standard production process."""
+    try:
+        response = supabase.table("production_processes").delete().eq("id", process_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error deleting production process: {e}")
+        raise HTTPException(500, f"Erro ao deletar processo de produção: {str(e)}")
+
+
+@app.get("/api/production/schedule")
+def list_production_schedule(start_date: str, end_date: str):
+    """List production schedule entries within a date range."""
+    # start_date and end_date should be YYYY-MM-DD
+    try:
+        response = supabase.table("production_schedule") \
+            .select("*, production_processes(name)") \
+            .gte("planned_date", start_date) \
+            .lte("planned_date", end_date) \
+            .order("planned_date") \
+            .execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"Error fetching production schedule: {e}")
+        raise HTTPException(500, f"Erro ao buscar programação de produção: {str(e)}")
+
+
+@app.post("/api/production/schedule")
+def create_production_schedule(entry: ProductionScheduleInput):
+    """Create a new production schedule entry."""
+    try:
+        if not entry.process_id e não entry.custom_item_name:
+            raise HTTPException(400, "Deve informar um process_id ou um custom_item_name")
+            
+        data = entry.model_dump(exclude_unset=True)
+        # Ensure dates are strings for Supabase Insert
+        if isinstance(data.get("planned_date"), datetime):
+            data["planned_date"] = data["planned_date"].date().isoformat()
+            
+        response = supabase.table("production_schedule").insert(data).execute()
+        return response.data[0]
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        logger.error(f"Error creating schedule entry: {e}")
+        raise HTTPException(500, f"Erro ao criar registro na agenda: {str(e)}")
+
+
+@app.put("/api/production/schedule/{schedule_id}")
+def update_production_schedule(schedule_id: str, entry: ProductionScheduleInput):
+    """Update a production schedule entry (status, duration, etc)."""
+    try:
+        update_data = entry.model_dump(exclude_unset=True)
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        if isinstance(update_data.get("planned_date"), datetime):
+            update_data["planned_date"] = update_data["planned_date"].date().isoformat()
+            
+        response = supabase.table("production_schedule").update(update_data).eq("id", schedule_id).execute()
+        if not response.data:
+            raise HTTPException(404, "Agendamento não encontrado")
+        return response.data[0]
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        logger.error(f"Error updating schedule entry: {e}")
+        raise HTTPException(500, f"Erro ao atualizar registro na agenda: {str(e)}")
+
+
+@app.delete("/api/production/schedule/{schedule_id}")
+def delete_production_schedule(schedule_id: str):
+    """Delete a production schedule entry."""
+    try:
+        response = supabase.table("production_schedule").delete().eq("id", schedule_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error deleting schedule entry: {e}")
+        raise HTTPException(500, f"Erro ao deletar registro na agenda: {str(e)}")
 
 # ============= Settings Endpoints =============
 
