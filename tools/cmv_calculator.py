@@ -69,8 +69,21 @@ async def recalculate_recipe_cost(
             total_batch_ingredients_cost += item_cost
             total_weight += qty
             
-    # Labor cost remains the same as previously saved, as it's modified within the UI based on rate
-    labor_cost = Decimal(str(recipe.get("labor_cost", 0)))
+    # Fetch global labor rate from app_config
+    config_response = supabase.table("integration_settings") \
+        .select("settings") \
+        .eq("service_name", "app_config") \
+        .execute()
+    
+    global_labor_rate = Decimal("17.95") # Fallback
+    if config_response.data:
+        global_labor_rate = Decimal(str(config_response.data[0]["settings"].get("global_labor_rate", "17.95")))
+
+    # Recalculate labor cost based on minutes and global rate
+    labor_minutes = Decimal(str(recipe.get("labor_minutes", 0)))
+    labor_cost = (labor_minutes / Decimal("60")) * global_labor_rate
+    labor_cost = labor_cost.quantize(Decimal("0.01"))
+    
     total_cost = total_batch_ingredients_cost + total_batch_packaging_cost + labor_cost
     
     # Update recipe
@@ -79,19 +92,14 @@ async def recalculate_recipe_cost(
             "current_cost": float(total_cost),
             "ingredients_cost": float(total_batch_ingredients_cost),
             "packaging_cost": float(total_batch_packaging_cost),
-            # total_weight_kg is not updated in case yield changed, though technically it might if yield is dynamically tracking
+            "labor_cost": float(labor_cost),
         }) \
         .eq("id", recipe_id) \
         .execute()
     
     updated_recipe = update_response.data[0]
     
-    # Log to history
-    # To log labor_rate_applied, we approximate it from cost and minutes if minutes > 0
-    labor_minutes = Decimal(str(recipe.get("labor_minutes", 0)))
-    labor_rate_applied = Decimal("0.00")
-    if labor_minutes > 0:
-        labor_rate_applied = (labor_cost / (labor_minutes / Decimal("60")))
+    labor_rate_applied = global_labor_rate
         
     supabase.table("cmv_history").insert({
         "recipe_id": recipe_id,
