@@ -1235,7 +1235,7 @@ def list_production_schedule(start_date: str, end_date: str):
 def create_production_schedule(entry: ProductionScheduleInput):
     """Create a new production schedule entry."""
     try:
-        if not entry.process_id e não entry.custom_item_name:
+        if not entry.process_id and not entry.custom_item_name:
             raise HTTPException(400, "Deve informar um process_id ou um custom_item_name")
             
         data = entry.model_dump(exclude_unset=True)
@@ -1325,6 +1325,269 @@ def save_settings(payload: dict):
         raise HTTPException(500, f"Erro ao salvar configurações: {str(e)}")
 
 
+
+
+# ============= Financeiro: Módulo DRE =============
+
+class AddExpenseRequest(BaseModel):
+    description: str
+    amount: float
+    category_name: str
+    record_date: Optional[str] = None
+
+
+@app.get("/api/financeiro/dre")
+def get_dre(year: int, month: int):
+    """Retorna a DRE completa para o período: receita por canal, expenses e depreciação."""
+    from calendar import monthrange
+    start_date = f"{year}-{month:02d}-01"
+    _, last_day = monthrange(year, month)
+    end_date = f"{year}-{month:02d}-{last_day}"
+
+    try:
+        channels_res = supabase.table("sales_channels").select("name, dre_names").execute()
+        channels = channels_res.data or []
+
+        def get_channel_name(store_number):
+            if not store_number:
+                return "Outros"
+            for ch in channels:
+                if store_number in (ch.get("dre_names") or []):
+                    return ch["name"]
+            return "Outros"
+
+        orders_res = (
+            supabase.table("orders")
+            .select("order_id, store_number, order_total, order_discount, status_text")
+            .gte("order_date", start_date)
+            .lte("order_date", end_date)
+            .neq("status_text", "Cancelado")
+            .execute()
+        )
+        orders = orders_res.data or []
+
+        from collections import defaultdict
+        channel_agg = defaultdict(lambda: {
+            "receita_bruta": 0.0, "qtd_pedidos": 0, "qtd_itens": 0.0, "cmv_total": 0.0
+        })
+
+        order_ids = [o["order_id"] for o in orders]
+        order_channel_map = {o["order_id"]: get_channel_name(o.get("store_number")) for o in orders}
+
+        for order in orders:
+            canal = order_channel_map[order["order_id"]]
+            channel_agg[canal]["receita_bruta"] += float(order.get("order_total") or 0) + float(order.get("order_discount") or 0)
+            channel_agg[canal]["qtd_pedidos"] += 1
+
+        if order_ids:
+            items_res = (
+                supabase.table("orders_items")
+                .select("order_id, quantity, products(unit_ingredients_cost, unit_packaging_cost, unit_labor_cost)")
+                .in_("order_id", order_ids)
+                .execute()
+            )
+            for item in (items_res.data or []):
+                canal = order_channel_map.get(item["order_id"], "Outros")
+                qty = float(item.get("quantity") or 0)
+                channel_agg[canal]["qtd_itens"] += qty
+                prod = item.get("products") or {}
+                cmv_unit = (
+                    float(prod.get("unit_ingredients_cost") or 0)
+                    + float(prod.get("unit_packaging_cost") or 0)
+                    + float(prod.get("unit_labor_cost") or 0)
+                )
+                channel_agg[canal]["cmv_total"] += cmv_unit * qty
+
+        canais_result = []
+        for nome, d in channel_agg.items():
+            ticket = d["receita_bruta"] / d["qtd_pedidos"] if d["qtd_pedidos"] > 0 else 0
+            canais_result.append({
+                "nome": nome,
+                "receita_bruta": round(d["receita_bruta"], 2),
+                "qtd_pedidos": d["qtd_pedidos"],
+                "ticket_medio": round(ticket, 2),
+                "qtd_itens": round(d["qtd_itens"], 2),
+                "cmv_total": round(d["cmv_total"], 2),
+            })
+
+        all_cats_res = supabase.table("financial_categories").select("id, name, parent_category").execute()
+        cat_map = {c["id"]: c for c in (all_cats_res.data or [])}
+
+        expenses_res = (
+            supabase.table("expenses_records")
+            .select("id, description, amount, record_date, category_id, financial_categories(name, type, parent_category)")
+            .gte("record_date", start_date)
+            .lte("record_date", end_date)
+            .execute()
+        )
+        expenses = []
+        for e in (expenses_res.data or []):
+            cat = e.get("financial_categories") or {}
+            parent_id = cat.get("parent_category")
+            expenses.append({
+                "id": e["id"],
+                "description": e.get("description", ""),
+                "amount": float(e.get("amount") or 0),
+                "record_date": e.get("record_date", ""),
+                "category_id": e.get("category_id", ""),
+                "category_name": cat.get("name", ""),
+                "category_type": cat.get("type", ""),
+                "parent_category_name": cat_map.get(parent_id, {}).get("name", "") if parent_id else "",
+            })
+
+        assets_res = supabase.table("fixed_assets").select("purchase_value, useful_life_months").execute()
+        depreciacao = sum(
+            float(a["purchase_value"]) / int(a["useful_life_months"])
+            for a in (assets_res.data or [])
+            if a.get("purchase_value") and a.get("useful_life_months")
+        )
+
+        receita_bruta_total = sum(c["receita_bruta"] for c in canais_result)
+        cmv_total = sum(c["cmv_total"] for c in canais_result)
+
+        def sum_cat(cat_name):
+            return sum(e["amount"] for e in expenses if e["category_name"] == cat_name)
+
+        promocoes = sum_cat("Promoções")
+        das = sum_cat("DAS (Simples Nacional)")
+        devolucoes = sum_cat("Devoluções")
+        deducoes_total = promocoes + das + devolucoes
+        receita_liquida = receita_bruta_total - deducoes_total
+        resultado_bruto = receita_liquida - cmv_total
+        total_despesas = sum(
+            e["amount"] for e in expenses
+            if e["category_type"] in ("DESPESA_FIXA", "DESPESA_VARIAVEL")
+        )
+        juros = sum_cat("Juros de Empréstimos")
+        impostos_lucro = sum_cat("Impostos sobre Lucro")
+        ebitda = resultado_bruto - total_despesas
+        resultado_liquido = ebitda - round(depreciacao, 2) - juros - impostos_lucro
+
+        cmv_pct = (cmv_total / receita_liquida * 100) if receita_liquida > 0 else 0
+        margem_bruta = (resultado_bruto / receita_liquida * 100) if receita_liquida > 0 else 0
+        margem_liquida = (resultado_liquido / receita_bruta_total * 100) if receita_bruta_total > 0 else 0
+
+        return {
+            "year": year, "month": month,
+            "canais": canais_result,
+            "expenses": expenses,
+            "depreciacao": round(depreciacao, 2),
+            "summary": {
+                "receita_bruta_total": round(receita_bruta_total, 2),
+                "deducoes": {"total": round(deducoes_total, 2), "promocoes": round(promocoes, 2), "das": round(das, 2), "devolucoes": round(devolucoes, 2)},
+                "receita_liquida": round(receita_liquida, 2),
+                "cmv_total": round(cmv_total, 2),
+                "cmv_percentual": round(cmv_pct, 2),
+                "resultado_bruto": round(resultado_bruto, 2),
+                "margem_bruta": round(margem_bruta, 2),
+                "total_despesas": round(total_despesas, 2),
+                "ebitda": round(ebitda, 2),
+                "depreciacao": round(depreciacao, 2),
+                "resultado_liquido": round(resultado_liquido, 2),
+                "margem_liquida": round(margem_liquida, 2),
+            },
+        }
+    except Exception as e:
+        logger.error(f"[DRE] Erro ao calcular DRE {year}/{month}: {e}")
+        raise HTTPException(500, f"Erro ao gerar DRE: {str(e)}")
+
+
+@app.post("/api/financeiro/expenses")
+def add_expense_record(req: AddExpenseRequest):
+    """Registra uma despesa manual pelo nome da categoria."""
+    try:
+        cat_res = supabase.table("financial_categories").select("id").eq("name", req.category_name).execute()
+        if not cat_res.data:
+            raise HTTPException(404, f"Categoria '{req.category_name}' não encontrada.")
+        record = {
+            "description": req.description,
+            "amount": req.amount,
+            "category_id": cat_res.data[0]["id"],
+            "record_date": req.record_date or datetime.now().strftime("%Y-%m-%d"),
+        }
+        res = supabase.table("expenses_records").insert(record).execute()
+        return res.data[0] if res.data else {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[DRE] Erro ao adicionar despesa: {e}")
+        raise HTTPException(500, f"Erro ao salvar despesa: {str(e)}")
+
+
+@app.delete("/api/financeiro/expenses/{expense_id}")
+def delete_expense_record(expense_id: str):
+    """Remove um registro de despesa."""
+    try:
+        supabase.table("expenses_records").delete().eq("id", expense_id).execute()
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"[DRE] Erro ao deletar despesa {expense_id}: {e}")
+        raise HTTPException(500, f"Erro ao remover despesa: {str(e)}")
+
+
+@app.get("/api/financeiro/inadimplencia")
+def get_inadimplencia():
+    """Retorna pedidos em aberto há mais de 60 dias de canais de crédito."""
+    from datetime import timedelta
+    try:
+        sixty_days_ago = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+        orders_res = (
+            supabase.table("orders")
+            .select("order_id, order_number, order_date, order_total, store_number, customers(name)")
+            .lte("order_date", sixty_days_ago)
+            .eq("status_text", "Em Aberto")
+            .execute()
+        )
+        channels_res = supabase.table("sales_channels").select("name, dre_names").execute()
+        credit_store_numbers = []
+        for ch in (channels_res.data or []):
+            nome = (ch.get("name") or "").lower()
+            if any(kw in nome for kw in ["chat", "atendimento", "revenda", "b2b"]):
+                credit_store_numbers.extend(ch.get("dre_names") or [])
+
+        flagged = []
+        for o in (orders_res.data or []):
+            if o.get("store_number") in credit_store_numbers:
+                customer = o.get("customers") or {}
+                flagged.append({
+                    "order_id": o["order_id"],
+                    "order_number": o.get("order_number"),
+                    "order_date": o.get("order_date"),
+                    "order_total": float(o.get("order_total") or 0),
+                    "store_number": o.get("store_number"),
+                    "customer_name": customer.get("name", ""),
+                })
+        return {"flagged_orders": flagged, "total": len(flagged)}
+    except Exception as e:
+        logger.error(f"[DRE] Erro ao buscar inadimplência: {e}")
+        raise HTTPException(500, f"Erro ao buscar inadimplência: {str(e)}")
+
+
+@app.post("/api/financeiro/inadimplencia/{order_id}/confirmar")
+def confirm_inadimplencia(order_id: int, payload: dict):
+    """Registra um pedido como inadimplência em expenses_records."""
+    try:
+        month_str = payload.get("month", datetime.now().strftime("%Y-%m"))
+        order_res = supabase.table("orders").select("order_total, order_number, customers(name)").eq("order_id", order_id).execute()
+        if not order_res.data:
+            raise HTTPException(404, "Pedido não encontrado.")
+        order = order_res.data[0]
+        cat_res = supabase.table("financial_categories").select("id").eq("name", "Inadimplência").execute()
+        if not cat_res.data:
+            raise HTTPException(404, "Categoria 'Inadimplência' não encontrada.")
+        customer = order.get("customers") or {}
+        supabase.table("expenses_records").insert({
+            "description": f"Inadimplência — Pedido #{order.get('order_number')} ({customer.get('name', 'Cliente')})",
+            "amount": float(order.get("order_total") or 0),
+            "category_id": cat_res.data[0]["id"],
+            "record_date": f"{month_str}-01",
+        }).execute()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[DRE] Erro ao confirmar inadimplência do pedido {order_id}: {e}")
+        raise HTTPException(500, f"Erro ao registrar inadimplência: {str(e)}")
 
 
 if __name__ == "__main__":

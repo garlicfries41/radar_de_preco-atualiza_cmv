@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AppShell } from './components/features/AppShell';
 import { CatalogoModule } from './components/features/CatalogoModule';
 import { ProducaoModule } from './components/features/ProducaoModule';
+import { FinanceiroModule } from './components/features/FinanceiroModule';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <Route path="/" element={<Navigate to="/catalogo/upload" replace />} />
           <Route path="/catalogo/*" element={<CatalogoModule />} />
           <Route path="/producao/*" element={<ProducaoModule />} />
+          <Route path="/financeiro/*" element={<FinanceiroModule />} />
           <Route path="*" element={<Navigate to="/catalogo/upload" replace />} />
         </Routes>
       </AppShell>

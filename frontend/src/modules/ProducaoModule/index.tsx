@@ -2,18 +2,18 @@ import React, { useState } from 'react';
 import { Calendar, Calculator } from 'lucide-react';
 
 // Views
-import { AgendaView } from '../../modules/ProducaoModule/components/agenda/AgendaView';
-import { CalculatorView } from '../../modules/ProducaoModule/components/calculator/CalculatorView';
+import { AgendaView } from './components/agenda/AgendaView';
+// import { CalculatorView } from './components/calculator/CalculatorView';
 
 type TabType = 'agenda' | 'calculator';
 
-export function ProducaoModule() {
+const ProducaoModule: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('agenda');
 
     return (
         <div className="flex flex-col h-full bg-[#f9fafb]">
-            {/* Sub-Navigation (Module Tabs) - Fixed cleanly below the Main Header */}
-            <div className="bg-white px-4 md:px-6 pt-3 flex space-x-6 shadow-sm z-20">
+            {/* Sub-Navigation (Module Tabs) */}
+            <div className="bg-white border-b border-[#E5E7EB] px-4 md:px-6 pt-4 flex space-x-6 sticky top-0 z-20">
                 <button
                     onClick={() => setActiveTab('agenda')}
                     className={`pb-3 border-b-2 font-medium text-sm flex items-center transition-colors ${activeTab === 'agenda'
@@ -37,13 +37,18 @@ export function ProducaoModule() {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-auto bg-[#f9fafb]">
+            <div className="flex-1 overflow-auto">
                 {activeTab === 'agenda' ? (
                     <AgendaView />
                 ) : (
-                    <CalculatorView />
+                    <div className="p-8 text-center text-gray-500">
+                        {/* <CalculatorView /> */}
+                        Calculadora em desenvolvimento...
+                    </div>
                 )}
             </div>
         </div>
     );
-}
+};
+
+export default ProducaoModule;

@@ -5,11 +5,13 @@ import {
     ChevronDown,
     Package,
     Factory,
+    BarChart2,
 } from 'lucide-react';
 
 const MODULES = [
     { id: 'catalogo', label: 'Catálogo de Custos', href: '/catalogo', icon: Package },
     { id: 'producao', label: 'Gestão de Produção', href: '/producao', icon: Factory },
+    { id: 'financeiro', label: 'Financeiro (DRE)', href: '/financeiro', icon: BarChart2 },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
