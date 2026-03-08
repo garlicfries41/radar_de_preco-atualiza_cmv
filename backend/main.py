@@ -1386,14 +1386,34 @@ def get_dre(year: int, month: int):
         shipping_map = {o["order_id"]: float(o.get("shipping") or 0) for o in orders}
 
         if order_ids:
-            # Fetch items with products to get master prices and CMV
+            # 1. Fetch items
             items_res = (
                 supabase.table("orders_items")
-                .select("order_id, quantity, products(product_price, preco_revenda, unit_ingredients_cost, unit_packaging_cost, unit_labor_cost)")
+                .select("order_id, product_id, quantity, products(product_price, preco_revenda, unit_ingredients_cost, unit_packaging_cost, unit_labor_cost)")
                 .in_("order_id", order_ids)
                 .execute()
             )
             
+            # 2. Pre-fetch historical CMV for ALL products in these orders
+            all_pids = list(set([it["product_id"] for it in items_res.data if it.get("product_id")]))
+            history_res = (
+                supabase.table("cmv_history")
+                .select("product_id, cmv_per_unit, recorded_at")
+                .in_("product_id", all_pids)
+                .lte("recorded_at", end_date)
+                .order("recorded_at")
+                .execute()
+            )
+            
+            # Group history by product
+            history_map = defaultdict(list)
+            for h in (history_res.data or []):
+                history_map[h["product_id"]].append(h)
+            
+            # Map order dates for efficiency
+            order_date_map = {o["order_id"]: (o.get("order_date") or "") for o in orders}
+            store_map = {o["order_id"]: (o.get("store_number") or "").lower() for o in orders}
+
             for item in (items_res.data or []):
                 o_id = item["order_id"]
                 canal = order_channel_map.get(o_id, "Outros")
@@ -1401,27 +1421,38 @@ def get_dre(year: int, month: int):
                 channel_agg[canal]["qtd_itens"] += qty
                 
                 prod = item.get("products") or {}
+                p_id = item.get("product_id")
+                
+                # CMV Calculation - Point in Time
+                order_date = order_date_map.get(o_id)
+                cmv_unit = 0.0
+                
+                if p_id and order_date and p_id in history_map:
+                    # Find last record <= order_date
+                    for h in history_map[p_id]:
+                        h_date = h["recorded_at"][:10] if h["recorded_at"] else ""
+                        if h_date <= order_date:
+                            cmv_unit = float(h.get("cmv_per_unit") or 0)
+                        else:
+                            break
+                
+                # Fallback to current product cost if history not found OR cmv was zero
+                if cmv_unit == 0:
+                    cmv_unit = (
+                        float(prod.get("unit_ingredients_cost") or 0)
+                        + float(prod.get("unit_packaging_cost") or 0)
+                        + float(prod.get("unit_labor_cost") or 0)
+                    )
+                
+                channel_agg[canal]["cmv_total"] += cmv_unit * qty
                 
                 # Preço de Tabela (Retail or Revenda)
-                store = ""
-                for o in orders:
-                    if o["order_id"] == o_id:
-                        store = (o.get("store_number") or "").lower()
-                        break
-                
+                store = store_map.get(o_id, "")
                 is_revenda = "revenda" in store or "catering" in store or "restaurante" in store
                 catalog_price = float(prod.get("preco_revenda") or prod.get("product_price") or 0) if is_revenda else float(prod.get("product_price") or 0)
                 
-                # Receita Bruta (Catalog Price * Qty) - Discounts are ignored for Gross
+                # Receita Bruta (Catalog Price * Qty)
                 channel_agg[canal]["receita_bruta"] += catalog_price * qty
-                
-                # CMV Calculation
-                cmv_unit = (
-                    float(prod.get("unit_ingredients_cost") or 0)
-                    + float(prod.get("unit_packaging_cost") or 0)
-                    + float(prod.get("unit_labor_cost") or 0)
-                )
-                channel_agg[canal]["cmv_total"] += cmv_unit * qty
 
         # Add shipping to revenue per channel
         for o in orders:

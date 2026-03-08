@@ -108,7 +108,9 @@ async def recalculate_recipe_cost(
         "ingredients_cost": float(total_batch_ingredients_cost),
         "packaging_cost": float(total_batch_packaging_cost),
         "labor_cost": float(labor_cost),
-        "labor_rate_applied": float(labor_rate_applied)
+        "labor_rate_applied": float(labor_rate_applied),
+        "yield_units": float(recipe.get("yield_units", 1)),
+        "cmv_per_unit": float(updated_recipe.get("cmv_per_unit", 0))
     }).execute()
     
     # CMV values are auto-calculated in DB, fetch them
