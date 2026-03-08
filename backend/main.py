@@ -1352,19 +1352,29 @@ def get_dre(year: int, month: int):
             if not store_number:
                 return "Outros"
             for ch in channels:
-                if store_number in (ch.get("dre_names") or []):
-                    return ch["name"]
+                channel_name = ch.get("name")
+                aliases = ch.get("dre_names") or []
+                if store_number == channel_name or store_number in aliases:
+                    return channel_name
             return "Outros"
 
+        # Query orders strictly excluding Cancelado and the gift order 5713
         orders_res = (
             supabase.table("orders")
-            .select("order_id, store_number, order_total, order_discount, status_text")
+            .select("order_id, order_number, store_number, shipping, status_text")
             .gte("order_date", start_date)
             .lte("order_date", end_date)
-            .or_("status_text.neq.Cancelado,status_text.is.null")
             .execute()
         )
-        orders = orders_res.data or []
+        orders_all = orders_res.data or []
+        
+        # Filtro: Excluir Cancelado e o pedido 5713 (Amostra/Presente)
+        orders = []
+        for o in orders_all:
+            status = (o.get("status_text") or "").strip().lower()
+            num = str(o.get("order_number") or "")
+            if status != "cancelado" and num != "5713":
+                orders.append(o)
 
         from collections import defaultdict
         channel_agg = defaultdict(lambda: {
@@ -1373,30 +1383,52 @@ def get_dre(year: int, month: int):
 
         order_ids = [o["order_id"] for o in orders]
         order_channel_map = {o["order_id"]: get_channel_name(o.get("store_number")) for o in orders}
-
-        for order in orders:
-            canal = order_channel_map[order["order_id"]]
-            channel_agg[canal]["receita_bruta"] += float(order.get("order_total") or 0) + float(order.get("order_discount") or 0)
-            channel_agg[canal]["qtd_pedidos"] += 1
+        shipping_map = {o["order_id"]: float(o.get("shipping") or 0) for o in orders}
 
         if order_ids:
+            # Fetch items with products to get master prices and CMV
             items_res = (
                 supabase.table("orders_items")
-                .select("order_id, quantity, products(unit_ingredients_cost, unit_packaging_cost, unit_labor_cost)")
+                .select("order_id, quantity, products(product_price, preco_revenda, unit_ingredients_cost, unit_packaging_cost, unit_labor_cost)")
                 .in_("order_id", order_ids)
                 .execute()
             )
+            
             for item in (items_res.data or []):
-                canal = order_channel_map.get(item["order_id"], "Outros")
+                o_id = item["order_id"]
+                canal = order_channel_map.get(o_id, "Outros")
                 qty = float(item.get("quantity") or 0)
                 channel_agg[canal]["qtd_itens"] += qty
+                
                 prod = item.get("products") or {}
+                
+                # Preço de Tabela (Retail or Revenda)
+                store = ""
+                for o in orders:
+                    if o["order_id"] == o_id:
+                        store = (o.get("store_number") or "").lower()
+                        break
+                
+                is_revenda = "revenda" in store or "catering" in store or "restaurante" in store
+                catalog_price = float(prod.get("preco_revenda") or prod.get("product_price") or 0) if is_revenda else float(prod.get("product_price") or 0)
+                
+                # Receita Bruta (Catalog Price * Qty) - Discounts are ignored for Gross
+                channel_agg[canal]["receita_bruta"] += catalog_price * qty
+                
+                # CMV Calculation
                 cmv_unit = (
                     float(prod.get("unit_ingredients_cost") or 0)
                     + float(prod.get("unit_packaging_cost") or 0)
                     + float(prod.get("unit_labor_cost") or 0)
                 )
                 channel_agg[canal]["cmv_total"] += cmv_unit * qty
+
+        # Add shipping to revenue per channel
+        for o in orders:
+            canal = order_channel_map.get(o["order_id"], "Outros")
+            shipping = float(o.get("shipping") or 0)
+            channel_agg[canal]["receita_bruta"] += shipping
+            channel_agg[canal]["qtd_pedidos"] += 1
 
         canais_result = []
         for nome, d in channel_agg.items():
