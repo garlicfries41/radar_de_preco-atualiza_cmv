@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 export interface ProductionProcess {
     id: string;
     name: string;
-    expected_duration_minutes: int;
+    expected_duration_minutes: number;
     yield_notes?: string;
 }
 
@@ -13,7 +13,7 @@ export interface ProductionSchedule {
     planned_date: string;
     process_id?: string;
     custom_item_name?: string;
-    duration_minutes: int;
+    duration_minutes: number;
     status: 'pending' | 'done' | 'cancelled';
     production_processes?: { name: string };
     updated_at?: string;

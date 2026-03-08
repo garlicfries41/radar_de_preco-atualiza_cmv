@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calculator, ArrowRight, Save, UtensilsCrossed, Scale, Target } from 'lucide-react';
-import { useCalculator, RecipeWithIngredients } from '../hooks/useCalculator';
+import { Calculator, Save, UtensilsCrossed, Scale, Target } from 'lucide-react';
+import { useCalculator } from '../../hooks/useCalculator';
+import type { RecipeWithIngredients, RecipeIngredient } from '../../hooks/useCalculator';
 
 export const CalculatorView: React.FC = () => {
     const { fetchRecipesList, fetchRecipeDetails, loading } = useCalculator();
@@ -52,7 +53,7 @@ export const CalculatorView: React.FC = () => {
         }
 
         // 1. Find the base ingredient in the original recipe to discover the multiplier
-        const originalBaseIngredient = activeRecipe.recipe_ingredients.find(ri => ri.ingredient_id === baseIngredientId);
+        const originalBaseIngredient = activeRecipe.recipe_ingredients.find((ri: RecipeIngredient) => ri.ingredient_id === baseIngredientId);
         if (!originalBaseIngredient || originalBaseIngredient.quantity <= 0) return null;
 
         const inputQtd = Number(baseQuantityInput);
@@ -60,7 +61,7 @@ export const CalculatorView: React.FC = () => {
         const multiplier = inputQtd / originalBaseIngredient.quantity;
 
         // 2. Scale all ingredients
-        const scaledIngredients = activeRecipe.recipe_ingredients.map(ing => ({
+        const scaledIngredients = activeRecipe.recipe_ingredients.map((ing: RecipeIngredient) => ({
             ...ing,
             scaled_quantity: ing.quantity * multiplier
         }));
@@ -143,7 +144,7 @@ export const CalculatorView: React.FC = () => {
                                     disabled={!activeRecipe}
                                 >
                                     <option value="">Selecione...</option>
-                                    {activeRecipe?.recipe_ingredients.map(ing => (
+                                    {activeRecipe?.recipe_ingredients.map((ing: RecipeIngredient) => (
                                         <option key={ing.ingredient_id} value={ing.ingredient_id}>
                                             {ing.ingredients.name} (Ref: {ing.quantity} {ing.ingredients.unit})
                                         </option>
@@ -166,7 +167,7 @@ export const CalculatorView: React.FC = () => {
                                     />
                                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
                                         <span className="text-gray-500 sm:text-sm font-medium">
-                                            {activeRecipe?.recipe_ingredients.find(i => i.ingredient_id === baseIngredientId)?.ingredients.unit || '-'}
+                                            {activeRecipe?.recipe_ingredients.find((i: RecipeIngredient) => i.ingredient_id === baseIngredientId)?.ingredients.unit || '-'}
                                         </span>
                                     </div>
                                 </div>
@@ -233,7 +234,7 @@ export const CalculatorView: React.FC = () => {
                                     {/* Ingredients List */}
                                     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                                         <ul className="divide-y divide-gray-100">
-                                            {calculationResults.scaledIngredients.map((ing) => {
+                                            {calculationResults.scaledIngredients.map((ing: RecipeIngredient & { scaled_quantity: number }) => {
                                                 const isBase = ing.ingredient_id === baseIngredientId;
                                                 return (
                                                     <li key={ing.ingredient_id} className={`px-4 py-3 flex justify-between items-center ${isBase ? 'bg-primary/5' : ''}`}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, AlertTriangle, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, X } from 'lucide-react';
 import {
     getDRE, addExpense, deleteExpense, getInadimplencia, confirmInadimplencia,
     type DREData, type ExpenseItem, type FlaggedOrder
