@@ -325,13 +325,17 @@ export function DREView() {
         label,
         catName,
         indent = 1,
+        overrideValueCur,
+        overrideValuePrev,
     }: {
         label: string;
         catName: string;
         indent?: number;
+        overrideValueCur?: number;
+        overrideValuePrev?: number;
     }) => {
-        const curVal = sumByCategory(cd?.expenses ?? [], catName);
-        const prevVal = sumByCategory(pd?.expenses ?? [], catName);
+        const curVal = overrideValueCur !== undefined ? overrideValueCur : sumByCategory(cd?.expenses ?? [], catName);
+        const prevVal = overrideValuePrev !== undefined ? overrideValuePrev : sumByCategory(pd?.expenses ?? [], catName);
         const curItems = canEdit(cd?.expenses ?? [], catName);
 
         return (
@@ -531,9 +535,24 @@ export function DREView() {
                                 <ValCell value={pd?.summary.deducoes.total ?? 0} />
                                 <ValCell value={cd?.summary.deducoes.total ?? 0} />
                             </tr>
-                            <EditableRow label="PROMOÇÕES" catName="Promoções" />
-                            <EditableRow label="DAS (Impostos)" catName="DAS (Simples Nacional)" />
-                            <EditableRow label="DEVOLUÇÕES" catName="Devoluções" />
+                            <EditableRow
+                                label="PROMOÇÕES"
+                                catName="Promoções"
+                                overrideValueCur={cd?.summary.deducoes.promocoes}
+                                overrideValuePrev={pd?.summary.deducoes.promocoes}
+                            />
+                            <EditableRow
+                                label="DAS (Impostos)"
+                                catName="DAS (Simples Nacional)"
+                                overrideValueCur={cd?.summary.deducoes.das}
+                                overrideValuePrev={pd?.summary.deducoes.das}
+                            />
+                            <EditableRow
+                                label="DEVOLUÇÕES"
+                                catName="Devoluções"
+                                overrideValueCur={cd?.summary.deducoes.devolucoes}
+                                overrideValuePrev={pd?.summary.deducoes.devolucoes}
+                            />
 
                             {/* ── RECEITA OPERACIONAL LÍQUIDA ── */}
                             <tr className="h-2 bg-gray-50"><td colSpan={3} /></tr>
