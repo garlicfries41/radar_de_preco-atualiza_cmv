@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, X, ClipboardList } from 'lucide-react';
+import { FechamentoWizard } from './FechamentoWizard';
 import {
     getDRE, addExpense, deleteExpense, getInadimplencia, confirmInadimplencia,
     type DREData, type ExpenseItem, type FlaggedOrder
@@ -272,6 +273,7 @@ export function DREView() {
     const [addModal, setAddModal] = useState<AddModalState>({
         open: false, categoryName: '', withDescription: false, year, month,
     });
+    const [showWizard, setShowWizard] = useState(false);
 
     const [py, pm] = prevMonth(year, month);
 
@@ -413,6 +415,16 @@ export function DREView() {
     return (
         <div className="pb-12">
             {/* Modals */}
+            {showWizard && (
+                <FechamentoWizard
+                    year={year}
+                    month={month}
+                    prevData={prev.data}
+                    currentExpenses={cd?.expenses ?? []}
+                    onClose={() => setShowWizard(false)}
+                    onSaved={fetchAll}
+                />
+            )}
             <AddExpenseModal
                 state={addModal}
                 onClose={() => setAddModal(s => ({ ...s, open: false }))}
@@ -434,6 +446,14 @@ export function DREView() {
                     Demonstração de Resultado (DRE)
                 </h2>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowWizard(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90"
+                        title="Iniciar Fechamento Mensal"
+                    >
+                        <ClipboardList size={15} />
+                        Fechamento
+                    </button>
                     <button
                         onClick={() => navigate('prev')}
                         className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600"

@@ -1361,7 +1361,7 @@ def get_dre(year: int, month: int):
             .select("order_id, store_number, order_total, order_discount, status_text")
             .gte("order_date", start_date)
             .lte("order_date", end_date)
-            .neq("status_text", "Cancelado")
+            .or_("status_text.neq.Cancelado,status_text.is.null")
             .execute()
         )
         orders = orders_res.data or []

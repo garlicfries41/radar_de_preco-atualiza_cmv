@@ -1,0 +1,430 @@
+import React, { useState, useRef } from 'react';
+import { X, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from 'lucide-react';
+import { addExpense, deleteExpense, type DREData, type ExpenseItem } from '../../api';
+
+// ─── Tipos ───────────────────────────────────────────────────────────────────
+
+interface WizardField {
+    label: string;
+    catName: string;
+}
+
+interface InfraWebItem {
+    description: string;
+    amount: string;
+    /** suggestion (mês anterior) em número */
+    suggestion: number;
+    id: string;
+}
+
+interface WizardValues {
+    [catName: string]: string; // valor digitado como string
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const sumByCategory = (expenses: ExpenseItem[], catName: string) =>
+    expenses.filter(e => e.category_name === catName).reduce((s, e) => s + e.amount, 0);
+
+const parseVal = (s: string) => {
+    const n = parseFloat(s.replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+};
+
+// ─── Campo com sugestão via Tab ───────────────────────────────────────────────
+
+function SuggestInput({
+    label,
+    value,
+    onChange,
+    suggestion,
+}: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    suggestion: number;
+}) {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Tab' && value === '' && suggestion > 0) {
+            e.preventDefault();
+            onChange(suggestion.toFixed(2).replace('.', ','));
+        }
+    };
+
+    return (
+        <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+            <input
+                type="text"
+                inputMode="decimal"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder={suggestion > 0 ? `Mês passado: ${fmt(suggestion)} — Tab para usar` : '0,00'}
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+            />
+        </div>
+    );
+}
+
+// ─── Definição dos steps ──────────────────────────────────────────────────────
+
+const STEPS: Array<{
+    title: string;
+    fields?: WizardField[];
+    isInfraWeb?: boolean;
+}> = [
+    {
+        title: 'Deduções',
+        fields: [
+            { label: 'Promoções', catName: 'Promoções' },
+            { label: 'DAS (Simples Nacional)', catName: 'DAS (Simples Nacional)' },
+            { label: 'Devoluções', catName: 'Devoluções' },
+        ],
+    },
+    {
+        title: 'Funcionários',
+        fields: [
+            { label: 'Pró-labore', catName: 'Pró-labore' },
+            { label: 'Empregados', catName: 'Empregados' },
+        ],
+    },
+    {
+        title: 'Despesas com Vendas',
+        fields: [
+            { label: 'Taxa Mercado Pago', catName: 'Taxa Mercado Pago' },
+            { label: 'Comissão Feiras', catName: 'Comissão Feiras' },
+            { label: 'Aluguel Feira', catName: 'Aluguel Feira' },
+        ],
+    },
+    {
+        title: 'Despesas Fixas',
+        fields: [
+            { label: 'Condomínio', catName: 'Condomínio (taxas e manutenção)' },
+            { label: 'Internet e Telefone', catName: 'Internet e Telefone' },
+            { label: 'Gás', catName: 'Gás' },
+        ],
+    },
+    {
+        title: 'Outras Despesas',
+        fields: [
+            { label: 'Contabilidade', catName: 'Contabilidade' },
+        ],
+    },
+    {
+        title: 'Infra Web',
+        isInfraWeb: true,
+    },
+    {
+        title: 'Entregas — Feira',
+        fields: [
+            { label: 'Uber Direct', catName: 'Uber Direct (Feira)' },
+            { label: '99 Empresas', catName: '99 Empresas (Feira)' },
+            { label: 'Lalamove', catName: 'Lalamove (Feira)' },
+        ],
+    },
+    {
+        title: 'Entregas — Site',
+        fields: [
+            { label: 'Uber Direct', catName: 'Uber Direct (Site)' },
+            { label: '99 Empresas', catName: '99 Empresas (Site)' },
+            { label: 'Lalamove', catName: 'Lalamove (Site)' },
+        ],
+    },
+    {
+        title: 'Entregas — Catering',
+        fields: [
+            { label: 'Uber Direct', catName: 'Uber Direct (Catering)' },
+            { label: '99 Empresas', catName: '99 Empresas (Catering)' },
+            { label: 'Lalamove', catName: 'Lalamove (Catering)' },
+        ],
+    },
+    {
+        title: 'Outros',
+        fields: [
+            { label: 'Diarista', catName: 'Diarista' },
+            { label: 'Material de Limpeza', catName: 'Material de Limpeza' },
+        ],
+    },
+    {
+        title: 'Pós-EBITDA',
+        fields: [
+            { label: 'Juros de Empréstimos', catName: 'Juros de Empréstimos' },
+            { label: 'Impostos sobre Lucro', catName: 'Impostos sobre Lucro' },
+        ],
+    },
+    {
+        title: 'Resumo',
+    },
+];
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+export function FechamentoWizard({
+    year,
+    month,
+    prevData,
+    currentExpenses,
+    onClose,
+    onSaved,
+}: {
+    year: number;
+    month: number;
+    prevData: DREData | null;
+    currentExpenses: ExpenseItem[];
+    onClose: () => void;
+    onSaved: () => void;
+}) {
+    const [step, setStep] = useState(0);
+    const [values, setValues] = useState<WizardValues>({});
+    const [infraItems, setInfraItems] = useState<InfraWebItem[]>([]);
+    const [saving, setSaving] = useState(false);
+    const [confirmReplace, setConfirmReplace] = useState(false);
+    const idCounter = useRef(0);
+
+    const recordDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const hasExisting = currentExpenses.length > 0;
+
+    const prevExpenses = prevData?.expenses ?? [];
+
+    const getSuggestion = (catName: string) => sumByCategory(prevExpenses, catName);
+
+    const setField = (catName: string, v: string) =>
+        setValues(prev => ({ ...prev, [catName]: v }));
+
+    const addInfraItem = () => {
+        idCounter.current += 1;
+        setInfraItems(prev => [
+            ...prev,
+            { description: '', amount: '', suggestion: 0, id: String(idCounter.current) },
+        ]);
+    };
+
+    const updateInfraItem = (id: string, patch: Partial<InfraWebItem>) =>
+        setInfraItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+
+    const removeInfraItem = (id: string) =>
+        setInfraItems(prev => prev.filter(it => it.id !== id));
+
+    // Coleta todos os lançamentos a salvar
+    const buildPayloads = () => {
+        const items: Array<Parameters<typeof addExpense>[0]> = [];
+
+        // Campos normais
+        for (const [catName, raw] of Object.entries(values)) {
+            const val = parseVal(raw);
+            if (val > 0) {
+                items.push({ description: catName, amount: val, category_name: catName, record_date: recordDate });
+            }
+        }
+
+        // Infra Web
+        for (const it of infraItems) {
+            const val = parseVal(it.amount);
+            if (val > 0 && it.description.trim()) {
+                items.push({ description: it.description.trim(), amount: val, category_name: 'Infra Web', record_date: recordDate });
+            }
+        }
+
+        return items;
+    };
+
+    const handleConfirm = async () => {
+        if (hasExisting && !confirmReplace) {
+            setConfirmReplace(true);
+            return;
+        }
+
+        setSaving(true);
+        try {
+            // Se substituição: apagar existentes primeiro
+            if (hasExisting && confirmReplace) {
+                await Promise.all(currentExpenses.map(e => deleteExpense(e.id)));
+            }
+
+            const payloads = buildPayloads();
+            await Promise.all(payloads.map(p => addExpense(p)));
+            onSaved();
+            onClose();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const currentStep = STEPS[step];
+    const isLast = step === STEPS.length - 1;
+    const isFirst = step === 0;
+
+    // ── Step: campos normais ──────────────────────────────────────────────────
+
+    const renderFields = (fields: WizardField[]) => (
+        <div className="space-y-1">
+            {fields.map(f => (
+                <SuggestInput
+                    key={f.catName}
+                    label={f.label}
+                    value={values[f.catName] ?? ''}
+                    onChange={v => setField(f.catName, v)}
+                    suggestion={getSuggestion(f.catName)}
+                />
+            ))}
+        </div>
+    );
+
+    // ── Step: Infra Web (lista dinâmica) ──────────────────────────────────────
+
+    const renderInfraWeb = () => (
+        <div className="space-y-2">
+            {infraItems.map(it => (
+                <div key={it.id} className="flex gap-2 items-center">
+                    <input
+                        type="text"
+                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Ex: Shopify, Vercel..."
+                        value={it.description}
+                        onChange={e => updateInfraItem(it.id, { description: e.target.value })}
+                    />
+                    <input
+                        type="text"
+                        inputMode="decimal"
+                        className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="0,00"
+                        value={it.amount}
+                        onChange={e => updateInfraItem(it.id, { amount: e.target.value })}
+                    />
+                    <button
+                        onClick={() => removeInfraItem(it.id)}
+                        className="text-gray-300 hover:text-red-500"
+                    >
+                        <Trash2 size={15} />
+                    </button>
+                </div>
+            ))}
+            <button
+                onClick={addInfraItem}
+                className="flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+            >
+                <Plus size={14} /> Adicionar item
+            </button>
+        </div>
+    );
+
+    // ── Step: Resumo ──────────────────────────────────────────────────────────
+
+    const renderResumo = () => {
+        const payloads = buildPayloads();
+
+        if (payloads.length === 0) {
+            return (
+                <p className="text-sm text-gray-500 text-center py-4">
+                    Nenhum valor informado. Avance para encerrar sem lançamentos.
+                </p>
+            );
+        }
+
+        return (
+            <div className="space-y-1 max-h-80 overflow-y-auto">
+                {payloads.map((p, i) => (
+                    <div key={i} className="flex justify-between items-center py-1.5 border-b border-gray-100 text-sm">
+                        <span className="text-gray-700 truncate max-w-[65%]">
+                            {p.description !== p.category_name
+                                ? <><span className="text-gray-400">{p.category_name} / </span>{p.description}</>
+                                : p.description}
+                        </span>
+                        <span className="font-medium tabular-nums">{fmt(p.amount)}</span>
+                    </div>
+                ))}
+                <div className="flex justify-between items-center pt-2 font-semibold text-sm">
+                    <span>Total</span>
+                    <span>{fmt(payloads.reduce((s, p) => s + p.amount, 0))}</span>
+                </div>
+            </div>
+        );
+    };
+
+    // ─── Render ───────────────────────────────────────────────────────────────
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col" style={{ maxHeight: '90vh' }}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">
+                            Fechamento Mensal · Step {step + 1}/{STEPS.length}
+                        </p>
+                        <h3 className="text-base font-semibold text-gray-900">{currentStep.title}</h3>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X size={18} />
+                    </button>
+                </div>
+
+                {/* Progress bar */}
+                <div className="h-1 bg-gray-100">
+                    <div
+                        className="h-1 bg-primary transition-all duration-300"
+                        style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+                    />
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto px-6 py-5">
+                    {currentStep.isInfraWeb && renderInfraWeb()}
+                    {currentStep.fields && renderFields(currentStep.fields)}
+                    {isLast && renderResumo()}
+
+                    {/* Aviso de substituição */}
+                    {isLast && hasExisting && (
+                        <div className={`mt-4 rounded-lg p-3 text-sm ${confirmReplace ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+                            {confirmReplace
+                                ? 'Clique em "Confirmar Fechamento" para apagar os lançamentos existentes e salvar os novos.'
+                                : `Já existem ${currentExpenses.length} lançamentos para este mês. Confirmar irá substituí-los.`}
+                        </div>
+                    )}
+
+                    {/* Dica Tab */}
+                    {!isLast && !currentStep.isInfraWeb && (
+                        <p className="text-xs text-gray-400 mt-4">
+                            Deixe em branco para pular. Pressione <kbd className="bg-gray-100 px-1 rounded text-xs">Tab</kbd> num campo vazio para usar o valor do mês anterior.
+                        </p>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+                    <button
+                        onClick={() => setStep(s => s - 1)}
+                        disabled={isFirst}
+                        className="flex items-center gap-1 border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+                    >
+                        <ChevronLeft size={15} /> Voltar
+                    </button>
+
+                    {!isLast && (
+                        <button
+                            onClick={() => setStep(s => s + 1)}
+                            className="flex-1 flex items-center justify-center gap-1 bg-primary text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary/90"
+                        >
+                            Próximo <ChevronRight size={15} />
+                        </button>
+                    )}
+
+                    {isLast && (
+                        <button
+                            onClick={handleConfirm}
+                            disabled={saving}
+                            className="flex-1 flex items-center justify-center gap-1 bg-green-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                        >
+                            {saving ? 'Salvando...' : (
+                                <><Check size={15} /> Confirmar Fechamento</>
+                            )}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
