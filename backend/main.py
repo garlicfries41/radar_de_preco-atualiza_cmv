@@ -1361,7 +1361,7 @@ def get_dre(year: int, month: int):
         # Query orders strictly excluding Cancelado and the gift order 5713
         orders_res = (
             supabase.table("orders")
-            .select("order_id, order_number, store_number, shipping, status_text")
+            .select("order_id, order_number, store_number, shipping, status_text, total_promotion")
             .gte("order_date", start_date)
             .lte("order_date", end_date)
             .execute()
@@ -1480,7 +1480,8 @@ def get_dre(year: int, month: int):
         def sum_cat(cat_name):
             return sum(e["amount"] for e in expenses if e["category_name"] == cat_name)
 
-        promocoes = sum_cat("Promoções")
+        promocoes_orders = sum(float(o.get("total_promotion") or 0) for o in orders)
+        promocoes = sum_cat("Promoções") + promocoes_orders
         das = sum_cat("DAS (Simples Nacional)")
         devolucoes = sum_cat("Devoluções")
         deducoes_total = promocoes + das + devolucoes
