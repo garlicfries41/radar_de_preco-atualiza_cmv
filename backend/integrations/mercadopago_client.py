@@ -42,14 +42,13 @@ class MercadoPagoClient:
         count = len(data.get("results", []))
 
         for payment in data.get("results", []):
-            # gross_amount: Valor total pago
-            # net_received_amount: Valor que cai na conta após taxas
             g = float(payment.get("transaction_amount", 0))
-            n = float(payment.get("net_received_amount", 0))
-            
+            # fee_details é sempre preenchido; net_received_amount só fica
+            # disponível após a liberação do dinheiro, por isso é evitado.
+            fee = sum(float(f.get("amount", 0)) for f in payment.get("fee_details", []))
             gross += g
-            net += n
-            fees += (g - n)
+            fees += fee
+            net += (g - fee)
 
         return {
             "date": target_date,

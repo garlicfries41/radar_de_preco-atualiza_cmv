@@ -25,20 +25,19 @@ class StripeClient:
         net = 0
         count = 0
 
-        # Paginar transações de saldo (Balance Transactions)
-        # Este endpoint já traz o valor líquido (amount) e a taxa (fee)
+        # Filtrar apenas cobranças/pagamentos — exclui payouts, estornos e ajustes
         transactions = stripe.BalanceTransaction.list(
             created={"gte": start_ts, "lt": end_ts},
+            type="payment",
             limit=100
         )
 
         for txn in transactions.auto_paging_iter():
             # stripe trata valores em centavos. Convertemos para BRL (floating)
-            gross += txn.amount / 100 if txn.amount > 0 else 0
+            gross += txn.amount / 100
             fees += txn.fee / 100
             net += txn.net / 100
-            if txn.type in ["charge", "payment"]:
-                count += 1
+            count += 1
 
         return {
             "date": target_date,
