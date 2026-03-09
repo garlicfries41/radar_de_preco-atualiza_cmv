@@ -19,7 +19,19 @@ export interface ProductionSchedule {
     updated_at?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const getApiUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        // Se não for localhost, assume que o backend está no mesmo host na porta 8000
+        if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+            return `${window.location.protocol}//${hostname}:8000`;
+        }
+    }
+    return 'http://localhost:8000';
+};
+
+const API_BASE_URL = getApiUrl();
 
 export function useProduction() {
     const [loading, setLoading] = useState(false);
