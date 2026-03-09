@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calculator, Save, UtensilsCrossed, Scale, Target } from 'lucide-react';
-import { useCalculator } from '../../hooks/useCalculator';
-import type { RecipeWithIngredients, RecipeIngredient } from '../../hooks/useCalculator';
+import { useCalculator, RecipeWithIngredients } from '../../hooks/useCalculator';
+import type { RecipeIngredient } from '../../hooks/useCalculator';
 
 export const CalculatorView: React.FC = () => {
     const { fetchRecipesList, fetchRecipeDetails, loading } = useCalculator();

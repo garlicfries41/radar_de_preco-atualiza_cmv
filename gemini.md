@@ -116,6 +116,7 @@
 ## 3. Architecture Invariants
 - **Database:** Supabase (PostgreSQL).
 - **Backend (OCR/Logic):** Python (FastAPI) + Tesseract. Hosted on **VPS** (Docker).
-- **Frontend:** React (Vite) + TailwindCSS - **Mobile-First Responsive**. Hosted on **Vercel**.
+- **Frontend:** React (Vite) + TailwindCSS - **Mobile-First Responsive**. Hosted on **Vercel** / **VPS (http://195.35.40.211:3000)**.
 - **Design:** HelloBonsai Style (Clean, Green, Minimal) optimized for mobile screens.
 - **Notificações:** Discord Webhook via Backend.
+- **URL de Produção/Teste:** http://195.35.40.211:3000/producao
