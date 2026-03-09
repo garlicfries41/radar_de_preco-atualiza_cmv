@@ -9,12 +9,12 @@
     [x] Atualizar selecionado: `dicionario_dados.md`
     [x] Atualizar selecionado: `PROPOSITO_DAS_TABELAS.md`
 
-[ ] Recuperação e Limpeza (Contaminação Riverside)
-    [/] Diagnosticar arquivos contaminados
-    [ ] Remover `` do backend (`mercadopago_client.py`, `stripe_client.py`, `sync_history.py`)
-    [ ] Remover `` dos artefatos (`task.md`, `walkthrough.md`, etc.)
-    [ ] Testar inicialização do backend
-    [ ] Validar funcionamento dos módulos DRE e Custos
+[x] Recuperação e Limpeza (Contaminação Riverside)
+    [x] Diagnosticar arquivos contaminados
+    [x] Remover `Riverside:` do backend (`mercadopago_client.py`, `stripe_client.py`, `sync_history.py`)
+    [x] Remover `Riverside:` dos artefatos (`task.md`, `walkthrough.md`, etc.)
+    [x] Testar inicialização do backend
+    [x] Validar funcionamento dos módulos DRE e Custos
 - [x] **Fase 6: Automação Financeira (Gateways)** (Concluído)
     - [x] Implementação de APIs Mercado Pago e Stripe
     - [x] Sincronização Automática no Wizard de Fechamento
