@@ -49,10 +49,13 @@ Módulo responsável por ler Notas Fiscais de mercado e atualizar preços automa
 
 ## 📊 6. Saúde Financeira (DRE)
 
-Faz o cálculo final de sobrevivência do negócio.
+Faz o cálculo final de sobrevivência do negócio e automação de conciliação.
 
 *   `overhead_config`: **Os custos ocultos.** Cadastro de despesas fixas (Aluguel, Luz, Marketing, Pró-labore). Usado para que o sistema consiga embutir esses gastos passivos no custo da comida e dar o lucro real.
-*   `monthly_closing`: **O balancete mensal (O DRE).** É a tabela final onde a mágica acontece. No fim do mês, ela cruza a receita total da `orders` com o CMV da `cmv_history` e desconta a `overhead_config`, entregando um formato JSON com o Lucro Líquido exato por canal de venda.
+*   `financial_categories`: **Hierarquia Contábil.** Agrupador das despesas (fixas, variáveis, marketing) em estrutura pai/filho. Permite gerar a DRE com subcategorias expansíveis.
+*   `expenses_records`: **O livro caixa manual.** Onde são registradas as despesas que não vêm de notas fiscais (ex: condomínio, luz). Todas vinculadas a uma `financial_category`.
+*   `payment_gateways_history`: **Automação de Taxas.** Guarda os dados reais de vendas e taxas cobradas pelo Mercado Pago e Stripe. Permite que o fechamento mensal puxe os custos de venda automaticamente via API, sem input manual.
+*   `monthly_closing`: **O balancete mensal (O DRE).** É a tabela final onde a mágica acontece. No fim do mês, ela cruza a receita total da `orders` com o CMV da `cmv_history`, as despesas da `expenses_records` e as taxas da `payment_gateways_history`, entregando um formato JSON com o Lucro Líquido e EBITDA exatos.
 
 ## ⚙️ 7. Infraestrutura de Integrações (Motores de Fundo)
 

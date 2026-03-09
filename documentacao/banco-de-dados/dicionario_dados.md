@@ -90,6 +90,26 @@ Este dicionário de dados descreve a estrutura das tabelas, colunas, tipos de da
 | `estimated_pickup_at` | `timestamp with time zone` | YES | `-` | Data e hora estimadas para a coleta (retirada) do pedido. |
 | `estimated_dropoff_at` | `timestamp with time zone` | YES | `-` | Data e hora estimadas para a entrega final ao cliente. |
 
+## Tabela: `expenses_records`
+
+| Coluna | Tipo | Nullable | Default | Descrição / Regra de Negócio |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `uuid` | NO | `gen_random_uuid()` | Chave primária do registro de despesa. |
+| `description` | `text` | NO | `-` | Descrição ou justificativa da despesa (ex: Compra de material de escritório). |
+| `amount` | `numeric` | NO | `-` | Valor da despesa em R$. |
+| `category_id` | `uuid` | NO | `-` | [FK -> financial_categories(id)] Categoria à qual a despesa pertence. |
+| `record_date` | `date` | NO | `now()` | Data em que a despesa ocorreu/foi registrada. |
+| `created_at` | `timestamp with time zone` | NO | `now()` | Data de criação do registro. |
+
+## Tabela: `financial_categories`
+
+| Coluna | Tipo | Nullable | Default | Descrição / Regra de Negócio |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `uuid` | NO | `gen_random_uuid()` | Chave primária da categoria financeira. |
+| `name` | `text` | NO | `-` | Nome da categoria (ex: Alimentação, Marketing, Aluguel). |
+| `parent_category` | `uuid` | YES | `-` | [FK -> financial_categories(id)] Referência à categoria pai para estrutura hierárquica (DRE). |
+| `created_at` | `timestamp with time zone` | NO | `now()` | Data de criação da categoria. |
+
 ## Tabela: `ingredients`
 
 | Coluna | Tipo | Nullable | Default | Descrição / Regra de Negócio |
@@ -239,6 +259,19 @@ Este dicionário de dados descreve a estrutura das tabelas, colunas, tipos de da
 | `category` | `text` | NO | `'fixo'::text` | Classificação do custo. Fixo indica que o rateio é padrão entre os canais de venda. |
 | `notes` | `text` | YES | `-` | Detalhamento do que compõe este custo. |
 | `updated_at` | `timestamp with time zone` | NO | `now()` | Data da última atualização/revisão deste valor. |
+
+## Tabela: `payment_gateways_history`
+
+| Coluna | Tipo | Nullable | Default | Descrição / Regra de Negócio |
+| :--- | :--- | :--- | :--- | :--- |
+| `date` | `date` | NO | `-` | Data do resumo das transações (Snapshot diário). |
+| `gateway` | `text` | NO | `-` | Identificador do gateway (Valores: `mercado_pago`, `stripe`). |
+| `gross_amount` | `numeric` | NO | `0` | Valor bruto total das vendas processadas no dia. |
+| `fee_amount` | `numeric` | NO | `0` | Total de taxas e comissões deduzidas pelo gateway. |
+| `net_amount` | `numeric` | NO | `0` | Valor líquido recebido (Gross - Fee). |
+| `status` | `text` | YES | `-` | Status da sincronização (ex: `synced`). |
+| `transaction_count` | `integer` | YES | `0` | Quantidade de transações processadas no período. |
+| `metadata` | `jsonb` | YES | `'{}'::jsonb` | Dados técnicos adicionais da resposta da API do gateway. |
 
 ## Tabela: `producao_batches`
 

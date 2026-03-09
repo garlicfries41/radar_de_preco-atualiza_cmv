@@ -192,7 +192,6 @@ export function FechamentoWizard({
 }) {
     const [step, setStep] = useState(0);
     const [values, setValues] = useState<WizardValues>({});
-    const [infraItems, setInfraItems] = useState<InfraWebItem[]>([]);
     const [dynamicItems, setDynamicItems] = useState<Record<string, InfraWebItem[]>>({});
     const [saving, setSaving] = useState(false);
     const [syncing, setSyncing] = useState(false);
@@ -214,19 +213,6 @@ export function FechamentoWizard({
     const setField = (key: string, v: string) =>
         setValues(prev => ({ ...prev, [key]: v }));
 
-    const addInfraItem = () => {
-        idCounter.current += 1;
-        setInfraItems(prev => [
-            ...prev,
-            { description: '', amount: '', suggestion: 0, id: String(idCounter.current) },
-        ]);
-    };
-
-    const updateInfraItem = (id: string, patch: Partial<InfraWebItem>) =>
-        setInfraItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
-
-    const removeInfraItem = (id: string) =>
-        setInfraItems(prev => prev.filter(it => it.id !== id));
 
     const addDynamicItem = (stepTitle: string) => {
         idCounter.current += 1;
