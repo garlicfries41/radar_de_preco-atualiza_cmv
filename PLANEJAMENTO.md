@@ -1,28 +1,23 @@
-# Projeto: Radar de Preço - Atualiza CMV
-Status: Estabilização e Refinamento de Lógica B2B
+# PLANEJAMENTO - Módulo DRE & Refatoração de Custos
 
 ## Motivação
-Refinar as regras de negócio para produção B2B e simplificar o gerenciamento de categorias removendo lógicas redundantes (`default_net_weight`).
+Refinar a estrutura de despesas da DRE para refletir com precisão os custos fixos, variáveis e operacionais, permitindo uma análise clara do EBITDA e do Resultado Líquido.
 
-## Contexto e Ideias
-- **Remoção de default_net_weight:** Identificado como desnecessário, causava confusão no cálculo automático. Lógica removida em favor de preenchimento manual no formulário.
-- **Lógica B2B [b2b]:** Embalagens para produtos B2B devem ser calculadas na proporção de 1 para cada 2,5 unidades de rendimento (frações).
-- **Tabela Nutricional ANVISA:** Ajustada para exibir colunas de Porção e 100g simultaneamente.
+## Histórico de Raciocínio
+- Identificamos que a estrutura de despesas estava simplista.
+- Reorganizamos o banco de dados (`financial_categories`) para suportar uma hierarquia de pais e filhos.
+- Atualizamos o backend para lidar com nomes de categorias duplicados (ex: "Venda Direta" em Marketing e Entregas) usando o nome do pai como desambiguador.
+- Reformulamos o Wizard de Fechamento para ser mais intuitivo e completo.
 
-## Arquitetura e Decisões
-- Exclusão da tabela `categories_portions` (substituída pela lógica direta em `recipe_categories`).
-- Implementação de detecção automática de B2B via nome da receita (`name.includes('B2B')`).
-- Cálculo de multiplicador de embalagem no frontend e backend sincronizado: `yield / 2.5` se B2B.
+## Próximos Passos (Concluídos)
+- [x] Otimização da DRE (Visualização de 3 meses).
+- [x] Refatoração completa das categorias financeiras no Supabase.
+- [x] Novo layout da DRE seguindo hierarquia contabíl solicitada (Estrutura, Marketing, Logística, Inadimplência).
+- [x] Implementação do EBITDA e Resultados Pós-EBITDA (Depreciação, Juros, Impostos).
+- [x] Ajuste nos cálculos de CMV % e Margem Bruta (baseados na Receita Bruta Total).
+- [x] Melhoria no Wizard de Fechamento com campos agrupados e suporte a categorias duplicadas.
 
-## Plano de Ação (Concluído)
-1. [x] Remover `default_net_weight` do backend e frontend.
-2. [x] Excluir tabela `categories_portions` via SQL.
-3. [x] Ajustar detector `isB2B` para ser case-insensitive e inclusivo ([B2B]).
-4. [x] Implementar multiplicador `2.5` para embalagens B2B no Sidebar e no salvamento.
-5. [x] Corrigir alerta de dados nutricionais no frontend (ignorando pré-preparos e embalagens).
-6. [x] Garantir salvamento de `category_id` (ANVISA) no backend.
-7. [x] Refinar o Wizard de Fechamento (Header com mês/ano, remoção de Promoções, adição de Taxa Stripe).
-8. [x] Renomear "Aluguel Feira" para "Alimentação Feira" em toda a aplicação e no DB.
-9. [x] Implementar visão de 3 meses na DRE para melhor acompanhamento.
-10. [x] Habilitar campos dinâmicos no Wizard de Fechamento para "Despesas com Vendas".
-11. [x] Corrigir cálculos de CMV % e Margens (base: Receita Bruta Total).
+## Pendentes / Melhorias Futuras
+- [ ] Automação da busca de taxas do Stripe/Mercado Pago via API.
+- [ ] Integração automática da depreciação via cadastro de ativos (PoC funcional já existe no backend).
+- [ ] Relatórios comparativos anuais.

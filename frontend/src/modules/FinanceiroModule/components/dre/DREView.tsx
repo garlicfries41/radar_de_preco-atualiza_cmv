@@ -25,23 +25,25 @@ const prevMonth = (y: number, m: number): [number, number] =>
 const nextMonth = (y: number, m: number): [number, number] =>
     m === 12 ? [y + 1, 1] : [y, m + 1];
 
-const sumByCategory = (expenses: ExpenseItem[], catName: string) =>
-    expenses.filter(e => e.category_name === catName).reduce((s, e) => s + e.amount, 0);
+const sumByCategory = (expenses: ExpenseItem[], catName: string, parentName?: string) =>
+    expenses.filter(e => e.category_name === catName && (!parentName || e.parent_category_name === parentName))
+        .reduce((s, e) => s + e.amount, 0);
 
 const sumByParent = (expenses: ExpenseItem[], parentName: string) =>
     expenses.filter(e => e.parent_category_name === parentName).reduce((s, e) => s + e.amount, 0);
 
-const itemsByCategory = (expenses: ExpenseItem[], catName: string) =>
-    expenses.filter(e => e.category_name === catName);
+const canEdit = (expenses: ExpenseItem[], catName: string, parentName?: string) =>
+    expenses.filter(e => e.category_name === catName && (!parentName || e.parent_category_name === parentName));
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface AddModalState {
     open: boolean;
-    categoryName: string;
-    withDescription: boolean;
+    cat: string;
+    isInfra: boolean;
     year: number;
     month: number;
+    parent?: string;
 }
 
 interface PeriodData {
@@ -74,9 +76,10 @@ function AddExpenseModal({
         setSaving(true);
         try {
             await addExpense({
-                description: state.withDescription ? description : state.categoryName,
+                description: state.isInfra ? description : state.cat,
                 amount: val,
-                category_name: state.categoryName,
+                category_name: state.cat,
+                parent_category_name: state.parent,
                 record_date: `${state.year}-${String(state.month).padStart(2, '0')}-01`,
             });
             onSaved();
@@ -93,14 +96,14 @@ function AddExpenseModal({
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="font-semibold text-gray-900 text-base">
-                        Lançar: {state.categoryName}
+                        Lançar: {state.cat}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X size={18} />
                     </button>
                 </div>
 
-                {state.withDescription && (
+                {state.isInfra && (
                     <div className="mb-3">
                         <label className="text-xs text-gray-500 font-medium block mb-1">Descrição</label>
                         <input
@@ -272,7 +275,11 @@ export function DREView() {
     const [showInadModal, setShowInadModal] = useState(false);
 
     const [addModal, setAddModal] = useState<AddModalState>({
-        open: false, categoryName: '', withDescription: false, year, month,
+        open: false,
+        cat: '',
+        isInfra: false,
+        year,
+        month,
     });
     const [showWizard, setShowWizard] = useState(false);
 
@@ -311,12 +318,8 @@ export function DREView() {
         setYear(ny); setMonth(nm);
     };
 
-    const openAdd = (categoryName: string, withDescription = false) => {
-        setAddModal({ open: true, categoryName, withDescription, year, month });
-    };
-
-    const canEdit = (expenses: ExpenseItem[], catName: string) =>
-        itemsByCategory(expenses, catName);
+    const openAdd = (catName: string, isInfra = false, parent?: string) =>
+        setAddModal({ open: true, cat: catName, isInfra, parent, year, month });
 
     // ─── Row renderers ────────────────────────────────────────────────────────
 
@@ -330,6 +333,7 @@ export function DREView() {
     const EditableRow = ({
         label,
         catName,
+        parentName,
         indent = 1,
         overrideValueCur,
         overrideValuePrev,
@@ -337,22 +341,23 @@ export function DREView() {
     }: {
         label: string;
         catName: string;
+        parentName?: string;
         indent?: number;
         overrideValueCur?: number;
         overrideValuePrev?: number;
         overrideValuePrev2?: number;
     }) => {
-        const curVal = overrideValueCur !== undefined ? overrideValueCur : sumByCategory(cd?.expenses ?? [], catName);
-        const prevVal = overrideValuePrev !== undefined ? overrideValuePrev : sumByCategory(pd?.expenses ?? [], catName);
-        const prev2Val = overrideValuePrev2 !== undefined ? overrideValuePrev2 : sumByCategory(p2d?.expenses ?? [], catName);
-        const curItems = canEdit(cd?.expenses ?? [], catName);
+        const curVal = overrideValueCur !== undefined ? overrideValueCur : sumByCategory(cd?.expenses ?? [], catName, parentName);
+        const prevVal = overrideValuePrev !== undefined ? overrideValuePrev : sumByCategory(pd?.expenses ?? [], catName, parentName);
+        const prev2Val = overrideValuePrev2 !== undefined ? overrideValuePrev2 : sumByCategory(p2d?.expenses ?? [], catName, parentName);
+        const curItems = canEdit(cd?.expenses ?? [], catName, parentName);
 
         return (
             <tr className="border-b border-gray-100 hover:bg-gray-50 group">
                 <td className="px-4 py-1.5 text-sm text-gray-700" style={{ paddingLeft: `${indent * 20 + 16}px` }}>
                     <span>{label}</span>
                     <button
-                        onClick={() => openAdd(catName)}
+                        onClick={() => openAdd(catName, false, parentName)}
                         className="ml-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-primary transition-opacity"
                         title={`Lançar ${label}`}
                     >
@@ -418,55 +423,6 @@ export function DREView() {
                         </tr>
                     );
                 })}
-            </>
-        );
-    };
-
-    // Helper: render a dynamic (Infra Web) section row
-    const InfraWebRow = () => {
-        const catName = 'Infra Web';
-        const curItems = itemsByCategory(cd?.expenses ?? [], catName);
-        const prevItems = itemsByCategory(pd?.expenses ?? [], catName);
-        const prev2Items = itemsByCategory(p2d?.expenses ?? [], catName);
-        const curTotal = curItems.reduce((s, e) => s + e.amount, 0);
-        const prevTotal = prevItems.reduce((s, e) => s + e.amount, 0);
-        const prev2Total = prev2Items.reduce((s, e) => s + e.amount, 0);
-
-        return (
-            <>
-                {/* Section header */}
-                <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-1.5 text-sm font-medium text-gray-700 pl-12">
-                        <span>Infra Web</span>
-                        <button
-                            onClick={() => openAdd(catName, true)}
-                            className="ml-2 text-gray-400 hover:text-primary"
-                            title="Adicionar item Infra Web"
-                        >
-                            <Plus size={13} />
-                        </button>
-                    </td>
-                    {prev2Total ? <ValCell value={prev2Total} /> : <EmptyCell />}
-                    {prevTotal ? <ValCell value={prevTotal} /> : <EmptyCell />}
-                    {curTotal ? <ValCell value={curTotal} /> : <EmptyCell />}
-                </tr>
-                {/* Dynamic items (current month) */}
-                {curItems.map(item => (
-                    <tr key={item.id} className="border-b border-gray-50 group bg-white">
-                        <td className="px-4 py-1 text-xs text-gray-500 pl-16">
-                            {item.description}
-                            <button
-                                onClick={() => deleteExpense(item.id).then(fetchAll)}
-                                className="ml-2 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity"
-                            >
-                                <Trash2 size={10} />
-                            </button>
-                        </td>
-                        <EmptyCell />
-                        <EmptyCell />
-                        <ValCell value={item.amount} />
-                    </tr>
-                ))}
             </>
         );
     };
@@ -696,6 +652,7 @@ export function DREView() {
                                 parentName="Despesas com Vendas"
                                 skipCategories={['Taxa Mercado Pago', 'Taxa Stripe', 'Comissão Feiras', 'Alimentação Feira']}
                             />
+
                             {/* Despesas Fixas */}
                             <tr className="bg-gray-100 border-b border-gray-200">
                                 <td className="px-4 py-1.5 font-semibold text-gray-700 pl-8">DESPESAS FIXAS</td>
@@ -703,8 +660,13 @@ export function DREView() {
                                 <ValCell value={sumByParent(pd?.expenses ?? [], 'Despesas Fixas')} />
                                 <ValCell value={sumByParent(cd?.expenses ?? [], 'Despesas Fixas')} />
                             </tr>
-                            <EditableRow label="Condomínio (taxas e manutenção)" catName="Condomínio (taxas e manutenção)" indent={2} />
-                            <EditableRow label="Internet e Telefone" catName="Internet e Telefone" indent={2} />
+                            <EditableRow label="Aluguel" catName="Aluguel" indent={2} />
+                            <EditableRow label="IPTU" catName="IPTU" indent={2} />
+                            <EditableRow label="Condomínio" catName="Condomínio" indent={2} />
+                            <EditableRow label="Água" catName="Água" indent={2} />
+                            <EditableRow label="Luz" catName="Luz" indent={2} />
+                            <EditableRow label="Internet" catName="Internet" indent={2} />
+                            <EditableRow label="Telefone" catName="Telefone" indent={2} />
                             <EditableRow label="Gás" catName="Gás" indent={2} />
 
                             {/* Outras Despesas */}
@@ -714,45 +676,81 @@ export function DREView() {
                                 <ValCell value={sumByParent(pd?.expenses ?? [], 'Outras Despesas')} />
                                 <ValCell value={sumByParent(cd?.expenses ?? [], 'Outras Despesas')} />
                             </tr>
-                            <EditableRow label="Contabilidade" catName="Contabilidade" indent={2} />
-                            <InfraWebRow />
-                            <OtherExpensesForParent
-                                parentName="Outras Despesas"
-                                skipCategories={['Contabilidade', 'Infra Web', 'Diarista', 'Material de Limpeza', 'Inadimplência', 'Uber Direct (Feira)', '99 Empresas (Feira)', 'Lalamove (Feira)', 'Uber Direct (Site)', '99 Empresas (Site)', 'Lalamove (Site)', 'Uber Direct (Catering)', '99 Empresas (Catering)', 'Lalamove (Catering)']}
-                            />
-                            {/* Entregas por canal */}
-                            {[
-                                { label: 'Entregas - Feira', items: ['Uber Direct (Feira)', '99 Empresas (Feira)', 'Lalamove (Feira)'] },
-                                { label: 'Entregas - Site', items: ['Uber Direct (Site)', '99 Empresas (Site)', 'Lalamove (Site)'] },
-                                { label: 'Entregas - Catering/Restaurante', items: ['Uber Direct (Catering)', '99 Empresas (Catering)', 'Lalamove (Catering)'] },
-                            ].map(({ label, items }) => (
-                                <React.Fragment key={label}>
-                                    <tr className="bg-gray-50 border-b border-gray-100">
-                                        <td className="px-4 py-1.5 text-sm font-medium text-gray-600 pl-12">{label}</td>
-                                        <ValCell value={items.reduce((s, n) => s + sumByCategory(p2d?.expenses ?? [], n), 0)} />
-                                        <ValCell value={items.reduce((s, n) => s + sumByCategory(pd?.expenses ?? [], n), 0)} />
-                                        <ValCell value={items.reduce((s, n) => s + sumByCategory(cd?.expenses ?? [], n), 0)} />
-                                    </tr>
-                                    {items.map(cat => (
-                                        <EditableRow key={cat} label={cat.replace(/ \(.*\)/, '')} catName={cat} indent={3} />
-                                    ))}
-                                </React.Fragment>
-                            ))}
 
-                            <EditableRow label="Diarista" catName="Diarista" indent={2} />
+                            {/* Marketing */}
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <td className="px-4 py-1 text-sm font-medium text-gray-600 pl-12">Marketing</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Marketing')} />
+                                <ValCell value={sumByParent(pd?.expenses ?? [], 'Marketing')} />
+                                <ValCell value={sumByParent(cd?.expenses ?? [], 'Marketing')} />
+                            </tr>
+                            <EditableRow label="Venda Direta" catName="Venda Direta" parentName="Marketing" indent={3} />
+                            <EditableRow label="Revenda" catName="Revenda" parentName="Marketing" indent={3} />
+                            <EditableRow label="Food Service" catName="Food Service" parentName="Marketing" indent={3} />
+                            <OtherExpensesForParent parentName="Marketing" skipCategories={['Venda Direta', 'Revenda', 'Food Service']} />
+
+                            <EditableRow label="Contabilidade" catName="Contabilidade" indent={2} />
+
+                            {/* Infraweb */}
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <td className="px-4 py-1 text-sm font-medium text-gray-600 pl-12">Infraweb</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Infra Web')} />
+                                <ValCell value={sumByParent(pd?.expenses ?? [], 'Infra Web')} />
+                                <ValCell value={sumByParent(cd?.expenses ?? [], 'Infra Web')} />
+                            </tr>
+                            <EditableRow label="Exclusivo do site" catName="Exclusivo do site" parentName="Infra Web" indent={3} />
+                            <EditableRow label="Geral" catName="Geral" parentName="Infra Web" indent={3} />
+
+                            {/* Entregas */}
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <td className="px-4 py-1 text-sm font-medium text-gray-600 pl-12">Entregas</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Entregas')} />
+                                <ValCell value={sumByParent(pd?.expenses ?? [], 'Entregas')} />
+                                <ValCell value={sumByParent(cd?.expenses ?? [], 'Entregas')} />
+                            </tr>
+                            <EditableRow label="Venda Direta" catName="Venda Direta" parentName="Entregas" indent={3} />
+                            <EditableRow label="Revenda" catName="Revenda" parentName="Entregas" indent={3} />
+                            <EditableRow label="Food Service" catName="Food Service" parentName="Entregas" indent={3} />
+
+                            {/* Carro */}
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <td className="px-4 py-1 text-sm font-medium text-gray-600 pl-12">Carro</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Carro')} />
+                                <ValCell value={sumByParent(pd?.expenses ?? [], 'Carro')} />
+                                <ValCell value={sumByParent(cd?.expenses ?? [], 'Carro')} />
+                            </tr>
+                            <EditableRow label="Feira" catName="Feira" parentName="Carro" indent={3} />
+                            <EditableRow label="Geral" catName="Geral" parentName="Carro" indent={3} />
+
                             <EditableRow label="Material de Limpeza" catName="Material de Limpeza" indent={2} />
-                            <EditableRow label="Inadimplência" catName="Inadimplência" indent={2} />
+                            <EditableRow label="Outras" catName="Outras" indent={2} />
+
+                            {/* Inadimplência */}
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <td className="px-4 py-1 text-sm font-medium text-gray-600 pl-12">Inadimplência</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Inadimplência')} />
+                                <ValCell value={sumByParent(pd?.expenses ?? [], 'Inadimplência')} />
+                                <ValCell value={sumByParent(cd?.expenses ?? [], 'Inadimplência')} />
+                            </tr>
+                            <EditableRow label="Atendimento por chat" catName="Atendimento por chat" parentName="Inadimplência" indent={3} />
+                            <EditableRow label="Revenda" catName="Revenda" parentName="Inadimplência" indent={3} />
+                            <EditableRow label="Food Service" catName="Food Service" parentName="Inadimplência" indent={3} />
+
+                            {/* EBITDA Line (Yellow) */}
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
+                            <tr className="bg-[#FFC000] border-b border-yellow-300">
+                                <td className="px-4 py-2 font-bold text-gray-900 uppercase">EBITDA</td>
+                                <ValCell value={p2d?.summary.ebitda ?? 0} />
+                                <ValCell value={pd?.summary.ebitda ?? 0} />
+                                <ValCell value={cd?.summary.ebitda ?? 0} />
+                            </tr>
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
 
                             {/* ── PÓS-EBITDA ── */}
                             <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
-                            <tr className="border-b border-gray-100">
-                                <td className="px-4 py-1.5 text-gray-700">Depreciação de maquinário</td>
-                                <ValCell value={p2d?.depreciacao ?? 0} />
-                                <ValCell value={pd?.depreciacao ?? 0} />
-                                <ValCell value={cd?.depreciacao ?? 0} />
-                            </tr>
-                            <EditableRow label="Juros de empréstimos" catName="Juros de Empréstimos" indent={0} />
-                            <EditableRow label="Impostos sobre lucro" catName="Impostos sobre Lucro" indent={0} />
+                            <EditableRow label="Depreciação de maquinário" catName="Depreciação de maquinário" indent={1} />
+                            <EditableRow label="Juros de Empréstimos" catName="Juros de Empréstimos" indent={1} />
+                            <EditableRow label="Impostos sobre Lucro" catName="Impostos sobre Lucro" indent={1} />
                             <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
 
                             {/* ── RESULTADO LÍQUIDO ── */}

@@ -107,6 +107,14 @@ class ProductionScheduleInput(BaseModel):
     duration_minutes: int
     status: Optional[str] = "pending"
 
+class AddExpenseRequest(BaseModel):
+    description: str
+    amount: float
+    category_name: str
+    parent_category_name: Optional[str] = None
+    record_date: Optional[str] = None
+
+
 # ============= Endpoints =============
 
 @app.get("/api/health")
@@ -1329,12 +1337,6 @@ def save_settings(payload: dict):
 
 # ============= Financeiro: Módulo DRE =============
 
-class AddExpenseRequest(BaseModel):
-    description: str
-    amount: float
-    category_name: str
-    record_date: Optional[str] = None
-
 
 @app.get("/api/financeiro/dre")
 def get_dre(year: int, month: int):
@@ -1518,14 +1520,20 @@ def get_dre(year: int, month: int):
         deducoes_total = promocoes + das + devolucoes
         receita_liquida = receita_bruta_total - deducoes_total
         resultado_bruto = receita_liquida - cmv_total
+        exclude_ebitda = ["Depreciação de maquinário", "Juros de Empréstimos", "Impostos sobre Lucro"]
         total_despesas = sum(
             e["amount"] for e in expenses
             if e["category_type"] in ("DESPESA_FIXA", "DESPESA_VARIAVEL")
+            and e["category_name"] not in exclude_ebitda
         )
+        
         juros = sum_cat("Juros de Empréstimos")
         impostos_lucro = sum_cat("Impostos sobre Lucro")
+        manual_deprec = sum_cat("Depreciação de maquinário")
+        final_deprec = manual_deprec if manual_deprec > 0 else depreciacao
+
         ebitda = resultado_bruto - total_despesas
-        resultado_liquido = ebitda - round(depreciacao, 2) - juros - impostos_lucro
+        resultado_liquido = ebitda - round(final_deprec, 2) - juros - impostos_lucro
 
         cmv_pct = (cmv_total / receita_bruta_total * 100) if receita_bruta_total > 0 else 0
         margem_bruta = (resultado_bruto / receita_bruta_total * 100) if receita_bruta_total > 0 else 0
@@ -1535,7 +1543,7 @@ def get_dre(year: int, month: int):
             "year": year, "month": month,
             "canais": canais_result,
             "expenses": expenses,
-            "depreciacao": round(depreciacao, 2),
+            "depreciacao": round(final_deprec, 2),
             "summary": {
                 "receita_bruta_total": round(receita_bruta_total, 2),
                 "deducoes": {"total": round(deducoes_total, 2), "promocoes": round(promocoes, 2), "das": round(das, 2), "devolucoes": round(devolucoes, 2)},
@@ -1558,15 +1566,32 @@ def get_dre(year: int, month: int):
 
 @app.post("/api/financeiro/expenses")
 def add_expense_record(req: AddExpenseRequest):
-    """Registra uma despesa manual pelo nome da categoria."""
+    """Registra uma despesa manual pelo nome da categoria e opcionalmente pelo pai."""
     try:
-        cat_res = supabase.table("financial_categories").select("id").eq("name", req.category_name).execute()
+        query = supabase.table("financial_categories").select("id, parent_category").eq("name", req.category_name)
+        cat_res = query.execute()
+        
         if not cat_res.data:
             raise HTTPException(404, f"Categoria '{req.category_name}' não encontrada.")
+        
+        target_id = None
+        if len(cat_res.data) > 1 and req.parent_category_name:
+            # Desambiguação pelo pai
+            parent_res = supabase.table("financial_categories").select("id").eq("name", req.parent_category_name).execute()
+            if parent_res.data:
+                p_ids = [p["id"] for p in parent_res.data]
+                for c in cat_res.data:
+                    if c["parent_category"] in p_ids:
+                        target_id = c["id"]
+                        break
+        
+        if not target_id:
+            target_id = cat_res.data[0]["id"]
+
         record = {
             "description": req.description,
             "amount": req.amount,
-            "category_id": cat_res.data[0]["id"],
+            "category_id": target_id,
             "record_date": req.record_date or datetime.now().strftime("%Y-%m-%d"),
         }
         res = supabase.table("expenses_records").insert(record).execute()

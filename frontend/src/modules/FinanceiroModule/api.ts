@@ -57,6 +57,7 @@ export interface AddExpensePayload {
     description: string;
     amount: number;
     category_name: string;
+    parent_category_name?: string;
     record_date: string;
 }
 

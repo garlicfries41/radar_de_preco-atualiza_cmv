@@ -7,6 +7,7 @@ import { addExpense, deleteExpense, type DREData, type ExpenseItem } from '../..
 interface WizardField {
     label: string;
     catName: string;
+    parentCatName?: string;
 }
 
 interface InfraWebItem {
@@ -74,7 +75,7 @@ function SuggestInput({
 const STEPS: Array<{
     title: string;
     fields?: WizardField[];
-    isInfraWeb?: boolean;
+    isInfraWeb?: boolean; // This field is no longer used but kept for type compatibility if other parts of the code still reference it.
     /** Se true, permite adicionar campos extras via + */
     isDynamic?: boolean;
     /** Categoria pai para itens dinâmicos */
@@ -106,57 +107,63 @@ const STEPS: Array<{
             dynamicCatName: 'Despesas com Vendas',
         },
         {
-            title: 'Despesas Fixas',
+            title: 'Estrutura (Fixas)',
             fields: [
-                { label: 'Condomínio', catName: 'Condomínio (taxas e manutenção)' },
-                { label: 'Internet e Telefone', catName: 'Internet e Telefone' },
+                { label: 'Aluguel', catName: 'Aluguel' },
+                { label: 'IPTU', catName: 'IPTU' },
+                { label: 'Condomínio', catName: 'Condomínio' },
+                { label: 'Água', catName: 'Água' },
+                { label: 'Luz', catName: 'Luz' },
+                { label: 'Internet', catName: 'Internet' },
+                { label: 'Telefone', catName: 'Telefone' },
                 { label: 'Gás', catName: 'Gás' },
             ],
         },
         {
-            title: 'Outras Despesas',
+            title: 'Marketing',
+            fields: [
+                { label: 'Venda Direta', catName: 'Venda Direta', parentCatName: 'Marketing' },
+                { label: 'Revenda', catName: 'Revenda', parentCatName: 'Marketing' },
+                { label: 'Food Service', catName: 'Food Service', parentCatName: 'Marketing' },
+            ],
+            isDynamic: true,
+            dynamicCatName: 'Marketing',
+        },
+        {
+            title: 'Logística & Frota',
+            fields: [
+                { label: 'Entregas: Venda Direta', catName: 'Venda Direta', parentCatName: 'Entregas' },
+                { label: 'Entregas: Revenda', catName: 'Revenda', parentCatName: 'Entregas' },
+                { label: 'Entregas: Food Service', catName: 'Food Service', parentCatName: 'Entregas' },
+                { label: 'Carro: Feira', catName: 'Feira', parentCatName: 'Carro' },
+                { label: 'Carro: Geral', catName: 'Geral', parentCatName: 'Carro' },
+            ],
+        },
+        {
+            title: 'Gestão & Outros',
             fields: [
                 { label: 'Contabilidade', catName: 'Contabilidade' },
-            ],
-        },
-        {
-            title: 'Infra Web',
-            isInfraWeb: true,
-        },
-        {
-            title: 'Entregas — Feira',
-            fields: [
-                { label: 'Uber Direct', catName: 'Uber Direct (Feira)' },
-                { label: '99 Empresas', catName: '99 Empresas (Feira)' },
-                { label: 'Lalamove', catName: 'Lalamove (Feira)' },
-            ],
-        },
-        {
-            title: 'Entregas — Site',
-            fields: [
-                { label: 'Uber Direct', catName: 'Uber Direct (Site)' },
-                { label: '99 Empresas', catName: '99 Empresas (Site)' },
-                { label: 'Lalamove', catName: 'Lalamove (Site)' },
-            ],
-        },
-        {
-            title: 'Entregas — Catering',
-            fields: [
-                { label: 'Uber Direct', catName: 'Uber Direct (Catering)' },
-                { label: '99 Empresas', catName: '99 Empresas (Catering)' },
-                { label: 'Lalamove', catName: 'Lalamove (Catering)' },
-            ],
-        },
-        {
-            title: 'Outros',
-            fields: [
-                { label: 'Diarista', catName: 'Diarista' },
+                { label: 'Infraweb: Exclusivo do site', catName: 'Exclusivo do site', parentCatName: 'Infra Web' },
+                { label: 'Infraweb: Geral', catName: 'Geral', parentCatName: 'Infra Web' },
                 { label: 'Material de Limpeza', catName: 'Material de Limpeza' },
+                { label: 'Diarista', catName: 'Diarista' },
+                { label: 'Outras', catName: 'Outras' },
+            ],
+            isDynamic: true,
+            dynamicCatName: 'Outras Despesas',
+        },
+        {
+            title: 'Inadimplência',
+            fields: [
+                { label: 'Chat', catName: 'Atendimento por chat', parentCatName: 'Inadimplência' },
+                { label: 'Revenda', catName: 'Revenda', parentCatName: 'Inadimplência' },
+                { label: 'Food Service', catName: 'Food Service', parentCatName: 'Inadimplência' },
             ],
         },
         {
             title: 'Pós-EBITDA',
             fields: [
+                { label: 'Depreciação de maquinário', catName: 'Depreciação de maquinário' },
                 { label: 'Juros de Empréstimos', catName: 'Juros de Empréstimos' },
                 { label: 'Impostos sobre Lucro', catName: 'Impostos sobre Lucro' },
             ],
@@ -196,10 +203,15 @@ export function FechamentoWizard({
 
     const prevExpenses = prevData?.expenses ?? [];
 
-    const getSuggestion = (catName: string) => sumByCategory(prevExpenses, catName);
+    const getSuggestion = (catName: string, parentName?: string) => {
+        if (!parentName) return sumByCategory(prevExpenses, catName);
+        return prevExpenses
+            .filter(e => e.category_name === catName && e.parent_category_name === parentName)
+            .reduce((s, e) => s + e.amount, 0);
+    };
 
-    const setField = (catName: string, v: string) =>
-        setValues(prev => ({ ...prev, [catName]: v }));
+    const setField = (key: string, v: string) =>
+        setValues(prev => ({ ...prev, [key]: v }));
 
     const addInfraItem = () => {
         idCounter.current += 1;
@@ -243,14 +255,26 @@ export function FechamentoWizard({
         const items: Array<Parameters<typeof addExpense>[0]> = [];
 
         // Campos normais
-        for (const [catName, raw] of Object.entries(values)) {
-            const val = parseVal(raw);
-            if (val > 0) {
-                items.push({ description: catName, amount: val, category_name: catName, record_date: recordDate });
+        for (const s of STEPS) {
+            if (!s.fields) continue;
+            for (const f of s.fields) {
+                const key = f.parentCatName ? `${f.parentCatName}:${f.catName}` : f.catName;
+                const raw = values[key];
+                const val = parseVal(raw || '');
+                if (val > 0) {
+                    items.push({
+                        description: f.label,
+                        amount: val,
+                        category_name: f.catName,
+                        parent_category_name: f.parentCatName,
+                        record_date: recordDate
+                    });
+                }
             }
         }
 
-        // Infra Web
+        // Infra Web (old way, now integrated into Gestão & Outros)
+        // This block is kept for backward compatibility if infraItems state is still populated from old logic
         for (const it of infraItems) {
             const val = parseVal(it.amount);
             if (val > 0 && it.description.trim()) {
@@ -305,20 +329,25 @@ export function FechamentoWizard({
 
     const renderFields = (fields: WizardField[]) => (
         <div className="space-y-1">
-            {fields.map(f => (
-                <SuggestInput
-                    key={f.catName}
-                    label={f.label}
-                    value={values[f.catName] ?? ''}
-                    onChange={v => setField(f.catName, v)}
-                    suggestion={getSuggestion(f.catName)}
-                />
-            ))}
+            {fields.map(f => {
+                const key = f.parentCatName ? `${f.parentCatName}:${f.catName}` : f.catName;
+                return (
+                    <SuggestInput
+                        key={key}
+                        label={f.label}
+                        value={values[key] ?? ''}
+                        onChange={v => setField(key, v)}
+                        suggestion={getSuggestion(f.catName, f.parentCatName)}
+                    />
+                );
+            })}
         </div>
     );
 
     // ── Step: Infra Web (lista dinâmica) ──────────────────────────────────────
-
+    // This function is no longer directly called as a dedicated step,
+    // but its logic might be integrated into dynamic fields if needed.
+    // Keeping it for now, but it's effectively unused with the new STEPS structure.
     const renderInfraWeb = () => (
         <div className="space-y-2">
             {infraItems.map(it => (
@@ -357,15 +386,18 @@ export function FechamentoWizard({
 
     const renderDynamicFields = (fields: WizardField[], stepTitle: string) => (
         <div className="space-y-1">
-            {fields.map(f => (
-                <SuggestInput
-                    key={f.catName}
-                    label={f.label}
-                    value={values[f.catName] ?? ''}
-                    onChange={v => setField(f.catName, v)}
-                    suggestion={getSuggestion(f.catName)}
-                />
-            ))}
+            {fields.map(f => {
+                const key = f.parentCatName ? `${f.parentCatName}:${f.catName}` : f.catName;
+                return (
+                    <SuggestInput
+                        key={key}
+                        label={f.label}
+                        value={values[key] || ''}
+                        onChange={v => setField(key, v)}
+                        suggestion={getSuggestion(f.catName, f.parentCatName)}
+                    />
+                );
+            })}
 
             {/* Itens extras */}
             <div className="mt-4 space-y-2">
