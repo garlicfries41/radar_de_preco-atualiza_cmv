@@ -1527,8 +1527,8 @@ def get_dre(year: int, month: int):
         ebitda = resultado_bruto - total_despesas
         resultado_liquido = ebitda - round(depreciacao, 2) - juros - impostos_lucro
 
-        cmv_pct = (cmv_total / receita_liquida * 100) if receita_liquida > 0 else 0
-        margem_bruta = (resultado_bruto / receita_liquida * 100) if receita_liquida > 0 else 0
+        cmv_pct = (cmv_total / receita_bruta_total * 100) if receita_bruta_total > 0 else 0
+        margem_bruta = (resultado_bruto / receita_bruta_total * 100) if receita_bruta_total > 0 else 0
         margem_liquida = (resultado_liquido / receita_bruta_total * 100) if receita_bruta_total > 0 else 0
 
         return {
