@@ -1787,8 +1787,9 @@ def sync_gateway_month(year: int, month: int):
         "mp_fees_debug": {
             "daily_total": round(daily_fees_total, 2),
             "monthly_total": monthly_total,
-            "monthly_movements_found": monthly_fees_info["movements_found"],
-            "monthly_api_status": monthly_fees_info["api_status"],
+            "monthly_movements_found": monthly_fees_info.get("movements_found"),
+            "monthly_api_status": monthly_fees_info.get("api_status"),
+            "endpoint_probe": monthly_fees_info.get("endpoint_probe"),
             "used": "monthly" if monthly_total > daily_fees_total else "daily"
         },
         "errors": errors
