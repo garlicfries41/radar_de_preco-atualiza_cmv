@@ -21,4 +21,8 @@ Refinar as regras de negócio para produção B2B e simplificar o gerenciamento 
 4. [x] Implementar multiplicador `2.5` para embalagens B2B no Sidebar e no salvamento.
 5. [x] Corrigir alerta de dados nutricionais no frontend (ignorando pré-preparos e embalagens).
 6. [x] Garantir salvamento de `category_id` (ANVISA) no backend.
-
+7. [x] Refinar o Wizard de Fechamento (Header com mês/ano, remoção de Promoções, adição de Taxa Stripe).
+8. [x] Renomear "Aluguel Feira" para "Alimentação Feira" em toda a aplicação e no DB.
+9. [x] Implementar visão de 3 meses na DRE para melhor acompanhamento.
+10. [x] Habilitar campos dinâmicos no Wizard de Fechamento para "Despesas com Vendas".
+11. [x] Corrigir cálculos de CMV % e Margens (base: Receita Bruta Total).

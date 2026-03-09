@@ -267,6 +267,7 @@ export function DREView() {
 
     const [cur, setCur] = useState<PeriodData>({ data: null, loading: false });
     const [prev, setPrev] = useState<PeriodData>({ data: null, loading: false });
+    const [prev2, setPrev2] = useState<PeriodData>({ data: null, loading: false });
     const [flagged, setFlagged] = useState<FlaggedOrder[]>([]);
     const [showInadModal, setShowInadModal] = useState(false);
 
@@ -276,18 +277,22 @@ export function DREView() {
     const [showWizard, setShowWizard] = useState(false);
 
     const [py, pm] = prevMonth(year, month);
+    const [p2y, p2m] = prevMonth(py, pm);
 
     const fetchAll = useCallback(async () => {
         setCur(s => ({ ...s, loading: true }));
         setPrev(s => ({ ...s, loading: true }));
+        setPrev2(s => ({ ...s, loading: true }));
         try {
-            const [curData, prevData, inadData] = await Promise.all([
+            const [curData, prevData, prev2Data, inadData] = await Promise.all([
                 getDRE(year, month),
                 getDRE(py, pm),
+                getDRE(p2y, p2m),
                 getInadimplencia(),
             ]);
             setCur({ data: curData, loading: false });
             setPrev({ data: prevData, loading: false });
+            setPrev2({ data: prev2Data, loading: false });
             if (inadData.flagged_orders?.length > 0) {
                 setFlagged(inadData.flagged_orders);
                 setShowInadModal(true);
@@ -295,8 +300,9 @@ export function DREView() {
         } catch {
             setCur(s => ({ ...s, loading: false }));
             setPrev(s => ({ ...s, loading: false }));
+            setPrev2(s => ({ ...s, loading: false }));
         }
-    }, [year, month, py, pm]);
+    }, [year, month, py, pm, p2y, p2m]);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -316,7 +322,7 @@ export function DREView() {
 
     const cd = cur.data;
     const pd = prev.data;
-
+    const p2d = prev2.data;
     const getChannel = (d: DREData | null, nome: string) =>
         d?.canais.find(c => c.nome === nome);
 
@@ -327,15 +333,18 @@ export function DREView() {
         indent = 1,
         overrideValueCur,
         overrideValuePrev,
+        overrideValuePrev2,
     }: {
         label: string;
         catName: string;
         indent?: number;
         overrideValueCur?: number;
         overrideValuePrev?: number;
+        overrideValuePrev2?: number;
     }) => {
         const curVal = overrideValueCur !== undefined ? overrideValueCur : sumByCategory(cd?.expenses ?? [], catName);
         const prevVal = overrideValuePrev !== undefined ? overrideValuePrev : sumByCategory(pd?.expenses ?? [], catName);
+        const prev2Val = overrideValuePrev2 !== undefined ? overrideValuePrev2 : sumByCategory(p2d?.expenses ?? [], catName);
         const curItems = canEdit(cd?.expenses ?? [], catName);
 
         return (
@@ -361,9 +370,55 @@ export function DREView() {
                         </span>
                     ))}
                 </td>
+                {prev2Val ? <ValCell value={prev2Val} /> : <EmptyCell />}
                 {prevVal ? <ValCell value={prevVal} /> : <EmptyCell />}
                 {curVal ? <ValCell value={curVal} /> : <EmptyCell />}
             </tr>
+        );
+    };
+
+    // Helper: render extra items that belong to a parent but aren't one of the named categories
+    const OtherExpensesForParent = ({ parentName, skipCategories }: { parentName: string, skipCategories: string[] }) => {
+        const othersCur = (cd?.expenses || []).filter(e => e.parent_category_name === parentName && !skipCategories.includes(e.category_name));
+        const othersPrev = (pd?.expenses || []).filter(e => e.parent_category_name === parentName && !skipCategories.includes(e.category_name));
+        const othersPrev2 = (p2d?.expenses || []).filter(e => e.parent_category_name === parentName && !skipCategories.includes(e.category_name));
+
+        const allDescriptions = Array.from(new Set([
+            ...othersCur.map(e => e.description),
+            ...othersPrev.map(e => e.description),
+            ...othersPrev2.map(e => e.description)
+        ]));
+
+        if (allDescriptions.length === 0) return null;
+
+        return (
+            <>
+                {allDescriptions.map(desc => {
+                    const vCur = othersCur.filter(e => e.description === desc).reduce((s, e) => s + e.amount, 0);
+                    const vPrev = othersPrev.filter(e => e.description === desc).reduce((s, e) => s + e.amount, 0);
+                    const vPrev2 = othersPrev2.filter(e => e.description === desc).reduce((s, e) => s + e.amount, 0);
+                    const curItemIds = othersCur.filter(e => e.description === desc).map(e => e.id);
+
+                    return (
+                        <tr key={desc} className="border-b border-gray-50 bg-white group">
+                            <td className="px-4 py-1 text-xs text-gray-500 pl-12 flex items-center justify-between">
+                                <span className="truncate">{desc}</span>
+                                {curItemIds.length > 0 && (
+                                    <button
+                                        onClick={() => Promise.all(curItemIds.map(id => deleteExpense(id))).then(fetchAll)}
+                                        className="ml-2 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity"
+                                    >
+                                        <Trash2 size={10} />
+                                    </button>
+                                )}
+                            </td>
+                            {p2d ? <ValCell value={vPrev2} /> : <EmptyCell />}
+                            {pd ? <ValCell value={vPrev} /> : <EmptyCell />}
+                            <ValCell value={vCur} />
+                        </tr>
+                    );
+                })}
+            </>
         );
     };
 
@@ -372,8 +427,10 @@ export function DREView() {
         const catName = 'Infra Web';
         const curItems = itemsByCategory(cd?.expenses ?? [], catName);
         const prevItems = itemsByCategory(pd?.expenses ?? [], catName);
+        const prev2Items = itemsByCategory(p2d?.expenses ?? [], catName);
         const curTotal = curItems.reduce((s, e) => s + e.amount, 0);
         const prevTotal = prevItems.reduce((s, e) => s + e.amount, 0);
+        const prev2Total = prev2Items.reduce((s, e) => s + e.amount, 0);
 
         return (
             <>
@@ -389,6 +446,7 @@ export function DREView() {
                             <Plus size={13} />
                         </button>
                     </td>
+                    {prev2Total ? <ValCell value={prev2Total} /> : <EmptyCell />}
                     {prevTotal ? <ValCell value={prevTotal} /> : <EmptyCell />}
                     {curTotal ? <ValCell value={curTotal} /> : <EmptyCell />}
                 </tr>
@@ -405,6 +463,7 @@ export function DREView() {
                             </button>
                         </td>
                         <EmptyCell />
+                        <EmptyCell />
                         <ValCell value={item.amount} />
                     </tr>
                 ))}
@@ -414,7 +473,7 @@ export function DREView() {
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
-    const isLoading = cur.loading || prev.loading;
+    const isLoading = cur.loading || prev.loading || prev2.loading;
 
     return (
         <div className="pb-12">
@@ -464,8 +523,8 @@ export function DREView() {
                     >
                         <ChevronLeft size={16} />
                     </button>
-                    <span className="text-sm font-medium text-gray-700 min-w-[160px] text-center">
-                        {MONTHS_PT[pm - 1]} / {py} · {MONTHS_PT[month - 1]} / {year}
+                    <span className="text-sm font-medium text-gray-700 min-w-[200px] text-center">
+                        {MONTHS_PT[p2m - 1]} / {p2y} · {MONTHS_PT[pm - 1]} / {py} · {MONTHS_PT[month - 1]} / {year}
                     </span>
                     <button
                         onClick={() => navigate('next')}
@@ -486,9 +545,10 @@ export function DREView() {
                         {/* Header */}
                         <thead>
                             <tr className="bg-gray-700 text-white text-xs font-semibold uppercase tracking-wide">
-                                <th className="px-4 py-3 text-left w-[55%]">Categoria</th>
-                                <th className="px-4 py-3 text-right">{MONTHS_PT[pm - 1]}/{py}</th>
-                                <th className="px-4 py-3 text-right">{MONTHS_PT[month - 1]}/{year}</th>
+                                <th className="px-4 py-3 text-left w-[40%]">Categoria</th>
+                                <th className="px-4 py-3 text-right">{MONTHS_PT[p2m - 1].slice(0, 3)}/{p2y}</th>
+                                <th className="px-4 py-3 text-right">{MONTHS_PT[pm - 1].slice(0, 3)}/{py}</th>
+                                <th className="px-4 py-3 text-right">{MONTHS_PT[month - 1].slice(0, 3)}/{year}</th>
                             </tr>
                         </thead>
 
@@ -496,6 +556,7 @@ export function DREView() {
                             {/* ── RECEITA BRUTA TOTAL ── */}
                             <tr className="bg-[#FFC000] border-b border-yellow-300">
                                 <td className="px-4 py-2 font-bold text-gray-900 text-sm">RECEITA BRUTA TOTAL</td>
+                                <ValCell value={p2d?.summary.receita_bruta_total ?? 0} />
                                 <ValCell value={pd?.summary.receita_bruta_total ?? 0} />
                                 <ValCell value={cd?.summary.receita_bruta_total ?? 0} />
                             </tr>
@@ -507,21 +568,25 @@ export function DREView() {
                                     <React.Fragment key={canal}>
                                         <tr className="border-b border-gray-100 bg-white">
                                             <td className="px-4 py-1.5 font-medium text-gray-800 pl-8">{canal}</td>
+                                            {p2d ? <ValCell value={getChannel(p2d, canal)?.receita_bruta ?? 0} /> : <EmptyCell />}
                                             {p ? <ValCell value={p.receita_bruta} /> : <EmptyCell />}
                                             {c ? <ValCell value={c.receita_bruta} /> : <EmptyCell />}
                                         </tr>
                                         <tr className="border-b border-gray-50 bg-gray-50/60">
                                             <td className="px-4 py-1 text-xs text-gray-500 pl-14">QTD PEDIDOS</td>
+                                            <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{getChannel(p2d, canal)?.qtd_pedidos ?? '—'}</td>
                                             <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{p?.qtd_pedidos ?? '—'}</td>
                                             <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{c?.qtd_pedidos ?? '—'}</td>
                                         </tr>
                                         <tr className="border-b border-gray-50 bg-gray-50/60">
                                             <td className="px-4 py-1 text-xs text-gray-500 pl-14">TICKET MÉDIO</td>
+                                            <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{p2d ? fmt(getChannel(p2d, canal)?.ticket_medio) : '—'}</td>
                                             <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{p ? fmt(p.ticket_medio) : '—'}</td>
                                             <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{c ? fmt(c.ticket_medio) : '—'}</td>
                                         </tr>
                                         <tr className="border-b border-gray-100 bg-gray-50/60">
                                             <td className="px-4 py-1 text-xs text-gray-500 pl-14">QUANTIDADE DE PRODUTOS</td>
+                                            <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{getChannel(p2d, canal)?.qtd_itens ?? '—'}</td>
                                             <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{p?.qtd_itens ?? '—'}</td>
                                             <td className="px-4 py-1 text-right text-xs text-gray-600 tabular-nums">{c?.qtd_itens ?? '—'}</td>
                                         </tr>
@@ -532,6 +597,7 @@ export function DREView() {
                             {/* ── DEDUÇÕES ── */}
                             <tr className="bg-gray-200 border-b border-gray-300">
                                 <td className="px-4 py-2 font-bold text-gray-700 text-xs uppercase tracking-wide">DEDUÇÕES</td>
+                                <ValCell value={p2d?.summary.deducoes.total ?? 0} />
                                 <ValCell value={pd?.summary.deducoes.total ?? 0} />
                                 <ValCell value={cd?.summary.deducoes.total ?? 0} />
                             </tr>
@@ -540,58 +606,67 @@ export function DREView() {
                                 catName="Promoções"
                                 overrideValueCur={cd?.summary.deducoes.promocoes}
                                 overrideValuePrev={pd?.summary.deducoes.promocoes}
+                                overrideValuePrev2={p2d?.summary.deducoes.promocoes}
                             />
                             <EditableRow
                                 label="DAS (Impostos)"
                                 catName="DAS (Simples Nacional)"
                                 overrideValueCur={cd?.summary.deducoes.das}
                                 overrideValuePrev={pd?.summary.deducoes.das}
+                                overrideValuePrev2={p2d?.summary.deducoes.das}
                             />
                             <EditableRow
                                 label="DEVOLUÇÕES"
                                 catName="Devoluções"
                                 overrideValueCur={cd?.summary.deducoes.devolucoes}
                                 overrideValuePrev={pd?.summary.deducoes.devolucoes}
+                                overrideValuePrev2={p2d?.summary.deducoes.devolucoes}
                             />
 
                             {/* ── RECEITA OPERACIONAL LÍQUIDA ── */}
-                            <tr className="h-2 bg-gray-50"><td colSpan={3} /></tr>
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
                             <tr className="bg-[#FFE699] border-b border-yellow-200">
                                 <td className="px-4 py-2 font-bold text-gray-900">RECEITA OPERACIONAL LÍQUIDA</td>
+                                <ValCell value={p2d?.summary.receita_liquida ?? 0} />
                                 <ValCell value={pd?.summary.receita_liquida ?? 0} />
                                 <ValCell value={cd?.summary.receita_liquida ?? 0} />
                             </tr>
-                            <tr className="h-2 bg-gray-50"><td colSpan={3} /></tr>
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
 
                             {/* ── CMV ── */}
                             <tr className="border-b border-gray-100">
                                 <td className="px-4 py-1.5 text-gray-700">CMV (custo das mercadorias vendidas)</td>
+                                <ValCell value={p2d?.summary.cmv_total ?? 0} />
                                 <ValCell value={pd?.summary.cmv_total ?? 0} />
                                 <ValCell value={cd?.summary.cmv_total ?? 0} />
                             </tr>
                             <tr className="border-b border-gray-100 bg-gray-50/60">
                                 <td className="px-4 py-1 text-xs text-gray-500 pl-8 italic">%</td>
+                                <td className="px-4 py-1 text-right text-xs text-gray-500 italic tabular-nums">{fmtPct(p2d?.summary.cmv_percentual ?? 0)}</td>
                                 <td className="px-4 py-1 text-right text-xs text-gray-500 italic tabular-nums">{fmtPct(pd?.summary.cmv_percentual ?? 0)}</td>
                                 <td className="px-4 py-1 text-right text-xs text-gray-500 italic tabular-nums">{fmtPct(cd?.summary.cmv_percentual ?? 0)}</td>
                             </tr>
-                            <tr className="h-2 bg-gray-50"><td colSpan={3} /></tr>
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
 
                             {/* ── RESULTADO OPERACIONAL BRUTO ── */}
                             <tr className="bg-[#FFE699] border-b border-yellow-200">
                                 <td className="px-4 py-2 font-bold text-gray-900">RESULTADO OPERACIONAL BRUTO</td>
+                                <ValCell value={p2d?.summary.resultado_bruto ?? 0} />
                                 <ValCell value={pd?.summary.resultado_bruto ?? 0} />
                                 <ValCell value={cd?.summary.resultado_bruto ?? 0} />
                             </tr>
                             <tr className="border-b border-gray-100 bg-gray-50/60">
                                 <td className="px-4 py-1 text-xs text-gray-500 pl-8 italic">MARGEM BRUTA</td>
+                                <td className="px-4 py-1 text-right text-xs text-gray-500 italic tabular-nums">{fmtPct(p2d?.summary.margem_bruta ?? 0)}</td>
                                 <td className="px-4 py-1 text-right text-xs text-gray-500 italic tabular-nums">{fmtPct(pd?.summary.margem_bruta ?? 0)}</td>
                                 <td className="px-4 py-1 text-right text-xs text-gray-500 italic tabular-nums">{fmtPct(cd?.summary.margem_bruta ?? 0)}</td>
                             </tr>
-                            <tr className="h-2 bg-gray-50"><td colSpan={3} /></tr>
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
 
                             {/* ── DESPESAS ── */}
                             <tr className="bg-gray-200 border-b border-gray-300">
                                 <td className="px-4 py-2 font-bold text-gray-700 text-xs uppercase tracking-wide">DESPESAS</td>
+                                <ValCell value={p2d?.summary.total_despesas ?? 0} />
                                 <ValCell value={pd?.summary.total_despesas ?? 0} />
                                 <ValCell value={cd?.summary.total_despesas ?? 0} />
                             </tr>
@@ -599,6 +674,7 @@ export function DREView() {
                             {/* Funcionários */}
                             <tr className="bg-gray-100 border-b border-gray-200">
                                 <td className="px-4 py-1.5 font-semibold text-gray-700 pl-8">FUNCIONÁRIOS</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Funcionários')} />
                                 <ValCell value={sumByParent(pd?.expenses ?? [], 'Funcionários')} />
                                 <ValCell value={sumByParent(cd?.expenses ?? [], 'Funcionários')} />
                             </tr>
@@ -608,16 +684,22 @@ export function DREView() {
                             {/* Despesas com Vendas */}
                             <tr className="bg-gray-100 border-b border-gray-200">
                                 <td className="px-4 py-1.5 font-semibold text-gray-700 pl-8">DESPESAS COM VENDAS</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Despesas com Vendas')} />
                                 <ValCell value={sumByParent(pd?.expenses ?? [], 'Despesas com Vendas')} />
                                 <ValCell value={sumByParent(cd?.expenses ?? [], 'Despesas com Vendas')} />
                             </tr>
                             <EditableRow label="Taxa Mercado Pago" catName="Taxa Mercado Pago" indent={2} />
+                            <EditableRow label="Taxa Stripe" catName="Taxa Stripe" indent={2} />
                             <EditableRow label="Comissão Feiras" catName="Comissão Feiras" indent={2} />
-                            <EditableRow label="Aluguel Feira" catName="Aluguel Feira" indent={2} />
-
+                            <EditableRow label="Alimentação Feira" catName="Alimentação Feira" indent={2} />
+                            <OtherExpensesForParent
+                                parentName="Despesas com Vendas"
+                                skipCategories={['Taxa Mercado Pago', 'Taxa Stripe', 'Comissão Feiras', 'Alimentação Feira']}
+                            />
                             {/* Despesas Fixas */}
                             <tr className="bg-gray-100 border-b border-gray-200">
                                 <td className="px-4 py-1.5 font-semibold text-gray-700 pl-8">DESPESAS FIXAS</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Despesas Fixas')} />
                                 <ValCell value={sumByParent(pd?.expenses ?? [], 'Despesas Fixas')} />
                                 <ValCell value={sumByParent(cd?.expenses ?? [], 'Despesas Fixas')} />
                             </tr>
@@ -628,12 +710,16 @@ export function DREView() {
                             {/* Outras Despesas */}
                             <tr className="bg-gray-100 border-b border-gray-200">
                                 <td className="px-4 py-1.5 font-semibold text-gray-700 pl-8">OUTRAS DESPESAS</td>
+                                <ValCell value={sumByParent(p2d?.expenses ?? [], 'Outras Despesas')} />
                                 <ValCell value={sumByParent(pd?.expenses ?? [], 'Outras Despesas')} />
                                 <ValCell value={sumByParent(cd?.expenses ?? [], 'Outras Despesas')} />
                             </tr>
                             <EditableRow label="Contabilidade" catName="Contabilidade" indent={2} />
                             <InfraWebRow />
-
+                            <OtherExpensesForParent
+                                parentName="Outras Despesas"
+                                skipCategories={['Contabilidade', 'Infra Web', 'Diarista', 'Material de Limpeza', 'Inadimplência', 'Uber Direct (Feira)', '99 Empresas (Feira)', 'Lalamove (Feira)', 'Uber Direct (Site)', '99 Empresas (Site)', 'Lalamove (Site)', 'Uber Direct (Catering)', '99 Empresas (Catering)', 'Lalamove (Catering)']}
+                            />
                             {/* Entregas por canal */}
                             {[
                                 { label: 'Entregas - Feira', items: ['Uber Direct (Feira)', '99 Empresas (Feira)', 'Lalamove (Feira)'] },
@@ -643,6 +729,7 @@ export function DREView() {
                                 <React.Fragment key={label}>
                                     <tr className="bg-gray-50 border-b border-gray-100">
                                         <td className="px-4 py-1.5 text-sm font-medium text-gray-600 pl-12">{label}</td>
+                                        <ValCell value={items.reduce((s, n) => s + sumByCategory(p2d?.expenses ?? [], n), 0)} />
                                         <ValCell value={items.reduce((s, n) => s + sumByCategory(pd?.expenses ?? [], n), 0)} />
                                         <ValCell value={items.reduce((s, n) => s + sumByCategory(cd?.expenses ?? [], n), 0)} />
                                     </tr>
@@ -657,19 +744,23 @@ export function DREView() {
                             <EditableRow label="Inadimplência" catName="Inadimplência" indent={2} />
 
                             {/* ── PÓS-EBITDA ── */}
-                            <tr className="h-2 bg-gray-50"><td colSpan={3} /></tr>
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
                             <tr className="border-b border-gray-100">
                                 <td className="px-4 py-1.5 text-gray-700">Depreciação de maquinário</td>
+                                <ValCell value={p2d?.depreciacao ?? 0} />
                                 <ValCell value={pd?.depreciacao ?? 0} />
                                 <ValCell value={cd?.depreciacao ?? 0} />
                             </tr>
                             <EditableRow label="Juros de empréstimos" catName="Juros de Empréstimos" indent={0} />
                             <EditableRow label="Impostos sobre lucro" catName="Impostos sobre Lucro" indent={0} />
-                            <tr className="h-2 bg-gray-50"><td colSpan={3} /></tr>
+                            <tr className="h-2 bg-gray-50"><td colSpan={4} /></tr>
 
                             {/* ── RESULTADO LÍQUIDO ── */}
                             <tr className="bg-[#FFC000] border-b border-yellow-300">
                                 <td className="px-4 py-2 font-bold text-gray-900">RESULTADO LÍQUIDO</td>
+                                <td className={`px-4 py-2 text-right font-bold tabular-nums ${(p2d?.summary.resultado_liquido ?? 0) < 0 ? 'text-red-700' : 'text-gray-900'}`}>
+                                    {fmt(p2d?.summary.resultado_liquido ?? 0)}
+                                </td>
                                 <td className={`px-4 py-2 text-right font-bold tabular-nums ${(pd?.summary.resultado_liquido ?? 0) < 0 ? 'text-red-700' : 'text-gray-900'}`}>
                                     {fmt(pd?.summary.resultado_liquido ?? 0)}
                                 </td>
@@ -679,6 +770,9 @@ export function DREView() {
                             </tr>
                             <tr className="border-b border-gray-100 bg-gray-50/60">
                                 <td className="px-4 py-1 text-xs text-gray-500 pl-8 italic">MARGEM LÍQUIDA</td>
+                                <td className={`px-4 py-1 text-right text-xs italic tabular-nums ${(p2d?.summary.margem_liquida ?? 0) < 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                                    {fmtPct(p2d?.summary.margem_liquida ?? 0)}
+                                </td>
                                 <td className={`px-4 py-1 text-right text-xs italic tabular-nums ${(pd?.summary.margem_liquida ?? 0) < 0 ? 'text-red-500' : 'text-gray-500'}`}>
                                     {fmtPct(pd?.summary.margem_liquida ?? 0)}
                                 </td>

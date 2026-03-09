@@ -75,90 +75,96 @@ const STEPS: Array<{
     title: string;
     fields?: WizardField[];
     isInfraWeb?: boolean;
+    /** Se true, permite adicionar campos extras via + */
+    isDynamic?: boolean;
+    /** Categoria pai para itens dinâmicos */
+    dynamicCatName?: string;
 }> = [
-    {
-        title: 'Deduções',
-        fields: [
-            { label: 'Promoções', catName: 'Promoções' },
-            { label: 'DAS (Simples Nacional)', catName: 'DAS (Simples Nacional)' },
-            { label: 'Devoluções', catName: 'Devoluções' },
-        ],
-    },
-    {
-        title: 'Funcionários',
-        fields: [
-            { label: 'Pró-labore', catName: 'Pró-labore' },
-            { label: 'Empregados', catName: 'Empregados' },
-        ],
-    },
-    {
-        title: 'Despesas com Vendas',
-        fields: [
-            { label: 'Taxa Mercado Pago', catName: 'Taxa Mercado Pago' },
-            { label: 'Comissão Feiras', catName: 'Comissão Feiras' },
-            { label: 'Aluguel Feira', catName: 'Aluguel Feira' },
-        ],
-    },
-    {
-        title: 'Despesas Fixas',
-        fields: [
-            { label: 'Condomínio', catName: 'Condomínio (taxas e manutenção)' },
-            { label: 'Internet e Telefone', catName: 'Internet e Telefone' },
-            { label: 'Gás', catName: 'Gás' },
-        ],
-    },
-    {
-        title: 'Outras Despesas',
-        fields: [
-            { label: 'Contabilidade', catName: 'Contabilidade' },
-        ],
-    },
-    {
-        title: 'Infra Web',
-        isInfraWeb: true,
-    },
-    {
-        title: 'Entregas — Feira',
-        fields: [
-            { label: 'Uber Direct', catName: 'Uber Direct (Feira)' },
-            { label: '99 Empresas', catName: '99 Empresas (Feira)' },
-            { label: 'Lalamove', catName: 'Lalamove (Feira)' },
-        ],
-    },
-    {
-        title: 'Entregas — Site',
-        fields: [
-            { label: 'Uber Direct', catName: 'Uber Direct (Site)' },
-            { label: '99 Empresas', catName: '99 Empresas (Site)' },
-            { label: 'Lalamove', catName: 'Lalamove (Site)' },
-        ],
-    },
-    {
-        title: 'Entregas — Catering',
-        fields: [
-            { label: 'Uber Direct', catName: 'Uber Direct (Catering)' },
-            { label: '99 Empresas', catName: '99 Empresas (Catering)' },
-            { label: 'Lalamove', catName: 'Lalamove (Catering)' },
-        ],
-    },
-    {
-        title: 'Outros',
-        fields: [
-            { label: 'Diarista', catName: 'Diarista' },
-            { label: 'Material de Limpeza', catName: 'Material de Limpeza' },
-        ],
-    },
-    {
-        title: 'Pós-EBITDA',
-        fields: [
-            { label: 'Juros de Empréstimos', catName: 'Juros de Empréstimos' },
-            { label: 'Impostos sobre Lucro', catName: 'Impostos sobre Lucro' },
-        ],
-    },
-    {
-        title: 'Resumo',
-    },
-];
+        {
+            title: 'Deduções',
+            fields: [
+                { label: 'DAS (Simples Nacional)', catName: 'DAS (Simples Nacional)' },
+                { label: 'Devoluções', catName: 'Devoluções' },
+            ],
+        },
+        {
+            title: 'Funcionários',
+            fields: [
+                { label: 'Pró-labore', catName: 'Pró-labore' },
+                { label: 'Empregados', catName: 'Empregados' },
+            ],
+        },
+        {
+            title: 'Despesas com Vendas',
+            fields: [
+                { label: 'Taxa Mercado Pago', catName: 'Taxa Mercado Pago' },
+                { label: 'Taxa Stripe', catName: 'Taxa Stripe' },
+                { label: 'Comissão Feiras', catName: 'Comissão Feiras' },
+                { label: 'Alimentação Feira', catName: 'Alimentação Feira' },
+            ],
+            isDynamic: true,
+            dynamicCatName: 'Despesas com Vendas',
+        },
+        {
+            title: 'Despesas Fixas',
+            fields: [
+                { label: 'Condomínio', catName: 'Condomínio (taxas e manutenção)' },
+                { label: 'Internet e Telefone', catName: 'Internet e Telefone' },
+                { label: 'Gás', catName: 'Gás' },
+            ],
+        },
+        {
+            title: 'Outras Despesas',
+            fields: [
+                { label: 'Contabilidade', catName: 'Contabilidade' },
+            ],
+        },
+        {
+            title: 'Infra Web',
+            isInfraWeb: true,
+        },
+        {
+            title: 'Entregas — Feira',
+            fields: [
+                { label: 'Uber Direct', catName: 'Uber Direct (Feira)' },
+                { label: '99 Empresas', catName: '99 Empresas (Feira)' },
+                { label: 'Lalamove', catName: 'Lalamove (Feira)' },
+            ],
+        },
+        {
+            title: 'Entregas — Site',
+            fields: [
+                { label: 'Uber Direct', catName: 'Uber Direct (Site)' },
+                { label: '99 Empresas', catName: '99 Empresas (Site)' },
+                { label: 'Lalamove', catName: 'Lalamove (Site)' },
+            ],
+        },
+        {
+            title: 'Entregas — Catering',
+            fields: [
+                { label: 'Uber Direct', catName: 'Uber Direct (Catering)' },
+                { label: '99 Empresas', catName: '99 Empresas (Catering)' },
+                { label: 'Lalamove', catName: 'Lalamove (Catering)' },
+            ],
+        },
+        {
+            title: 'Outros',
+            fields: [
+                { label: 'Diarista', catName: 'Diarista' },
+                { label: 'Material de Limpeza', catName: 'Material de Limpeza' },
+            ],
+        },
+        {
+            title: 'Pós-EBITDA',
+            fields: [
+                { label: 'Juros de Empréstimos', catName: 'Juros de Empréstimos' },
+                { label: 'Impostos sobre Lucro', catName: 'Impostos sobre Lucro' },
+            ],
+        },
+        {
+            title: 'Resumo',
+        },
+    ];
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -180,6 +186,7 @@ export function FechamentoWizard({
     const [step, setStep] = useState(0);
     const [values, setValues] = useState<WizardValues>({});
     const [infraItems, setInfraItems] = useState<InfraWebItem[]>([]);
+    const [dynamicItems, setDynamicItems] = useState<Record<string, InfraWebItem[]>>({});
     const [saving, setSaving] = useState(false);
     const [confirmReplace, setConfirmReplace] = useState(false);
     const idCounter = useRef(0);
@@ -208,6 +215,29 @@ export function FechamentoWizard({
     const removeInfraItem = (id: string) =>
         setInfraItems(prev => prev.filter(it => it.id !== id));
 
+    const addDynamicItem = (stepTitle: string) => {
+        idCounter.current += 1;
+        setDynamicItems(prev => ({
+            ...prev,
+            [stepTitle]: [
+                ...(prev[stepTitle] || []),
+                { description: '', amount: '', suggestion: 0, id: String(idCounter.current) }
+            ]
+        }));
+    };
+
+    const updateDynamicItem = (stepTitle: string, id: string, patch: Partial<InfraWebItem>) =>
+        setDynamicItems(prev => ({
+            ...prev,
+            [stepTitle]: (prev[stepTitle] || []).map(it => it.id === id ? { ...it, ...patch } : it)
+        }));
+
+    const removeDynamicItem = (stepTitle: string, id: string) =>
+        setDynamicItems(prev => ({
+            ...prev,
+            [stepTitle]: (prev[stepTitle] || []).filter(it => it.id !== id)
+        }));
+
     // Coleta todos os lançamentos a salvar
     const buildPayloads = () => {
         const items: Array<Parameters<typeof addExpense>[0]> = [];
@@ -225,6 +255,20 @@ export function FechamentoWizard({
             const val = parseVal(it.amount);
             if (val > 0 && it.description.trim()) {
                 items.push({ description: it.description.trim(), amount: val, category_name: 'Infra Web', record_date: recordDate });
+            }
+        }
+
+        // Itens dinâmicos por categoria
+        for (const [stepTitle, dynamicList] of Object.entries(dynamicItems)) {
+            // Tenta achar a categoria real baseada no título do step ou campos dele
+            const step = STEPS.find(s => s.title === stepTitle);
+            const catName = step?.dynamicCatName ?? step?.fields?.[0]?.catName ?? stepTitle;
+
+            for (const it of dynamicList) {
+                const val = parseVal(it.amount);
+                if (val > 0 && it.description.trim()) {
+                    items.push({ description: it.description.trim(), amount: val, category_name: catName, record_date: recordDate });
+                }
             }
         }
 
@@ -311,6 +355,55 @@ export function FechamentoWizard({
         </div>
     );
 
+    const renderDynamicFields = (fields: WizardField[], stepTitle: string) => (
+        <div className="space-y-1">
+            {fields.map(f => (
+                <SuggestInput
+                    key={f.catName}
+                    label={f.label}
+                    value={values[f.catName] ?? ''}
+                    onChange={v => setField(f.catName, v)}
+                    suggestion={getSuggestion(f.catName)}
+                />
+            ))}
+
+            {/* Itens extras */}
+            <div className="mt-4 space-y-2">
+                {(dynamicItems[stepTitle] || []).map(it => (
+                    <div key={it.id} className="flex gap-2 items-center">
+                        <input
+                            type="text"
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="Outra despesa..."
+                            value={it.description}
+                            onChange={e => updateDynamicItem(stepTitle, it.id, { description: e.target.value })}
+                        />
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="0,00"
+                            value={it.amount}
+                            onChange={e => updateDynamicItem(stepTitle, it.id, { amount: e.target.value })}
+                        />
+                        <button
+                            onClick={() => removeDynamicItem(stepTitle, it.id)}
+                            className="text-gray-300 hover:text-red-500"
+                        >
+                            <Trash2 size={15} />
+                        </button>
+                    </div>
+                ))}
+                <button
+                    onClick={() => addDynamicItem(stepTitle)}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                >
+                    <Plus size={12} /> Adicionar outro campo
+                </button>
+            </div>
+        </div>
+    );
+
     // ── Step: Resumo ──────────────────────────────────────────────────────────
 
     const renderResumo = () => {
@@ -353,9 +446,9 @@ export function FechamentoWizard({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <div>
                         <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">
-                            Fechamento Mensal · Step {step + 1}/{STEPS.length}
+                            Fechamento Mensal · {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][month - 1]} de {year}
                         </p>
-                        <h3 className="text-base font-semibold text-gray-900">{currentStep.title}</h3>
+                        <h3 className="text-base font-semibold text-gray-900">{currentStep.title} (Step {step + 1}/{STEPS.length})</h3>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X size={18} />
@@ -373,7 +466,8 @@ export function FechamentoWizard({
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-5">
                     {currentStep.isInfraWeb && renderInfraWeb()}
-                    {currentStep.fields && renderFields(currentStep.fields)}
+                    {currentStep.fields && !currentStep.isDynamic && renderFields(currentStep.fields)}
+                    {currentStep.fields && currentStep.isDynamic && renderDynamicFields(currentStep.fields, currentStep.title)}
                     {isLast && renderResumo()}
 
                     {/* Aviso de substituição */}
