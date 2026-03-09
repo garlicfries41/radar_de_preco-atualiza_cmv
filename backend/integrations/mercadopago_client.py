@@ -57,7 +57,7 @@ class MercadoPagoClient:
 
     def get_monthly_fees(self, year: int, month: int) -> dict:
         """
-        Tenta buscar tarifas do mês via API de movimentações.
+        Tenta vários endpoints do MP para buscar tarifas do mês.
         Retorna dict com total e debug info.
         """
         import calendar
@@ -65,49 +65,39 @@ class MercadoPagoClient:
         begin_date = f"{year}-{str(month).zfill(2)}-01T00:00:00.000-03:00"
         end_date = f"{year}-{str(month).zfill(2)}-{str(last_day).zfill(2)}T23:59:59.999-03:00"
 
-        total_fees = 0
-        total_movements = 0
-        api_status = None
-        offset = 0
+        # Testar vários endpoints possíveis para movements
+        endpoints = [
+            "/v1/account/movements/search",
+            "/v1/account/movements",
+            "/v1/mercadopago_account/movements/search",
+            "/v1/mercadopago_account/movements",
+        ]
 
-        while True:
-            params = {
-                "range": "date_created",
-                "begin_date": begin_date,
-                "end_date": end_date,
-                "limit": 100,
-                "offset": offset
-            }
-            response = requests.get(
-                f"{self.base_url}/v1/account/movements/search",
-                headers=self.headers, params=params
-            )
-            api_status = response.status_code
-
-            if response.status_code != 200:
-                logger.warning(f"[MP] movements API returned {response.status_code}: {response.text[:500]}")
-                break
-
-            body = response.json()
-            results = body.get("results", [])
-            total_movements += len(results)
-
-            if not results:
-                break
-
-            for m in results:
-                desc = (m.get("description") or m.get("type") or "").lower()
-                if "tarifa" in desc or "fee" in desc:
-                    total_fees += abs(float(m.get("amount", 0)))
-
-            if len(results) < 100:
-                break
-            offset += 100
+        endpoint_results = {}
+        for ep in endpoints:
+            try:
+                params = {
+                    "range": "date_created",
+                    "begin_date": begin_date,
+                    "end_date": end_date,
+                    "limit": 5
+                }
+                resp = requests.get(
+                    f"{self.base_url}{ep}",
+                    headers=self.headers, params=params
+                )
+                endpoint_results[ep] = {
+                    "status": resp.status_code,
+                    "sample": resp.text[:300] if resp.status_code != 404 else "404"
+                }
+            except Exception as e:
+                endpoint_results[ep] = {"status": "error", "sample": str(e)[:200]}
 
         return {
-            "total": round(total_fees, 2),
-            "movements_found": total_movements,
-            "api_status": api_status
+            "total": 0,
+            "movements_found": 0,
+            "api_status": None,
+            "endpoint_probe": endpoint_results
         }
 
 
