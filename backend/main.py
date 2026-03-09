@@ -1758,42 +1758,13 @@ def sync_gateway_month(year: int, month: int):
             errors.append({"gateway": "stripe", "date": date_str, "error": str(e)})
         current += timedelta(days=1)
 
-    # 2. Tentar buscar tarifas MP do mês inteiro via movements API
-    monthly_fees_info = {"total": 0, "movements_found": 0, "api_status": None}
-    try:
-        mp_client = MercadoPagoClient()
-        monthly_fees_info = mp_client.get_monthly_fees(year, month)
-    except Exception as e:
-        logger.error(f"[GATEWAY] Erro tarifas mensais MP: {e}")
-        errors.append({"gateway": "mercadopago", "date": "monthly_fees", "error": str(e)})
-
-    # Se monthly fees > soma dos daily fees, usar o mensal (distribuído proporcionalmente)
-    daily_fees_total = sum(r["fee_amount"] for r in mp_results)
-    monthly_total = monthly_fees_info["total"]
-    total_gross = sum(r["gross_amount"] for r in mp_results)
-
-    if monthly_total > daily_fees_total and total_gross > 0:
-        for r in mp_results:
-            r["fee_amount"] = round(monthly_total * (r["gross_amount"] / total_gross), 2)
-            r["net_amount"] = round(r["gross_amount"] - r["fee_amount"], 2)
-
+    # 2. Salvar resultados do MP no banco
     for r in mp_results:
         supabase.table("payment_gateways_history").upsert(r, on_conflict="date,gateway").execute()
         results.append(r)
 
-    return {
-        "success": True, "year": year, "month": month,
-        "days_synced": len(results) // 2,
-        "mp_fees_debug": {
-            "daily_total": round(daily_fees_total, 2),
-            "monthly_total": monthly_total,
-            "monthly_movements_found": monthly_fees_info.get("movements_found"),
-            "monthly_api_status": monthly_fees_info.get("api_status"),
-            "endpoint_probe": monthly_fees_info.get("endpoint_probe"),
-            "used": "monthly" if monthly_total > daily_fees_total else "daily"
-        },
-        "errors": errors
-    }
+    mp_fees_total = round(sum(r["fee_amount"] for r in mp_results), 2)
+    return {"success": True, "year": year, "month": month, "days_synced": len(results) // 2, "mp_fees_total": mp_fees_total, "errors": errors}
 
 
 @app.get("/api/financeiro/gateways/history")
