@@ -86,3 +86,23 @@ export const confirmInadimplencia = async (
 ): Promise<void> => {
     await api.post(`/api/financeiro/inadimplencia/${orderId}/confirmar`, { month });
 };
+
+export interface GatewayRecord {
+    date: string;
+    gateway: string;
+    gross_amount: number;
+    fee_amount: number;
+    net_amount: number;
+    transaction_count: number;
+}
+
+export const getGatewayHistory = async (year: number, month: number): Promise<GatewayRecord[]> => {
+    const res = await api.get('/api/financeiro/gateways/history', { params: { year, month } });
+    return res.data;
+};
+
+export const syncGatewayData = async (date?: string): Promise<{ success: boolean; date: string; results: GatewayRecord[] }> => {
+    const res = await api.post('/api/financeiro/gateways/sync', null, { params: { date } });
+    return res.data;
+};
+Riverside:

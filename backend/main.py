@@ -23,7 +23,10 @@ from tools.ocr_processor import ocr_from_bytes
 from tools.receipt_parser import parse_receipt
 from tools.cmv_calculator import recalculate_affected_recipes, calculate_cmv_change_percentage
 from tools.discord_notifier import send_price_alert, send_cmv_update
-from backend.utils.logger import logger
+
+from backend.integrations.mercadopago_client import MercadoPagoClient
+from backend.integrations.stripe_client import StripeClient
+
 
 load_dotenv()
 
@@ -1679,6 +1682,54 @@ def confirm_inadimplencia(order_id: int, payload: dict):
         raise HTTPException(500, f"Erro ao registrar inadimplência: {str(e)}")
 
 
-if __name__ == "__main__":
+
+# ============= Pagamentos & Gateways (MP/Stripe) =============
+
+@app.post("/api/financeiro/gateways/sync")
+def sync_gateway_data(date: Optional[str] = None):
+    """Sincroniza dados do MP e Stripe para uma data específica (default: ontem)."""
+    try:
+        from datetime import timedelta
+        if not date:
+            date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        results = []
+        # Mercado Pago
+        try:
+            mp = MercadoPagoClient()
+            mp_summary = mp.get_daily_summary(date)
+            supabase.table("payment_gateways_history").upsert(mp_summary, on_conflict="date,gateway").execute()
+            results.append(mp_summary)
+        except Exception as e:
+            logger.error(f"[GATEWAY] Erro sincronizando MP: {date}: {e}")
+
+        # Stripe
+        try:
+            st = StripeClient()
+            st_summary = st.get_daily_summary(date)
+            supabase.table("payment_gateways_history").upsert(st_summary, on_conflict="date,gateway").execute()
+            results.append(st_summary)
+        except Exception as e:
+            logger.error(f"[GATEWAY] Erro sincronizando Stripe: {date}: {e}")
+
+        return {"success": True, "date": date, "results": results}
+    except Exception as e:
+        logger.error(f"[GATEWAY] Erro geral na sincronização: {e}")
+        raise HTTPException(500, f"Erro na sincronização: {str(e)}")
+
+@app.get("/api/financeiro/gateways/history")
+def get_gateway_history(year: int, month: int):
+    """Retorna o histórico de sincronização de um mês específico."""
+    try:
+        # Buscar todos os registros do mês (ex: 2026-03%)
+        pattern = f"{year}-{str(month).zfill(2)}"
+        res = supabase.table("payment_gateways_history").select("*").filter("date", "ilike", f"{pattern}%").execute()
+        return res.data or []
+    except Exception as e:
+        logger.error(f"[GATEWAY] Erro ao buscar histórico: {e}")
+        raise HTTPException(500, f"Erro ao buscar histórico: {str(e)}")
+
+
+
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

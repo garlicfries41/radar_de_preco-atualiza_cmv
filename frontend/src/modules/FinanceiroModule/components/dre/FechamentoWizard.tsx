@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from 'lucide-react';
-import { addExpense, deleteExpense, type DREData, type ExpenseItem } from '../../api';
+import { addExpense, deleteExpense, syncGatewayData, getGatewayHistory, type DREData, type ExpenseItem } from '../../api';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ function SuggestInput({
 const STEPS: Array<{
     title: string;
     fields?: WizardField[];
-    isInfraWeb?: boolean; // This field is no longer used but kept for type compatibility if other parts of the code still reference it.
+    isInfraWeb?: boolean;
     /** Se true, permite adicionar campos extras via + */
     isDynamic?: boolean;
     /** Categoria pai para itens dinâmicos */
@@ -195,6 +195,7 @@ export function FechamentoWizard({
     const [infraItems, setInfraItems] = useState<InfraWebItem[]>([]);
     const [dynamicItems, setDynamicItems] = useState<Record<string, InfraWebItem[]>>({});
     const [saving, setSaving] = useState(false);
+    const [syncing, setSyncing] = useState(false);
     const [confirmReplace, setConfirmReplace] = useState(false);
     const idCounter = useRef(0);
 
@@ -250,6 +251,38 @@ export function FechamentoWizard({
             [stepTitle]: (prev[stepTitle] || []).filter(it => it.id !== id)
         }));
 
+    const handleSyncGateways = async () => {
+        setSyncing(true);
+        try {
+            // 1. Tenta buscar histórico já sincronizado para o mês
+            let history = await getGatewayHistory(year, month);
+
+            // 2. Se for o mês atual ou histórico vazio, dispara sync
+            const isCurrentMonth = year === new Date().getFullYear() && month === (new Date().getMonth() + 1);
+            if (isCurrentMonth || history.length === 0) {
+                await syncGatewayData();
+                history = await getGatewayHistory(year, month);
+            }
+
+            // Agrupar por gateway
+            const mp = history.filter(h => h.gateway === 'mercadopago');
+            const st = history.filter(h => h.gateway === 'stripe');
+
+            const mpFees = mp.reduce((s, h) => s + Number(h.fee_amount), 0);
+            const stFees = st.reduce((s, h) => s + Number(h.fee_amount), 0);
+
+            if (mpFees > 0) setField('Taxa Mercado Pago', mpFees.toFixed(2).replace('.', ','));
+            if (stFees > 0) setField('Taxa Stripe', stFees.toFixed(2).replace('.', ','));
+
+            console.log("Sincronização concluída", { mpFees, stFees });
+        } catch (err) {
+            console.error("Erro ao sincronizar gateways:", err);
+            alert("Erro ao sincronizar com as APIs. Verifique as credenciais no servidor.");
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     // Coleta todos os lançamentos a salvar
     const buildPayloads = () => {
         const items: Array<Parameters<typeof addExpense>[0]> = [];
@@ -273,18 +306,8 @@ export function FechamentoWizard({
             }
         }
 
-        // Infra Web (old way, now integrated into Gestão & Outros)
-        // This block is kept for backward compatibility if infraItems state is still populated from old logic
-        for (const it of infraItems) {
-            const val = parseVal(it.amount);
-            if (val > 0 && it.description.trim()) {
-                items.push({ description: it.description.trim(), amount: val, category_name: 'Infra Web', record_date: recordDate });
-            }
-        }
-
         // Itens dinâmicos por categoria
         for (const [stepTitle, dynamicList] of Object.entries(dynamicItems)) {
-            // Tenta achar a categoria real baseada no título do step ou campos dele
             const step = STEPS.find(s => s.title === stepTitle);
             const catName = step?.dynamicCatName ?? step?.fields?.[0]?.catName ?? stepTitle;
 
@@ -341,46 +364,6 @@ export function FechamentoWizard({
                     />
                 );
             })}
-        </div>
-    );
-
-    // ── Step: Infra Web (lista dinâmica) ──────────────────────────────────────
-    // This function is no longer directly called as a dedicated step,
-    // but its logic might be integrated into dynamic fields if needed.
-    // Keeping it for now, but it's effectively unused with the new STEPS structure.
-    const renderInfraWeb = () => (
-        <div className="space-y-2">
-            {infraItems.map(it => (
-                <div key={it.id} className="flex gap-2 items-center">
-                    <input
-                        type="text"
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Ex: Shopify, Vercel..."
-                        value={it.description}
-                        onChange={e => updateInfraItem(it.id, { description: e.target.value })}
-                    />
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="0,00"
-                        value={it.amount}
-                        onChange={e => updateInfraItem(it.id, { amount: e.target.value })}
-                    />
-                    <button
-                        onClick={() => removeInfraItem(it.id)}
-                        className="text-gray-300 hover:text-red-500"
-                    >
-                        <Trash2 size={15} />
-                    </button>
-                </div>
-            ))}
-            <button
-                onClick={addInfraItem}
-                className="flex items-center gap-1 text-sm text-primary hover:underline mt-1"
-            >
-                <Plus size={14} /> Adicionar item
-            </button>
         </div>
     );
 
@@ -497,9 +480,35 @@ export function FechamentoWizard({
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-5">
-                    {currentStep.isInfraWeb && renderInfraWeb()}
                     {currentStep.fields && !currentStep.isDynamic && renderFields(currentStep.fields)}
                     {currentStep.fields && currentStep.isDynamic && renderDynamicFields(currentStep.fields, currentStep.title)}
+
+                    {/* Botão de Sync em 'Despesas com Vendas' */}
+                    {currentStep.title === 'Despesas com Vendas' && (
+                        <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
+                            <button
+                                onClick={handleSyncGateways}
+                                disabled={syncing}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
+                            >
+                                {syncing ? (
+                                    <>
+                                        <div className="w-3 h-3 border-2 border-indigo-700/30 border-t-indigo-700 rounded-full animate-spin" />
+                                        Sincronizando APIs...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus size={14} className="rotate-45" />
+                                        Sincronizar Mercado Pago & Stripe
+                                    </>
+                                )}
+                            </button>
+                            <p className="text-[10px] text-gray-400 text-center mt-2">
+                                Busca automática de taxas e vendas registradas nos dashboards.
+                            </p>
+                        </div>
+                    )}
+
                     {isLast && renderResumo()}
 
                     {/* Aviso de substituição */}
@@ -512,7 +521,7 @@ export function FechamentoWizard({
                     )}
 
                     {/* Dica Tab */}
-                    {!isLast && !currentStep.isInfraWeb && (
+                    {!isLast && (
                         <p className="text-xs text-gray-400 mt-4">
                             Deixe em branco para pular. Pressione <kbd className="bg-gray-100 px-1 rounded text-xs">Tab</kbd> num campo vazio para usar o valor do mês anterior.
                         </p>
@@ -554,3 +563,4 @@ export function FechamentoWizard({
         </div>
     );
 }
+Riverside:
