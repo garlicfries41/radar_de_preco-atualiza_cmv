@@ -1722,6 +1722,43 @@ def sync_gateway_data(date: Optional[str] = None):
         logger.error(f"[GATEWAY] Erro geral na sincronização: {e}")
         raise HTTPException(500, f"Erro na sincronização: {str(e)}")
 
+@app.post("/api/financeiro/gateways/sync-month")
+def sync_gateway_month(year: int, month: int):
+    """Sincroniza todos os dias de um mês completo para MP e Stripe."""
+    import calendar
+    from datetime import timedelta, date as date_type
+
+    today = datetime.now().date()
+    first_day = date_type(year, month, 1)
+    last_day_num = calendar.monthrange(year, month)[1]
+    last_day = min(date_type(year, month, last_day_num), today - timedelta(days=1))
+
+    results = []
+    errors = []
+    current = first_day
+    while current <= last_day:
+        date_str = current.strftime("%Y-%m-%d")
+        try:
+            mp = MercadoPagoClient()
+            mp_summary = mp.get_daily_summary(date_str)
+            supabase.table("payment_gateways_history").upsert(mp_summary, on_conflict="date,gateway").execute()
+            results.append(mp_summary)
+        except Exception as e:
+            logger.error(f"[GATEWAY] Erro MP {date_str}: {e}")
+            errors.append({"gateway": "mercadopago", "date": date_str, "error": str(e)})
+        try:
+            st = StripeClient()
+            st_summary = st.get_daily_summary(date_str)
+            supabase.table("payment_gateways_history").upsert(st_summary, on_conflict="date,gateway").execute()
+            results.append(st_summary)
+        except Exception as e:
+            logger.error(f"[GATEWAY] Erro Stripe {date_str}: {e}")
+            errors.append({"gateway": "stripe", "date": date_str, "error": str(e)})
+        current += timedelta(days=1)
+
+    return {"success": True, "year": year, "month": month, "days_synced": len(results) // 2, "errors": errors}
+
+
 @app.get("/api/financeiro/gateways/history")
 def get_gateway_history(year: int, month: int):
     """Retorna o histórico de sincronização de um mês específico."""

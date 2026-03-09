@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from 'lucide-react';
-import { addExpense, deleteExpense, syncGatewayData, getGatewayHistory, type DREData, type ExpenseItem } from '../../api';
+import { addExpense, deleteExpense, syncGatewayMonth, getGatewayHistory, type DREData, type ExpenseItem } from '../../api';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -246,7 +246,7 @@ export function FechamentoWizard({
             // 2. Se for o mês atual ou histórico vazio, dispara sync
             const isCurrentMonth = year === new Date().getFullYear() && month === (new Date().getMonth() + 1);
             if (isCurrentMonth || history.length === 0) {
-                await syncGatewayData();
+                await syncGatewayMonth(year, month);
                 history = await getGatewayHistory(year, month);
             }
 

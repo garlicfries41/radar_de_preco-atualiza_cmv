@@ -105,3 +105,8 @@ export const syncGatewayData = async (date?: string): Promise<{ success: boolean
     const res = await api.post('/api/financeiro/gateways/sync', null, { params: { date } });
     return res.data;
 };
+
+export const syncGatewayMonth = async (year: number, month: number): Promise<{ success: boolean; year: number; month: number; days_synced: number; errors: { gateway: string; date: string; error: string }[] }> => {
+    const res = await api.post('/api/financeiro/gateways/sync-month', null, { params: { year, month } });
+    return res.data;
+};
