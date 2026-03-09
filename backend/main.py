@@ -1733,16 +1733,18 @@ def sync_gateway_month(year: int, month: int):
     last_day_num = calendar.monthrange(year, month)[1]
     last_day = min(date_type(year, month, last_day_num), today - timedelta(days=1))
 
+    mp_results = []
     results = []
     errors = []
+
+    # 1. Sincronizar dia a dia (gross + count para MP, tudo para Stripe)
     current = first_day
     while current <= last_day:
         date_str = current.strftime("%Y-%m-%d")
         try:
             mp = MercadoPagoClient()
             mp_summary = mp.get_daily_summary(date_str)
-            supabase.table("payment_gateways_history").upsert(mp_summary, on_conflict="date,gateway").execute()
-            results.append(mp_summary)
+            mp_results.append(mp_summary)
         except Exception as e:
             logger.error(f"[GATEWAY] Erro MP {date_str}: {e}")
             errors.append({"gateway": "mercadopago", "date": date_str, "error": str(e)})
@@ -1756,7 +1758,26 @@ def sync_gateway_month(year: int, month: int):
             errors.append({"gateway": "stripe", "date": date_str, "error": str(e)})
         current += timedelta(days=1)
 
-    return {"success": True, "year": year, "month": month, "days_synced": len(results) // 2, "errors": errors}
+    # 2. Buscar tarifas MP do mês inteiro (1 chamada) e distribuir proporcionalmente
+    try:
+        mp_client = MercadoPagoClient()
+        monthly_fees = mp_client.get_monthly_fees(year, month)
+        total_gross = sum(r["gross_amount"] for r in mp_results)
+
+        for r in mp_results:
+            if total_gross > 0 and monthly_fees > 0:
+                r["fee_amount"] = round(monthly_fees * (r["gross_amount"] / total_gross), 2)
+                r["net_amount"] = round(r["gross_amount"] - r["fee_amount"], 2)
+            supabase.table("payment_gateways_history").upsert(r, on_conflict="date,gateway").execute()
+            results.append(r)
+    except Exception as e:
+        logger.error(f"[GATEWAY] Erro tarifas mensais MP: {e}")
+        errors.append({"gateway": "mercadopago", "date": "monthly_fees", "error": str(e)})
+        for r in mp_results:
+            supabase.table("payment_gateways_history").upsert(r, on_conflict="date,gateway").execute()
+            results.append(r)
+
+    return {"success": True, "year": year, "month": month, "days_synced": len(results) // 2, "monthly_mp_fees": monthly_fees if 'monthly_fees' in dir() else None, "errors": errors}
 
 
 @app.get("/api/financeiro/gateways/history")

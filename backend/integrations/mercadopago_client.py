@@ -13,14 +13,13 @@ class MercadoPagoClient:
 
     def get_daily_summary(self, target_date: str):
         """
-        Busca pagamentos aprovados e tarifas de um dia específico (YYYY-MM-DD).
-        Usa /v1/payments/search para gross/count e /v1/account/movements/search
-        para tarifas — mesma fonte do relatório de movimentação do MP dashboard.
+        Busca pagamentos aprovados de um dia específico (YYYY-MM-DD).
+        Retorna gross_amount, transaction_count. fee_amount = 0 aqui;
+        as tarifas são calculadas mensalmente via get_monthly_fees().
         """
         begin_date = f"{target_date}T00:00:00.000-03:00"
         end_date = f"{target_date}T23:59:59.999-03:00"
 
-        # 1. Buscar pagamentos aprovados para gross_amount e transaction_count
         params = {
             "status": "approved",
             "range": "date_created",
@@ -38,77 +37,58 @@ class MercadoPagoClient:
         gross = sum(float(p.get("transaction_amount", 0)) for p in data.get("results", []))
         count = len(data.get("results", []))
 
-        # 2. Buscar tarifas via API de movimentações da conta
-        fees = self._get_daily_fees(begin_date, end_date)
-        net = gross - fees
-
         return {
             "date": target_date,
             "gateway": "mercadopago",
             "gross_amount": round(gross, 2),
-            "fee_amount": round(fees, 2),
-            "net_amount": round(net, 2),
+            "fee_amount": 0,
+            "net_amount": round(gross, 2),
             "transaction_count": count
         }
 
-    def _get_daily_fees(self, begin_date: str, end_date: str) -> float:
+    def get_monthly_fees(self, year: int, month: int) -> float:
         """
-        Busca movimentações do tipo 'Tarifa do Mercado Pago' no período.
-        Endpoint: GET /v1/account/movements/search
-        Retorna o valor absoluto (positivo) das tarifas.
+        Busca TODAS as tarifas do mês via API de movimentações da conta.
+        Mesma fonte do relatório XLSX do dashboard do MP.
+        Retorna o valor absoluto (positivo) total das tarifas.
         """
-        try:
+        import calendar
+        last_day = calendar.monthrange(year, month)[1]
+        begin_date = f"{year}-{str(month).zfill(2)}-01T00:00:00.000-03:00"
+        end_date = f"{year}-{str(month).zfill(2)}-{str(last_day).zfill(2)}T23:59:59.999-03:00"
+
+        total_fees = 0
+        offset = 0
+        while True:
             params = {
                 "range": "date_created",
                 "begin_date": begin_date,
                 "end_date": end_date,
-                "limit": 100
+                "limit": 100,
+                "offset": offset
             }
             response = requests.get(
                 f"{self.base_url}/v1/account/movements/search",
                 headers=self.headers, params=params
             )
 
-            if response.status_code == 200:
-                movements = response.json().get("results", [])
-                # Somar movimentos com tipo de tarifa (valores negativos no MP)
-                fee_total = 0
-                for m in movements:
-                    desc = (m.get("description") or m.get("type") or "").lower()
-                    if "tarifa" in desc or "fee" in desc:
-                        fee_total += abs(float(m.get("amount", 0)))
-                return fee_total
+            if response.status_code != 200:
+                break
 
-            # Fallback: usar fee_details dos pagamentos se movements API falhar
-            return self._get_fees_from_payments(begin_date, end_date)
-        except Exception:
-            return self._get_fees_from_payments(begin_date, end_date)
+            results = response.json().get("results", [])
+            if not results:
+                break
 
-    def _get_fees_from_payments(self, begin_date: str, end_date: str) -> float:
-        """Fallback: calcula fees a partir dos campos do pagamento individual."""
-        params = {
-            "status": "approved",
-            "range": "date_created",
-            "begin_date": begin_date,
-            "end_date": end_date,
-            "limit": 100
-        }
-        response = requests.get(
-            f"{self.base_url}/v1/payments/search",
-            headers=self.headers, params=params
-        )
-        response.raise_for_status()
-        data = response.json()
+            for m in results:
+                desc = (m.get("description") or m.get("type") or "").lower()
+                if "tarifa" in desc or "fee" in desc:
+                    total_fees += abs(float(m.get("amount", 0)))
 
-        fees = 0
-        for payment in data.get("results", []):
-            g = float(payment.get("transaction_amount", 0))
-            td_net = float((payment.get("transaction_details") or {}).get("net_received_amount", 0))
-            if td_net > 0:
-                fees += (g - td_net)
-            else:
-                fees += sum(float(f.get("amount", 0)) for f in payment.get("fee_details", []))
-        return fees
+            if len(results) < 100:
+                break
+            offset += 100
+
+        return round(total_fees, 2)
 
 
 if __name__ == "__main__":
