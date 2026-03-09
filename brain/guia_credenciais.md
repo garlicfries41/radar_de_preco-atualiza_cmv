@@ -30,4 +30,3 @@ Você tem duas opções:
 
 > [!CAUTION]
 > Chaves de API são como senhas. Uma vez que você me passar, eu as salvarei no arquivo `.env` e você pode apagar a mensagem se desejar. O arquivo `.env` é protegido e nunca é enviado para o GitHub.
- Riverside:

@@ -5,6 +5,16 @@
 - [x] **Fase 3: Evolução do Front-end (Nova Frente)** (Concluído)
 - [x] **Fase 4: Cascateamento de Pesos e Sincronização Global** (Concluído)
 - [x] **Fase 5: Manutenção e Cadastro de Dados** (Concluído)
+- [x] Fase 4: Documentação Técnica (DB)
+    [x] Atualizar selecionado: `dicionario_dados.md`
+    [x] Atualizar selecionado: `PROPOSITO_DAS_TABELAS.md`
+
+[ ] Recuperação e Limpeza (Contaminação Riverside)
+    [/] Diagnosticar arquivos contaminados
+    [ ] Remover `` do backend (`mercadopago_client.py`, `stripe_client.py`, `sync_history.py`)
+    [ ] Remover `` dos artefatos (`task.md`, `walkthrough.md`, etc.)
+    [ ] Testar inicialização do backend
+    [ ] Validar funcionamento dos módulos DRE e Custos
 - [x] **Fase 6: Automação Financeira (Gateways)** (Concluído)
     - [x] Implementação de APIs Mercado Pago e Stripe
     - [x] Sincronização Automática no Wizard de Fechamento
@@ -12,5 +22,4 @@
     - [x] Refatoração de Hierarquia de Despesas (DRE Contábil)
     - [x] Cálculo automático de EBITDA e Rentabilidade
 
-Riverside:
 Concluído em 08/03/2026

@@ -26,6 +26,7 @@ from tools.discord_notifier import send_price_alert, send_cmv_update
 
 from backend.integrations.mercadopago_client import MercadoPagoClient
 from backend.integrations.stripe_client import StripeClient
+from backend.utils.logger import logger
 
 
 load_dotenv()
@@ -1730,6 +1731,6 @@ def get_gateway_history(year: int, month: int):
         raise HTTPException(500, f"Erro ao buscar histórico: {str(e)}")
 
 
-
+if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

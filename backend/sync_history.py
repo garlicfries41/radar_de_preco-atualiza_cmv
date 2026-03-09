@@ -32,4 +32,3 @@ if __name__ == "__main__":
     print("Iniciando Sincronização Histórica (MP & Stripe)...")
     sync_history(90) # 3 meses aproximadamente
     print("Sincronização concluída!")
- Riverside:

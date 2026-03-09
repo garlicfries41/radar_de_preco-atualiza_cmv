@@ -39,4 +39,3 @@ Antes de automatizar, preciso validar as conectividades:
 ---
 > [!IMPORTANT]
 > A API do Mercado Pago é muito detalhista sobre "quando" o dinheiro é liberado vs "quando" a venda ocorreu. Usaremos a data da **venda** para a DRE por competência.
- Riverside:

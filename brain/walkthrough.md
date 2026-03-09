@@ -42,4 +42,3 @@ Organizamos as despesas em categorias Pai e Filho conforme solicitado:
 3. **Sync de Gateway:** Na etapa de despesas de vendas, clique em "Sincronizar" e veja as taxas sendo preenchidas automaticamente.
 
 ✅ **Status Final:** Todas as alterações foram sincronizadas com o repositório principal via Git.
- Riverside:

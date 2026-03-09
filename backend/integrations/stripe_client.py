@@ -56,4 +56,3 @@ if __name__ == "__main__":
     print(f"Buscando resumo de {yesterday}...")
     summary = client.get_daily_summary(yesterday)
     print(summary)
- Riverside:

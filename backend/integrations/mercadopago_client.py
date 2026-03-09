@@ -70,4 +70,3 @@ if __name__ == "__main__":
         print(summary)
     except Exception as e:
         print(f"Erro: {e}")
- Riverside:
