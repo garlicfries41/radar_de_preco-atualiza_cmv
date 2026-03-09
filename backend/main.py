@@ -1695,6 +1695,8 @@ def sync_gateway_data(date: Optional[str] = None):
             date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         
         results = []
+        errors = []
+
         # Mercado Pago
         try:
             mp = MercadoPagoClient()
@@ -1703,6 +1705,7 @@ def sync_gateway_data(date: Optional[str] = None):
             results.append(mp_summary)
         except Exception as e:
             logger.error(f"[GATEWAY] Erro sincronizando MP: {date}: {e}")
+            errors.append({"gateway": "mercadopago", "error": str(e)})
 
         # Stripe
         try:
@@ -1712,8 +1715,9 @@ def sync_gateway_data(date: Optional[str] = None):
             results.append(st_summary)
         except Exception as e:
             logger.error(f"[GATEWAY] Erro sincronizando Stripe: {date}: {e}")
+            errors.append({"gateway": "stripe", "error": str(e)})
 
-        return {"success": True, "date": date, "results": results}
+        return {"success": True, "date": date, "results": results, "errors": errors}
     except Exception as e:
         logger.error(f"[GATEWAY] Erro geral na sincronização: {e}")
         raise HTTPException(500, f"Erro na sincronização: {str(e)}")
