@@ -129,6 +129,66 @@ export function useProduction() {
         }
     }, []);
 
+    // --- CRUD Catálogo de Processos ---
+
+    const createProcess = useCallback(async (process: Omit<ProductionProcess, 'id'>) => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await fetch(`${API_BASE_URL}/api/production/processes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(process),
+            });
+            if (!res.ok) throw new Error('Erro ao criar processo');
+            return await res.json();
+        } catch (err: any) {
+            setError(err.message);
+            console.error(err);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const updateProcess = useCallback(async (id: string, process: Partial<ProductionProcess>) => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await fetch(`${API_BASE_URL}/api/production/processes/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(process),
+            });
+            if (!res.ok) throw new Error('Erro ao atualizar processo');
+            return await res.json();
+        } catch (err: any) {
+            setError(err.message);
+            console.error(err);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const deleteProcess = useCallback(async (id: string) => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await fetch(`${API_BASE_URL}/api/production/processes/${id}`, {
+                method: 'DELETE',
+            });
+            if (!res.ok) throw new Error('Erro ao deletar processo');
+            return true;
+        } catch (err: any) {
+            setError(err.message);
+            console.error(err);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
@@ -136,6 +196,9 @@ export function useProduction() {
         fetchSchedule,
         createScheduleEntry,
         updateScheduleEntry,
-        deleteScheduleEntry
+        deleteScheduleEntry,
+        createProcess,
+        updateProcess,
+        deleteProcess
     };
 }

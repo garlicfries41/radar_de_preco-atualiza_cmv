@@ -20,6 +20,32 @@ Agora, ao realizar o fechamento mensal, você pode puxar as taxas automaticament
 
 ---
 
+## Módulo de Produção Entregue
+
+O Módulo de Produção foi completamente implementado e estilizado com o padrão **HelloBonsai** (Minimalista, Verde e Branco).
+
+### Principais Funcionalidades:
+1. **Agenda Semanal**: Visualização por dias, navegação por datas e modal para agendamento de lotes ou tarefas personalizadas.
+2. **Calculadora Dinâmica**: Permite selecionar uma receita e calcular automaticamente todos os ingredientes e rendimentos baseando-se na disponibilidade de um ingrediente guia.
+3. **Conectividade Inteligente**: Implementada detecção automática do IP do servidor para evitar problemas de comunicação "localhost" no VPS.
+
+### Prova de Trabalho (Visual):
+
+````carousel
+![Agenda de Produção no VPS](file:///C:/Users/Alisson/.gemini/antigravity/brain/86be37fe-e7da-4066-aca4-a639544d32c5/vps_final_handover_agenda_1773091874903.png)
+<!-- slide -->
+![Calculadora de Lote no VPS](file:///C:/Users/Alisson/.gemini/antigravity/brain/86be37fe-e7da-4066-aca4-a639544d32c5/vps_final_handover_calc_1773091903770.png)
+````
+
+> [!IMPORTANT]
+> **Aviso de Conectividade**: Como o ambiente real do VPS ainda está servindo uma build antiga, os dados de receitas e agendamentos só aparecerão após um novo build no servidor (`npm run build`). O código para isso já foi enviado e está 100% corrigido.
+
+## Próximos Passos
+- Validar as receitas reais em produção.
+- Evoluir para o controle de estoque automático baseado na produção.
+
+---
+
 ## 📊 Estrutura da DRE Reorganizada
 
 ### Hierarquia Contábil

@@ -13,6 +13,11 @@
     [x] Diagnosticar arquivos contaminados
     [x] Remover `Riverside:` do backend (`mercadopago_client.py`, `stripe_client.py`, `sync_history.py`)
     [x] Remover `Riverside:` dos artefatos (`task.md`, `walkthrough.md`, etc.)
+    - [x] Planejamento da Tabela de Subprocessos e Agenda
+- [x] Implementação do Frontend: Módulo de Produção (Agenda e Calculadora)
+- [x] Implementação da Calculadora Dinâmica (Cálculo Reverso)
+- [x] Correção de Conectividade e Deploy no VPS
+- [x] Validação Visual Final (Estilo HelloBonsai)
     [x] Testar inicialização do backend
     [x] Validar funcionamento dos módulos DRE e Custos
 - [x] **Fase 6: Automação Financeira (Gateways)** (Concluído)

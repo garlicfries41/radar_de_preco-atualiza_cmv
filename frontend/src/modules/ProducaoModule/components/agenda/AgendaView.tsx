@@ -9,7 +9,7 @@ import {
     isSameDay
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Clock, FileText, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, FileText, CheckCircle2, Pencil, Trash2, X } from 'lucide-react';
 
 import { useProduction } from '../../hooks/useProduction';
 import type { ProductionSchedule, ProductionProcess } from '../../hooks/useProduction';
@@ -30,6 +30,7 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
         fetchProcesses,
         createScheduleEntry,
         updateScheduleEntry,
+        deleteScheduleEntry,
         loading
     } = useProduction();
 
@@ -38,6 +39,7 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
     const [processesList, setProcessesList] = useState<ProductionProcess[]>([]);
 
     // Form State
+    const [editingEntry, setEditingEntry] = useState<ProductionSchedule | null>(null);
     const [formData, setFormData] = useState({
         planned_date: new Date(),
         process_id: '',
@@ -80,11 +82,36 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
     const handleNextWeek = () => setCurrentWeekStart(addDays(currentWeekStart, 7));
 
     const handleOpenModal = (day: Date) => {
+        setEditingEntry(null);
         setFormData({
-            ...formData,
             planned_date: day,
+            process_id: '',
+            custom_item_name: '',
+            duration_minutes: 60,
         });
         setIsModalOpen(true);
+    };
+
+    const handleEditEntry = (task: ProductionSchedule) => {
+        setEditingEntry(task);
+        setFormData({
+            planned_date: new Date(task.planned_date + 'T12:00:00'),
+            process_id: task.process_id || '',
+            custom_item_name: task.custom_item_name || '',
+            duration_minutes: task.duration_minutes,
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteEntry = async (task: ProductionSchedule) => {
+        const name = task.production_processes?.name || task.custom_item_name || 'esta tarefa';
+        if (!confirm(`Deletar "${name}" da agenda?`)) return;
+        try {
+            await deleteScheduleEntry(task.id);
+            setScheduleData(prev => prev.filter(s => s.id !== task.id));
+        } catch {
+            // erro tratado pelo hook
+        }
     };
 
     const handleSaveEntry = async (e: React.FormEvent) => {
@@ -95,15 +122,21 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
         }
 
         try {
-            await createScheduleEntry({
+            const payload = {
                 planned_date: format(formData.planned_date, 'yyyy-MM-dd'),
                 process_id: formData.process_id || undefined,
                 custom_item_name: formData.custom_item_name || undefined,
                 duration_minutes: Number(formData.duration_minutes),
-                status: 'pending'
-            });
+                status: 'pending' as const
+            };
+
+            if (editingEntry) {
+                await updateScheduleEntry(editingEntry.id, payload);
+            } else {
+                await createScheduleEntry(payload);
+            }
             setIsModalOpen(false);
-            // Reload week
+            setEditingEntry(null);
             loadWeekData(currentWeekStart, endOfWeek(currentWeekStart, { weekStartsOn: 0 }));
         } catch (err) {
             alert("Erro ao salvar o apontamento na agenda.");
@@ -266,7 +299,22 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Mini actions (Edit/Delete - future phase, simplified for now) */}
+                                                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                                                        <button
+                                                            onClick={() => handleEditEntry(task)}
+                                                            className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                                                            title="Editar"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteEntry(task)}
+                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Deletar"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -287,8 +335,12 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="font-bold text-lg text-gray-900 font-heading">Agendar Produção</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">×</button>
+                            <h3 className="font-bold text-lg text-gray-900 font-heading">
+                                {editingEntry ? 'Editar Agendamento' : 'Agendar Produção'}
+                            </h3>
+                            <button onClick={() => { setIsModalOpen(false); setEditingEntry(null); }} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
                         </div>
 
                         <form onSubmit={handleSaveEntry} className="p-6 space-y-4">
@@ -365,7 +417,7 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
                                     disabled={loading}
                                     className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-content bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                                 >
-                                    {loading ? 'Salvando...' : 'Salvar Atividade'}
+                                    {loading ? 'Salvando...' : (editingEntry ? 'Atualizar' : 'Salvar Atividade')}
                                 </button>
                             </div>
                         </form>
