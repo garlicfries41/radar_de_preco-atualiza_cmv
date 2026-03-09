@@ -2,6 +2,7 @@ import os
 import requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from backend.utils.logger import logger
 
 load_dotenv()
 
@@ -13,9 +14,8 @@ class MercadoPagoClient:
 
     def get_daily_summary(self, target_date: str):
         """
-        Busca pagamentos aprovados de um dia específico (YYYY-MM-DD).
-        Retorna gross_amount, transaction_count. fee_amount = 0 aqui;
-        as tarifas são calculadas mensalmente via get_monthly_fees().
+        Busca pagamentos aprovados de um dia (YYYY-MM-DD).
+        Calcula fees via transaction_details.net_received_amount como baseline.
         """
         begin_date = f"{target_date}T00:00:00.000-03:00"
         end_date = f"{target_date}T23:59:59.999-03:00"
@@ -34,23 +34,31 @@ class MercadoPagoClient:
         response.raise_for_status()
         data = response.json()
 
-        gross = sum(float(p.get("transaction_amount", 0)) for p in data.get("results", []))
+        gross = 0
+        fees = 0
+        for payment in data.get("results", []):
+            g = float(payment.get("transaction_amount", 0))
+            td_net = float((payment.get("transaction_details") or {}).get("net_received_amount", 0))
+            if td_net > 0:
+                fees += (g - td_net)
+            else:
+                fees += sum(float(f.get("amount", 0)) for f in payment.get("fee_details", []))
+            gross += g
         count = len(data.get("results", []))
 
         return {
             "date": target_date,
             "gateway": "mercadopago",
             "gross_amount": round(gross, 2),
-            "fee_amount": 0,
-            "net_amount": round(gross, 2),
+            "fee_amount": round(fees, 2),
+            "net_amount": round(gross - fees, 2),
             "transaction_count": count
         }
 
-    def get_monthly_fees(self, year: int, month: int) -> float:
+    def get_monthly_fees(self, year: int, month: int) -> dict:
         """
-        Busca TODAS as tarifas do mês via API de movimentações da conta.
-        Mesma fonte do relatório XLSX do dashboard do MP.
-        Retorna o valor absoluto (positivo) total das tarifas.
+        Tenta buscar tarifas do mês via API de movimentações.
+        Retorna dict com total e debug info.
         """
         import calendar
         last_day = calendar.monthrange(year, month)[1]
@@ -58,7 +66,10 @@ class MercadoPagoClient:
         end_date = f"{year}-{str(month).zfill(2)}-{str(last_day).zfill(2)}T23:59:59.999-03:00"
 
         total_fees = 0
+        total_movements = 0
+        api_status = None
         offset = 0
+
         while True:
             params = {
                 "range": "date_created",
@@ -71,11 +82,16 @@ class MercadoPagoClient:
                 f"{self.base_url}/v1/account/movements/search",
                 headers=self.headers, params=params
             )
+            api_status = response.status_code
 
             if response.status_code != 200:
+                logger.warning(f"[MP] movements API returned {response.status_code}: {response.text[:500]}")
                 break
 
-            results = response.json().get("results", [])
+            body = response.json()
+            results = body.get("results", [])
+            total_movements += len(results)
+
             if not results:
                 break
 
@@ -88,7 +104,11 @@ class MercadoPagoClient:
                 break
             offset += 100
 
-        return round(total_fees, 2)
+        return {
+            "total": round(total_fees, 2),
+            "movements_found": total_movements,
+            "api_status": api_status
+        }
 
 
 if __name__ == "__main__":
@@ -98,5 +118,6 @@ if __name__ == "__main__":
     try:
         summary = client.get_daily_summary(yesterday)
         print(summary)
+        print("Monthly fees Jan:", client.get_monthly_fees(2026, 1))
     except Exception as e:
         print(f"Erro: {e}")
