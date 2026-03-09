@@ -1722,9 +1722,8 @@ def sync_gateway_data(date: Optional[str] = None):
 def get_gateway_history(year: int, month: int):
     """Retorna o histórico de sincronização de um mês específico."""
     try:
-        # Buscar todos os registros do mês (ex: 2026-03%)
-        pattern = f"{year}-{str(month).zfill(2)}"
-        res = supabase.table("payment_gateways_history").select("*").filter("date", "ilike", f"{pattern}%").execute()
+        res = supabase.rpc("get_gateway_history", {"p_year": year, "p_month": month}).execute()
+            
         return res.data or []
     except Exception as e:
         logger.error(f"[GATEWAY] Erro ao buscar histórico: {e}")
