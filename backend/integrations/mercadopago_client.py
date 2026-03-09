@@ -9,21 +9,18 @@ class MercadoPagoClient:
     def __init__(self):
         self.access_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
         self.base_url = "https://api.mercadopago.com"
+        self.headers = {"Authorization": f"Bearer {self.access_token}"}
 
     def get_daily_summary(self, target_date: str):
         """
-        Busca pagamentos de um dia específico (YYYY-MM-DD).
+        Busca pagamentos aprovados e tarifas de um dia específico (YYYY-MM-DD).
+        Usa /v1/payments/search para gross/count e /v1/account/movements/search
+        para tarifas — mesma fonte do relatório de movimentação do MP dashboard.
         """
-        # Formatar datas para o padrão ISO8601 exigido pelo MP
-        # Ex: 2026-03-08T00:00:00.000-03:00
         begin_date = f"{target_date}T00:00:00.000-03:00"
         end_date = f"{target_date}T23:59:59.999-03:00"
 
-        headers = {
-            "Authorization": f"Bearer {self.access_token}"
-        }
-
-        # Parâmetros de busca: apenas pagamentos aprovados no intervalo
+        # 1. Buscar pagamentos aprovados para gross_amount e transaction_count
         params = {
             "status": "approved",
             "range": "date_created",
@@ -31,32 +28,19 @@ class MercadoPagoClient:
             "end_date": end_date,
             "limit": 100
         }
-
-        response = requests.get(f"{self.base_url}/v1/payments/search", headers=headers, params=params)
+        response = requests.get(
+            f"{self.base_url}/v1/payments/search",
+            headers=self.headers, params=params
+        )
         response.raise_for_status()
         data = response.json()
 
-        gross = 0
-        fees = 0
-        net = 0
+        gross = sum(float(p.get("transaction_amount", 0)) for p in data.get("results", []))
         count = len(data.get("results", []))
 
-        for payment in data.get("results", []):
-            g = float(payment.get("transaction_amount", 0))
-            # transaction_details.net_received_amount é a fonte mais confiável:
-            # já reflete o valor líquido real para todos os métodos (Pix, cartão, etc).
-            # fee_details fica vazio para Pix mesmo que haja cobrança de taxa.
-            td_net = float((payment.get("transaction_details") or {}).get("net_received_amount", 0))
-            if td_net > 0:
-                n = td_net
-                fee = g - n
-            else:
-                # Fallback: pagamento ainda não processado financeiramente pelo MP
-                fee = sum(float(f.get("amount", 0)) for f in payment.get("fee_details", []))
-                n = g - fee
-            gross += g
-            fees += fee
-            net += n
+        # 2. Buscar tarifas via API de movimentações da conta
+        fees = self._get_daily_fees(begin_date, end_date)
+        net = gross - fees
 
         return {
             "date": target_date,
@@ -67,8 +51,67 @@ class MercadoPagoClient:
             "transaction_count": count
         }
 
+    def _get_daily_fees(self, begin_date: str, end_date: str) -> float:
+        """
+        Busca movimentações do tipo 'Tarifa do Mercado Pago' no período.
+        Endpoint: GET /v1/account/movements/search
+        Retorna o valor absoluto (positivo) das tarifas.
+        """
+        try:
+            params = {
+                "range": "date_created",
+                "begin_date": begin_date,
+                "end_date": end_date,
+                "limit": 100
+            }
+            response = requests.get(
+                f"{self.base_url}/v1/account/movements/search",
+                headers=self.headers, params=params
+            )
+
+            if response.status_code == 200:
+                movements = response.json().get("results", [])
+                # Somar movimentos com tipo de tarifa (valores negativos no MP)
+                fee_total = 0
+                for m in movements:
+                    desc = (m.get("description") or m.get("type") or "").lower()
+                    if "tarifa" in desc or "fee" in desc:
+                        fee_total += abs(float(m.get("amount", 0)))
+                return fee_total
+
+            # Fallback: usar fee_details dos pagamentos se movements API falhar
+            return self._get_fees_from_payments(begin_date, end_date)
+        except Exception:
+            return self._get_fees_from_payments(begin_date, end_date)
+
+    def _get_fees_from_payments(self, begin_date: str, end_date: str) -> float:
+        """Fallback: calcula fees a partir dos campos do pagamento individual."""
+        params = {
+            "status": "approved",
+            "range": "date_created",
+            "begin_date": begin_date,
+            "end_date": end_date,
+            "limit": 100
+        }
+        response = requests.get(
+            f"{self.base_url}/v1/payments/search",
+            headers=self.headers, params=params
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        fees = 0
+        for payment in data.get("results", []):
+            g = float(payment.get("transaction_amount", 0))
+            td_net = float((payment.get("transaction_details") or {}).get("net_received_amount", 0))
+            if td_net > 0:
+                fees += (g - td_net)
+            else:
+                fees += sum(float(f.get("amount", 0)) for f in payment.get("fee_details", []))
+        return fees
+
+
 if __name__ == "__main__":
-    # Teste rápido
     client = MercadoPagoClient()
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     print(f"Buscando resumo MP de {yesterday}...")

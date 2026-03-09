@@ -28,7 +28,7 @@ class StripeClient:
         # Filtrar apenas cobranças/pagamentos — exclui payouts, estornos e ajustes
         transactions = stripe.BalanceTransaction.list(
             created={"gte": start_ts, "lt": end_ts},
-            type="payment",
+            type="charge",
             limit=100
         )
 
