@@ -11,7 +11,8 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, Clock, FileText, CheckCircle2 } from 'lucide-react';
 
-import { useProduction, ProductionSchedule, ProductionProcess } from '../../hooks/useProduction';
+import { useProduction } from '../../hooks/useProduction';
+import type { ProductionSchedule, ProductionProcess } from '../../hooks/useProduction';
 
 type AgendaViewProps = {
     // Empty for now, but good practice
