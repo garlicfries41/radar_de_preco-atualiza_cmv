@@ -43,12 +43,20 @@ class MercadoPagoClient:
 
         for payment in data.get("results", []):
             g = float(payment.get("transaction_amount", 0))
-            # fee_details é sempre preenchido; net_received_amount só fica
-            # disponível após a liberação do dinheiro, por isso é evitado.
-            fee = sum(float(f.get("amount", 0)) for f in payment.get("fee_details", []))
+            # transaction_details.net_received_amount é a fonte mais confiável:
+            # já reflete o valor líquido real para todos os métodos (Pix, cartão, etc).
+            # fee_details fica vazio para Pix mesmo que haja cobrança de taxa.
+            td_net = float((payment.get("transaction_details") or {}).get("net_received_amount", 0))
+            if td_net > 0:
+                n = td_net
+                fee = g - n
+            else:
+                # Fallback: pagamento ainda não processado financeiramente pelo MP
+                fee = sum(float(f.get("amount", 0)) for f in payment.get("fee_details", []))
+                n = g - fee
             gross += g
             fees += fee
-            net += (g - fee)
+            net += n
 
         return {
             "date": target_date,
