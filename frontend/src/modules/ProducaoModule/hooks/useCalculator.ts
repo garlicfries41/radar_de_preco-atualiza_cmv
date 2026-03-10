@@ -59,7 +59,12 @@ export function useCalculator() {
             setError(null);
             const res = await fetch(`${API_BASE_URL}/api/recipes/${recipeId}`);
             if (!res.ok) throw new Error('Erro ao buscar detalhes da receita');
-            return await res.json();
+            const data = await res.json();
+            // Backend retorna "ingredients", mas a UI espera "recipe_ingredients"
+            if (data.ingredients && !data.recipe_ingredients) {
+                data.recipe_ingredients = data.ingredients;
+            }
+            return data;
         } catch (err: any) {
             setError(err.message);
             console.error(err);
