@@ -8,14 +8,15 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
-import { DndContext, pointerWithin } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
+import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 
 import { useProduction } from '../../hooks/useProduction';
 import type { ProductionSchedule, ProductionProcess } from '../../hooks/useProduction';
 import { DayColumn, START_HOUR, PIXELS_PER_MINUTE } from './DayColumn';
 import { UnscheduledQueue } from './UnscheduledQueue';
 import { TimeAxis } from './TimeAxis';
+import { TimeSlotOverlay } from './TimeSlot';
 
 export const AgendaView: React.FC = () => {
     // Semana começa na segunda (weekStartsOn: 1), mostra Seg–Sáb (6 dias)
@@ -36,6 +37,9 @@ export const AgendaView: React.FC = () => {
 
     const [scheduleData, setScheduleData] = useState<ProductionSchedule[]>([]);
     const [processesList, setProcessesList] = useState<ProductionProcess[]>([]);
+
+    // Drag State
+    const [activeEntry, setActiveEntry] = useState<ProductionSchedule | null>(null);
 
     // Form State
     const [editingEntry, setEditingEntry] = useState<ProductionSchedule | null>(null);
@@ -139,8 +143,15 @@ export const AgendaView: React.FC = () => {
     };
 
     // --- Drag & Drop ---
+    const handleDragStart = (event: DragStartEvent) => {
+        const entry = event.active.data.current?.entry as ProductionSchedule | undefined;
+        setActiveEntry(entry ?? null);
+    };
+
     const handleDragEnd = async (event: DragEndEvent) => {
-        const { active, over, activatorEvent } = event;
+        setActiveEntry(null);
+
+        const { active, over } = event;
         if (!over) return;
 
         const entry: ProductionSchedule = active.data.current?.entry;
@@ -149,7 +160,6 @@ export const AgendaView: React.FC = () => {
         const overId = String(over.id);
 
         if (overId === 'unscheduled') {
-            // Remover horário — mover para fila
             const updated = { ...entry, start_time: undefined };
             setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
             try {
@@ -169,10 +179,10 @@ export const AgendaView: React.FC = () => {
         // overId é uma data no formato 'yyyy-MM-dd'
         const targetDate = overId;
 
-        // Calcular posição absoluta do pointer dentro da coluna droppable
+        // Posição do TOPO do slot (não do cursor) na posição final
         const overRect = over.rect;
-        const pointerY = (activatorEvent as PointerEvent).clientY + event.delta.y;
-        const relativeY = pointerY - overRect.top;
+        const slotTopY = (active.rect.current.initial?.top ?? 0) + event.delta.y;
+        const relativeY = slotTopY - overRect.top;
 
         // Converter pixels → minutos com snap de 15min
         const rawMinutes = relativeY / PIXELS_PER_MINUTE;
@@ -231,7 +241,7 @@ export const AgendaView: React.FC = () => {
                     <p className="text-gray-500">Carregando...</p>
                 </div>
             ) : (
-                <DndContext collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+                <DndContext collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                     <div className="flex flex-1 overflow-x-auto overflow-y-auto">
                         <UnscheduledQueue entries={scheduleData.filter(e => !e.start_time)} />
                         <TimeAxis />
@@ -245,6 +255,11 @@ export const AgendaView: React.FC = () => {
                             />
                         ))}
                     </div>
+                    <DragOverlay dropAnimation={null}>
+                        {activeEntry ? (
+                            <TimeSlotOverlay entry={activeEntry} pixelsPerMinute={PIXELS_PER_MINUTE} />
+                        ) : null}
+                    </DragOverlay>
                 </DndContext>
             )}
 

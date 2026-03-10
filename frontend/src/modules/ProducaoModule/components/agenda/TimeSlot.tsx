@@ -29,6 +29,10 @@ function formatStartTime(time?: string): string {
     return `${h}:${m}`;
 }
 
+export function getSlotColor(id: string) {
+    return SLOT_COLORS[getColorIndex(id)];
+}
+
 interface TimeSlotProps {
     entry: ProductionSchedule;
     pixelsPerMinute: number;
@@ -42,14 +46,14 @@ export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete }: TimeSlotP
         data: { entry },
     });
 
-    const height = Math.max(entry.duration_minutes * pixelsPerMinute, 28);
+    const height = Math.max(entry.duration_minutes * pixelsPerMinute, 36);
     const label = entry.production_processes?.name ?? entry.custom_item_name ?? '—';
     const color = SLOT_COLORS[getColorIndex(entry.id)];
 
     const style = {
         transform: CSS.Translate.toString(transform),
         height: `${height}px`,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.3 : 1,
         zIndex: isDragging ? 50 : 10,
     };
 
@@ -59,9 +63,9 @@ export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete }: TimeSlotP
             style={style}
             {...listeners}
             {...attributes}
-            className={`absolute left-1 right-1 ${color.bg} border ${color.border} rounded-md px-2 py-1 cursor-grab active:cursor-grabbing select-none overflow-hidden group`}
+            className={`absolute left-1 right-1 ${color.bg} border ${color.border} rounded-md px-2 py-1 cursor-grab active:cursor-grabbing select-none overflow-hidden group flex flex-col`}
         >
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-1 min-h-0">
                 {entry.start_time && (
                     <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
                         {formatStartTime(entry.start_time)}
@@ -69,23 +73,49 @@ export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete }: TimeSlotP
                 )}
                 <p className={`text-xs font-semibold ${color.text} truncate`}>{label}</p>
             </div>
-            <p className="text-[10px] text-gray-500">{entry.duration_minutes}min</p>
-            <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
-                    className="text-[10px] bg-white border border-gray-200 rounded px-1 text-gray-600 hover:text-primary"
-                >
-                    ✏
-                </button>
-                <button
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); onDelete(entry); }}
-                    className="text-[10px] bg-white border border-red-200 rounded px-1 text-red-400 hover:text-red-600"
-                >
-                    ✕
-                </button>
+            <div className="flex items-center justify-between mt-auto">
+                <p className="text-[10px] text-gray-500">{entry.duration_minutes}min</p>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
+                        className="text-[10px] bg-white border border-gray-200 rounded px-1 text-gray-600 hover:text-primary"
+                    >
+                        ✏
+                    </button>
+                    <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); onDelete(entry); }}
+                        className="text-[10px] bg-white border border-red-200 rounded px-1 text-red-400 hover:text-red-600"
+                    >
+                        ✕
+                    </button>
+                </div>
             </div>
+        </div>
+    );
+}
+
+/** Componente estático usado no DragOverlay (sem hooks de drag) */
+export function TimeSlotOverlay({ entry, pixelsPerMinute }: { entry: ProductionSchedule; pixelsPerMinute: number }) {
+    const height = Math.max(entry.duration_minutes * pixelsPerMinute, 36);
+    const label = entry.production_processes?.name ?? entry.custom_item_name ?? '—';
+    const color = SLOT_COLORS[getColorIndex(entry.id)];
+
+    return (
+        <div
+            style={{ height: `${height}px`, width: '140px' }}
+            className={`${color.bg} border-2 ${color.border} rounded-md px-2 py-1 shadow-lg select-none overflow-hidden flex flex-col opacity-90`}
+        >
+            <div className="flex items-center gap-1 flex-1 min-h-0">
+                {entry.start_time && (
+                    <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
+                        {formatStartTime(entry.start_time)}
+                    </span>
+                )}
+                <p className={`text-xs font-semibold ${color.text} truncate`}>{label}</p>
+            </div>
+            <p className="text-[10px] text-gray-500 mt-auto">{entry.duration_minutes}min</p>
         </div>
     );
 }
