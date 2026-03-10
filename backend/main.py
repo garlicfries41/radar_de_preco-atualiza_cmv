@@ -105,11 +105,12 @@ class ProductionProcessInput(BaseModel):
 
 
 class ProductionScheduleInput(BaseModel):
-    planned_date: datetime
+    planned_date: Optional[datetime] = None
+    start_time: Optional[str] = None   # formato "HH:MM:SS"
     process_id: Optional[str] = None
     custom_item_name: Optional[str] = None
-    duration_minutes: int
-    status: Optional[str] = "pending"
+    duration_minutes: Optional[int] = None
+    status: Optional[str] = None
 
 class AddExpenseRequest(BaseModel):
     description: str

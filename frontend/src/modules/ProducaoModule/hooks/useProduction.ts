@@ -11,6 +11,7 @@ export interface ProductionProcess {
 export interface ProductionSchedule {
     id: string;
     planned_date: string;
+    start_time?: string;        // formato "HH:MM:SS"
     process_id?: string;
     custom_item_name?: string;
     duration_minutes: number;
