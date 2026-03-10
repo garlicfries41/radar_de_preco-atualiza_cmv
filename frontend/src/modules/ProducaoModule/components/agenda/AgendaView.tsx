@@ -239,7 +239,7 @@ export const AgendaView: React.FC = () => {
                             <DayColumn
                                 key={format(day, 'yyyy-MM-dd')}
                                 day={day}
-                                entries={scheduleData.filter(e => e.planned_date === format(day, 'yyyy-MM-dd'))}
+                                entries={scheduleData.filter(e => e.planned_date?.startsWith(format(day, 'yyyy-MM-dd')))}
                                 onEdit={handleEditEntry}
                                 onDelete={handleDeleteEntry}
                             />

@@ -29,7 +29,7 @@ export function DayColumn({ day, entries, onEdit, onDelete }: DayColumnProps) {
     const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
     return (
-        <div className="flex flex-col flex-1 min-w-[120px]">
+        <div className="flex flex-col flex-1 min-w-[120px] shrink-0">
             {/* Cabeçalho do dia */}
             <div className="text-center py-2 border-b border-gray-200 bg-white sticky top-0 z-10">
                 <p className="text-xs text-gray-500 uppercase">
@@ -41,8 +41,8 @@ export function DayColumn({ day, entries, onEdit, onDelete }: DayColumnProps) {
             {/* Grade de horários */}
             <div
                 ref={setNodeRef}
-                className={`relative flex-1 border-r border-gray-100 ${isOver ? 'bg-primary/5' : 'bg-white'}`}
-                style={{ height: `${TOTAL_HEIGHT}px` }}
+                className={`relative border-r border-gray-100 ${isOver ? 'bg-primary/5' : 'bg-white'}`}
+                style={{ height: `${TOTAL_HEIGHT}px`, minHeight: `${TOTAL_HEIGHT}px` }}
             >
                 {/* Linhas guia por hora */}
                 {hours.map(h => (
