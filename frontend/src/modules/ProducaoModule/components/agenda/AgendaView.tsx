@@ -2,29 +2,29 @@ import React, { useState, useEffect } from 'react';
 import {
     format,
     startOfWeek,
-    endOfWeek,
     eachDayOfInterval,
     addDays,
     subDays,
-    isSameDay
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Clock, FileText, CheckCircle2, Pencil, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { DndContext, pointerWithin } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
 
 import { useProduction } from '../../hooks/useProduction';
 import type { ProductionSchedule, ProductionProcess } from '../../hooks/useProduction';
+import { DayColumn, START_HOUR, PIXELS_PER_MINUTE } from './DayColumn';
+import { UnscheduledQueue } from './UnscheduledQueue';
+import { TimeAxis } from './TimeAxis';
 
-type AgendaViewProps = {
-    // Empty for now, but good practice
-};
-
-export const AgendaView: React.FC<AgendaViewProps> = () => {
-    const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 0 }));
+export const AgendaView: React.FC = () => {
+    // Semana começa na segunda (weekStartsOn: 1), mostra Seg–Sáb (6 dias)
+    const [currentWeekStart, setCurrentWeekStart] = useState(
+        startOfWeek(new Date(), { weekStartsOn: 1 })
+    );
     const [weekDays, setWeekDays] = useState<Date[]>([]);
-    const [selectedDay, setSelectedDay] = useState<Date | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Custom Hook
     const {
         fetchSchedule,
         fetchProcesses,
@@ -34,7 +34,6 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
         loading
     } = useProduction();
 
-    // Data States
     const [scheduleData, setScheduleData] = useState<ProductionSchedule[]>([]);
     const [processesList, setProcessesList] = useState<ProductionProcess[]>([]);
 
@@ -47,24 +46,20 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
         duration_minutes: 60,
     });
 
-    // Calculate Days in Week whenever week start changes
+    // Seg–Sáb = 6 dias
     useEffect(() => {
-        const end = endOfWeek(currentWeekStart, { weekStartsOn: 0 });
-        const days = eachDayOfInterval({ start: currentWeekStart, end });
+        const days = eachDayOfInterval({
+            start: currentWeekStart,
+            end: addDays(currentWeekStart, 5), // Seg a Sáb
+        });
         setWeekDays(days);
 
-        // Auto Select Today if in current week, else select Monday
-        if (!selectedDay || (selectedDay < currentWeekStart || selectedDay > end)) {
-            setSelectedDay(new Date() >= currentWeekStart && new Date() <= end ? new Date() : days[1]); // Default to Monday
-        }
-
-        // Load API Data
-        loadWeekData(currentWeekStart, end);
+        const endDate = addDays(currentWeekStart, 5);
+        loadWeekData(currentWeekStart, endDate);
         loadProcesses();
     }, [currentWeekStart]);
 
     const loadWeekData = async (start: Date, end: Date) => {
-        // API dates as YYYY-MM-DD
         const startStr = format(start, 'yyyy-MM-dd');
         const endStr = format(end, 'yyyy-MM-dd');
         const data = await fetchSchedule(startStr, endStr);
@@ -81,10 +76,10 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
     const handlePreviousWeek = () => setCurrentWeekStart(subDays(currentWeekStart, 7));
     const handleNextWeek = () => setCurrentWeekStart(addDays(currentWeekStart, 7));
 
-    const handleOpenModal = (day: Date) => {
+    const handleOpenModal = () => {
         setEditingEntry(null);
         setFormData({
-            planned_date: day,
+            planned_date: new Date(),
             process_id: '',
             custom_item_name: '',
             duration_minutes: 60,
@@ -137,38 +132,58 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
             }
             setIsModalOpen(false);
             setEditingEntry(null);
-            loadWeekData(currentWeekStart, endOfWeek(currentWeekStart, { weekStartsOn: 0 }));
+            loadWeekData(currentWeekStart, addDays(currentWeekStart, 5));
         } catch (err) {
             alert("Erro ao salvar o apontamento na agenda.");
         }
     };
 
-    const toggleStatus = async (item: ProductionSchedule) => {
-        const newStatus = item.status === 'pending' ? 'done' : 'pending';
-        try {
-            await updateScheduleEntry(item.id, { status: newStatus });
-            // Optmistic update
-            setScheduleData(prev => prev.map(s => s.id === item.id ? { ...s, status: newStatus } : s));
-        } catch (error) {
-            // handled by hook
+    // --- Drag & Drop ---
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over, delta } = event;
+        if (!over) return;
+
+        const entry: ProductionSchedule = active.data.current?.entry;
+        if (!entry) return;
+
+        const overId = String(over.id);
+
+        if (overId === 'unscheduled') {
+            // Remover horário — mover para fila
+            const updated = { ...entry, start_time: undefined };
+            setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
+            await updateScheduleEntry(entry.id, { start_time: null } as any);
+            return;
         }
+
+        // overId é uma data no formato 'yyyy-MM-dd'
+        const targetDate = overId;
+
+        // Calcular novo start_time baseado na posição Y do drop
+        const currentStartMinutes = entry.start_time
+            ? (() => { const [h, m] = entry.start_time!.split(':').map(Number); return (h - START_HOUR) * 60 + m; })()
+            : 0;
+        const deltaMinutes = Math.round(delta.y / PIXELS_PER_MINUTE / 15) * 15; // snap a cada 15min
+        const newMinutes = Math.max(0, Math.min((19 - START_HOUR) * 60 - entry.duration_minutes, currentStartMinutes + deltaMinutes));
+        const newHour = Math.floor(newMinutes / 60) + START_HOUR;
+        const newMin = newMinutes % 60;
+        const newStartTime = `${String(newHour).padStart(2, '0')}:${String(newMin).padStart(2, '0')}:00`;
+
+        const updated = { ...entry, planned_date: targetDate, start_time: newStartTime };
+        setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
+        await updateScheduleEntry(entry.id, { planned_date: targetDate, start_time: newStartTime } as any);
     };
 
-    // Filter items for selected day
-    const dailyTasks = scheduleData.filter(item => {
-        if (!selectedDay) return false;
-        // item.planned_date is "YYYY-MM-DD" from DB, convert carefully
-        return item.planned_date.startsWith(format(selectedDay, 'yyyy-MM-dd'));
-    });
+    const weekEnd = weekDays.length > 0 ? weekDays[weekDays.length - 1] : currentWeekStart;
 
     return (
-        <div className="flex flex-col h-full bg-[#f9fafb] min-h-[calc(100vh-4rem)] pb-24">
+        <div className="flex flex-col h-full bg-[#f9fafb] min-h-[calc(100vh-4rem)]">
             {/* Header */}
-            <div className="bg-white border-b border-[#E5E7EB] px-6 py-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+            <div className="bg-white border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold font-heading text-primary">Agenda de Produção</h1>
                     <p className="text-sm text-gray-500 font-body">
-                        {format(currentWeekStart, "dd 'de' MMMM", { locale: ptBR })} a {format(endOfWeek(currentWeekStart), "dd 'de' MMMM", { locale: ptBR })}
+                        {format(currentWeekStart, "dd 'de' MMMM", { locale: ptBR })} a {format(weekEnd, "dd 'de' MMMM", { locale: ptBR })}
                     </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -178,157 +193,37 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
                     <button onClick={handleNextWeek} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors">
                         <ChevronRight size={20} />
                     </button>
+                    <button
+                        onClick={handleOpenModal}
+                        className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center transition-colors shadow-sm ml-2"
+                    >
+                        <Plus size={16} className="mr-2" /> Agendar Lote
+                    </button>
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row flex-1 p-4 md:p-6 gap-6 max-w-7xl mx-auto w-full">
-
-                {/* Left Column: Calendar Days */}
-                <div className="w-full md:w-1/3">
-                    <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] overflow-hidden">
-                        <div className="bg-gray-50 border-b border-[#E5E7EB] px-4 py-3 font-medium text-gray-700 font-heading">
-                            Dias da Semana
-                        </div>
-                        <div className="divide-y divide-gray-100">
-                            {weekDays.map((day) => {
-                                const isSelected = selectedDay && isSameDay(day, selectedDay);
-                                const isTodayStr = isSameDay(day, new Date());
-                                const dayTasksCount = scheduleData.filter(s => s.planned_date.startsWith(format(day, 'yyyy-MM-dd'))).length;
-
-                                return (
-                                    <div
-                                        key={day.toISOString()}
-                                        onClick={() => setSelectedDay(day)}
-                                        className={`
-                      p-4 cursor-pointer transition-colors flex items-center justify-between
-                      ${isSelected ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-gray-50 border-l-4 border-transparent'}
-                    `}
-                                    >
-                                        <div>
-                                            <p className={`font-medium ${isSelected ? 'text-primary' : 'text-gray-700'}`}>
-                                                {format(day, 'EEEE', { locale: ptBR }).charAt(0).toUpperCase() + format(day, 'EEEE', { locale: ptBR }).slice(1)}
-                                            </p>
-                                            <p className={`text-sm ${isSelected ? 'text-primary/80' : 'text-gray-500'}`}>
-                                                {format(day, 'dd/MM/yyyy')} {isTodayStr && <span className="ml-2 text-xs font-bold bg-primary text-white px-2 py-0.5 rounded-full">Hoje</span>}
-                                            </p>
-                                        </div>
-                                        {dayTasksCount > 0 && (
-                                            <div className="bg-gray-100 text-gray-600 font-bold text-xs rounded-full h-6 w-6 flex items-center justify-center">
-                                                {dayTasksCount}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
+            {/* Grade semanal com DnD */}
+            {loading && scheduleData.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                    <p className="text-gray-500">Carregando...</p>
+                </div>
+            ) : (
+                <DndContext collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+                    <div className="flex flex-1 overflow-x-auto overflow-y-auto">
+                        <UnscheduledQueue entries={scheduleData.filter(e => !e.start_time)} />
+                        <TimeAxis />
+                        {weekDays.map(day => (
+                            <DayColumn
+                                key={format(day, 'yyyy-MM-dd')}
+                                day={day}
+                                entries={scheduleData.filter(e => e.planned_date === format(day, 'yyyy-MM-dd'))}
+                                onEdit={handleEditEntry}
+                                onDelete={handleDeleteEntry}
+                            />
+                        ))}
                     </div>
-                </div>
-
-                {/* Right Column: Day Details */}
-                <div className="w-full md:w-2/3 flex flex-col">
-                    {selectedDay ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] flex-1 flex flex-col">
-                            <div className="border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-xl font-bold font-heading text-gray-800">
-                                        Produção do Dia
-                                    </h2>
-                                    <p className="text-sm text-gray-500">
-                                        {format(selectedDay, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => handleOpenModal(selectedDay)}
-                                    className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center transition-colors shadow-sm"
-                                >
-                                    <Plus size={16} className="mr-2" /> Agendar Lote
-                                </button>
-                            </div>
-
-                            <div className="p-6 flex-1 bg-gray-50/50">
-                                {loading && <p className="text-gray-500 text-center py-8">Carregando...</p>}
-
-                                {!loading && dailyTasks.length === 0 && (
-                                    <div className="text-center py-12 flex flex-col items-center justify-center">
-                                        <FileText size={48} className="text-gray-300 mb-4" />
-                                        <h3 className="text-lg font-medium text-gray-900 mb-1">Nenhum lote planejado</h3>
-                                        <p className="text-gray-500 max-w-sm mb-6">
-                                            Não há processos de produção ou preparos programados para este dia.
-                                        </p>
-                                        <button
-                                            onClick={() => handleOpenModal(selectedDay)}
-                                            className="text-primary font-medium hover:underline flex items-center"
-                                        >
-                                            <Plus size={16} className="mr-1" /> Adicionar Primeira Tarefa
-                                        </button>
-                                    </div>
-                                )}
-
-                                {!loading && dailyTasks.length > 0 && (
-                                    <div className="space-y-4">
-                                        {dailyTasks.map((task) => (
-                                            <div
-                                                key={task.id}
-                                                className={`
-                          bg-white border rounded-xl p-4 shadow-sm transition-all
-                          ${task.status === 'done' ? 'border-green-200 bg-green-50/30' : 'border-gray-200 hover:border-primary/50'}
-                        `}
-                                            >
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex flex-1">
-                                                        <button
-                                                            onClick={() => toggleStatus(task)}
-                                                            className={`mr-4 mt-1 rounded-full p-0.5 flex-shrink-0 transition-colors ${task.status === 'done' ? 'text-green-600 bg-green-100' : 'text-gray-300 hover:text-primary hover:bg-gray-100'
-                                                                }`}
-                                                        >
-                                                            <CheckCircle2 size={24} className={task.status === 'done' ? 'fill-current text-white' : ''} />
-                                                        </button>
-                                                        <div>
-                                                            <h4 className={`text-lg font-bold font-heading mb-1 ${task.status === 'done' ? 'text-gray-500 line-through decoration-1' : 'text-gray-900'}`}>
-                                                                {task.production_processes?.name || task.custom_item_name}
-                                                            </h4>
-
-                                                            <div className="flex items-center text-sm text-gray-500 space-x-4">
-                                                                <span className="flex items-center">
-                                                                    <Clock size={14} className="mr-1" /> {task.duration_minutes} minutos
-                                                                </span>
-                                                                {task.production_processes && (
-                                                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">Catálogo</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                                                        <button
-                                                            onClick={() => handleEditEntry(task)}
-                                                            className="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                                                            title="Editar"
-                                                        >
-                                                            <Pencil size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteEntry(task)}
-                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="Deletar"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] flex-1 flex items-center justify-center">
-                            <p className="text-gray-500">Selecione um dia da semana para ver os detalhes.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+                </DndContext>
+            )}
 
             {/* Modal Nova Tarefa */}
             {isModalOpen && (
@@ -347,10 +242,10 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
                                 <input
-                                    type="text"
-                                    value={format(formData.planned_date, 'dd/MM/yyyy')}
-                                    disabled
-                                    className="w-full border-gray-300 rounded-md shadow-sm bg-gray-50 px-3 py-2 text-gray-500"
+                                    type="date"
+                                    value={format(formData.planned_date, 'yyyy-MM-dd')}
+                                    onChange={(e) => setFormData({ ...formData, planned_date: new Date(e.target.value + 'T12:00:00') })}
+                                    className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                                 />
                             </div>
 
@@ -364,7 +259,7 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
                                         setFormData({
                                             ...formData,
                                             process_id: procId,
-                                            custom_item_name: '', // clear custom if standard selected
+                                            custom_item_name: '',
                                             duration_minutes: proc ? proc.expected_duration_minutes : formData.duration_minutes
                                         });
                                     }}
@@ -424,7 +319,6 @@ export const AgendaView: React.FC<AgendaViewProps> = () => {
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
