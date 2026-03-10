@@ -106,6 +106,17 @@ class RecipeIngredient(SQLModel, table=True):
     quantity: Decimal  # Amount of ingredient used
 
 
+class RecipeProcess(SQLModel, table=True):
+    __tablename__ = "recipe_processes"
+
+    id: Optional[str] = Field(default=None, primary_key=True)
+    recipe_id: str = Field(foreign_key="recipes.id")
+    process_id: str = Field(foreign_key="production_processes.id")
+    sort_order: int = Field(default=0)
+    time_per_unit_minutes: Decimal = Field(default=Decimal("1.0"))
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+
 class CMVHistory(SQLModel, table=True):
     __tablename__ = "cmv_history"
     

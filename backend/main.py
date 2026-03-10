@@ -104,6 +104,21 @@ class ProductionProcessInput(BaseModel):
     yield_notes: Optional[str] = None
 
 
+class RecipeProcessInput(BaseModel):
+    recipe_id: Optional[str] = None
+    process_id: str
+    sort_order: int = 0
+    time_per_unit_minutes: float = 1.0
+
+class RecipeProcessUpdate(BaseModel):
+    sort_order: Optional[int] = None
+    time_per_unit_minutes: Optional[float] = None
+
+class BulkScheduleInput(BaseModel):
+    recipe_id: str
+    quantity: float
+    planned_date: str  # yyyy-MM-dd
+
 class ProductionScheduleInput(BaseModel):
     planned_date: Optional[datetime] = None
     start_time: Optional[str] = None   # formato "HH:MM:SS"
@@ -796,6 +811,103 @@ def create_recipe(payload: RecipeInput):
         raise HTTPException(500, f"Failed to create recipe: {str(e)}")
 
 
+# ============= Recipe Processes CRUD =============
+# NOTE: These must be registered BEFORE /api/recipes/{recipe_id} to avoid route shadowing
+
+@app.get("/api/recipes/{recipe_id}/processes")
+def get_recipe_processes(recipe_id: str):
+    """Lista processos vinculados a uma receita, ordenados por sort_order."""
+    try:
+        result = supabase.table("recipe_processes") \
+            .select("*, production_processes(id, name, expected_duration_minutes)") \
+            .eq("recipe_id", recipe_id) \
+            .order("sort_order") \
+            .execute()
+        return result.data
+    except Exception as e:
+        logger.error(f"Error fetching recipe processes: {e}")
+        raise HTTPException(500, str(e))
+
+@app.post("/api/recipes/{recipe_id}/processes")
+def add_recipe_process(recipe_id: str, data: RecipeProcessInput):
+    """Vincula um processo a uma receita."""
+    try:
+        payload = data.model_dump()
+        payload["recipe_id"] = recipe_id
+        result = supabase.table("recipe_processes").insert(payload).execute()
+        return result.data[0] if result.data else {}
+    except Exception as e:
+        logger.error(f"Error adding recipe process: {e}")
+        raise HTTPException(500, str(e))
+
+@app.get("/api/recipes/{recipe_id}/resolve-slots")
+def resolve_recipe_slots(recipe_id: str, quantity: float):
+    """
+    Dado uma receita e quantidade, retorna a lista completa de slots
+    incluindo pré-preparos em cascata. Não salva nada — apenas calcula.
+    """
+    slots = []
+    visited = set()
+
+    def resolve(rid: str, qty: float, parent_name: str = ""):
+        if rid in visited:
+            return
+        visited.add(rid)
+
+        recipe_res = supabase.table("recipes").select("*").eq("id", rid).single().execute()
+        recipe = recipe_res.data
+        recipe_name = recipe["name"]
+        yield_units = float(recipe["yield_units"]) if recipe.get("yield_units") else 1.0
+
+        rp_res = supabase.table("recipe_processes") \
+            .select("*, production_processes(id, name, expected_duration_minutes)") \
+            .eq("recipe_id", rid) \
+            .order("sort_order") \
+            .execute()
+
+        for rp in (rp_res.data or []):
+            proc = rp["production_processes"]
+            duration = round(qty * float(rp["time_per_unit_minutes"]), 1)
+            label = f"{recipe_name} — {proc['name']}"
+            if parent_name:
+                label = f"[{parent_name}] {label}"
+            slots.append({
+                "recipe_id": rid,
+                "recipe_name": recipe_name,
+                "process_id": proc["id"],
+                "process_name": proc["name"],
+                "label": label,
+                "duration_minutes": duration,
+                "quantity": qty,
+                "is_sub_preparo": bool(parent_name),
+                "sort_order": rp["sort_order"],
+            })
+
+        ing_res = supabase.table("recipe_ingredients") \
+            .select("*, ingredients(id, name, current_price, category)") \
+            .eq("recipe_id", rid) \
+            .execute()
+
+        for ing in (ing_res.data or []):
+            ingredient = ing.get("ingredients", {})
+            if not ingredient or ingredient.get("category") != "PRÉ-PREPARO":
+                continue
+            pp_res = supabase.table("recipes") \
+                .select("id, name, yield_units, is_pre_preparo") \
+                .eq("derived_ingredient_id", ingredient["id"]) \
+                .eq("is_pre_preparo", True) \
+                .execute()
+            if not pp_res.data:
+                continue
+            pp_recipe = pp_res.data[0]
+            pp_yield = float(pp_recipe["yield_units"]) if pp_recipe.get("yield_units") else 1.0
+            needed_amount = qty * float(ing["quantity"]) / yield_units
+            resolve(pp_recipe["id"], needed_amount, parent_name=recipe_name)
+
+    resolve(recipe_id, quantity)
+    return {"slots": slots, "total_minutes": sum(s["duration_minutes"] for s in slots)}
+
+
 @app.get("/api/recipes/{recipe_id}")
 def get_recipe(recipe_id: str):
     """Get recipe details including ingredients."""
@@ -1180,9 +1292,15 @@ def list_recipes(status: Optional[str] = "ativo"):
 
 @app.get("/api/production/processes")
 def list_production_processes():
-    """List all standard production processes."""
+    """List all standard production processes, with default_time_per_unit from last usage."""
     try:
-        response = supabase.table("production_processes").select("*").order("name").execute()
+        response = supabase.table("production_processes") \
+            .select("*, recipe_processes(time_per_unit_minutes)") \
+            .order("name") \
+            .execute()
+        for proc in response.data:
+            rps = proc.pop("recipe_processes", [])
+            proc["default_time_per_unit"] = rps[0]["time_per_unit_minutes"] if rps else None
         return response.data
     except Exception as e:
         logger.error(f"Error fetching production processes: {e}")
@@ -1293,6 +1411,62 @@ def delete_production_schedule(schedule_id: str):
     except Exception as e:
         logger.error(f"Error deleting schedule entry: {e}")
         raise HTTPException(500, f"Erro ao deletar registro na agenda: {str(e)}")
+
+
+
+
+@app.put("/api/recipe-processes/{rp_id}")
+def update_recipe_process(rp_id: str, data: RecipeProcessUpdate):
+    """Atualiza sort_order ou time_per_unit_minutes."""
+    try:
+        payload = {k: v for k, v in data.model_dump().items() if v is not None}
+        result = supabase.table("recipe_processes").update(payload).eq("id", rp_id).execute()
+        return result.data[0] if result.data else {}
+    except Exception as e:
+        logger.error(f"Error updating recipe process: {e}")
+        raise HTTPException(500, str(e))
+
+@app.delete("/api/recipe-processes/{rp_id}")
+def delete_recipe_process(rp_id: str):
+    """Remove vínculo processo-receita."""
+    try:
+        supabase.table("recipe_processes").delete().eq("id", rp_id).execute()
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Error deleting recipe process: {e}")
+        raise HTTPException(500, str(e))
+
+
+
+
+
+
+# ============= Bulk Schedule Recipe =============
+
+@app.post("/api/production/schedule-recipe")
+def schedule_recipe(data: BulkScheduleInput):
+    """
+    Agenda uma receita inteira: resolve slots (com cascata) e cria
+    todas as entradas em production_schedule de uma vez.
+    """
+    slots_response = resolve_recipe_slots(data.recipe_id, data.quantity)
+    slots = slots_response["slots"]
+
+    created = []
+    for slot in slots:
+        entry = {
+            "planned_date": data.planned_date,
+            "process_id": slot["process_id"],
+            "custom_item_name": slot["label"],
+            "duration_minutes": max(1, round(slot["duration_minutes"])),
+            "status": "pending",
+        }
+        result = supabase.table("production_schedule").insert(entry).execute()
+        if result.data:
+            created.append(result.data[0])
+
+    return {"created": len(created), "entries": created}
+
 
 # ============= Settings Endpoints =============
 
