@@ -153,7 +153,12 @@ export const AgendaView: React.FC = () => {
             const updated = { ...entry, start_time: undefined };
             setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
             try {
-                await updateScheduleEntry(entry.id, { start_time: null } as any);
+                await updateScheduleEntry(entry.id, {
+                    start_time: null,
+                    planned_date: entry.planned_date,
+                    duration_minutes: entry.duration_minutes,
+                    status: entry.status,
+                } as any);
             } catch (err) {
                 console.error('Erro ao remover horário:', err);
                 loadWeekData(currentWeekStart, addDays(currentWeekStart, 5));
@@ -180,7 +185,12 @@ export const AgendaView: React.FC = () => {
         const updated = { ...entry, planned_date: targetDate, start_time: newStartTime };
         setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
         try {
-            await updateScheduleEntry(entry.id, { planned_date: targetDate, start_time: newStartTime } as any);
+            await updateScheduleEntry(entry.id, {
+                planned_date: targetDate,
+                start_time: newStartTime,
+                duration_minutes: entry.duration_minutes,
+                status: entry.status,
+            } as any);
         } catch (err) {
             console.error('Erro ao salvar posição:', err);
             loadWeekData(currentWeekStart, addDays(currentWeekStart, 5));
