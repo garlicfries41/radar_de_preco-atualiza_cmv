@@ -2,6 +2,33 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import type { ProductionSchedule } from '../../hooks/useProduction';
 
+// Paleta de cores para diferenciar slots visualmente
+const SLOT_COLORS = [
+    { bg: 'bg-blue-100',    border: 'border-blue-300',    text: 'text-blue-800' },
+    { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-800' },
+    { bg: 'bg-amber-100',   border: 'border-amber-300',   text: 'text-amber-800' },
+    { bg: 'bg-purple-100',  border: 'border-purple-300',  text: 'text-purple-800' },
+    { bg: 'bg-rose-100',    border: 'border-rose-300',    text: 'text-rose-800' },
+    { bg: 'bg-cyan-100',    border: 'border-cyan-300',    text: 'text-cyan-800' },
+    { bg: 'bg-orange-100',  border: 'border-orange-300',  text: 'text-orange-800' },
+    { bg: 'bg-indigo-100',  border: 'border-indigo-300',  text: 'text-indigo-800' },
+];
+
+function getColorIndex(id: string): number {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = ((hash << 5) - hash) + id.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash) % SLOT_COLORS.length;
+}
+
+function formatStartTime(time?: string): string {
+    if (!time) return '';
+    const [h, m] = time.split(':');
+    return `${h}:${m}`;
+}
+
 interface TimeSlotProps {
     entry: ProductionSchedule;
     pixelsPerMinute: number;
@@ -15,8 +42,9 @@ export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete }: TimeSlotP
         data: { entry },
     });
 
-    const height = Math.max(entry.duration_minutes * pixelsPerMinute, 24);
+    const height = Math.max(entry.duration_minutes * pixelsPerMinute, 28);
     const label = entry.production_processes?.name ?? entry.custom_item_name ?? '—';
+    const color = SLOT_COLORS[getColorIndex(entry.id)];
 
     const style = {
         transform: CSS.Translate.toString(transform),
@@ -31,9 +59,16 @@ export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete }: TimeSlotP
             style={style}
             {...listeners}
             {...attributes}
-            className="absolute left-1 right-1 bg-primary/10 border border-primary/30 rounded-md px-2 py-1 cursor-grab active:cursor-grabbing select-none overflow-hidden group"
+            className={`absolute left-1 right-1 ${color.bg} border ${color.border} rounded-md px-2 py-1 cursor-grab active:cursor-grabbing select-none overflow-hidden group`}
         >
-            <p className="text-xs font-semibold text-primary truncate">{label}</p>
+            <div className="flex items-center gap-1">
+                {entry.start_time && (
+                    <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
+                        {formatStartTime(entry.start_time)}
+                    </span>
+                )}
+                <p className={`text-xs font-semibold ${color.text} truncate`}>{label}</p>
+            </div>
             <p className="text-[10px] text-gray-500">{entry.duration_minutes}min</p>
             <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button

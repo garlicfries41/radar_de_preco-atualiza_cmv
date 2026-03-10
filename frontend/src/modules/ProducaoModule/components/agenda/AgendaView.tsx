@@ -140,7 +140,7 @@ export const AgendaView: React.FC = () => {
 
     // --- Drag & Drop ---
     const handleDragEnd = async (event: DragEndEvent) => {
-        const { active, over, delta } = event;
+        const { active, over, activatorEvent } = event;
         if (!over) return;
 
         const entry: ProductionSchedule = active.data.current?.entry;
@@ -152,26 +152,39 @@ export const AgendaView: React.FC = () => {
             // Remover horário — mover para fila
             const updated = { ...entry, start_time: undefined };
             setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
-            await updateScheduleEntry(entry.id, { start_time: null } as any);
+            try {
+                await updateScheduleEntry(entry.id, { start_time: null } as any);
+            } catch (err) {
+                console.error('Erro ao remover horário:', err);
+                loadWeekData(currentWeekStart, addDays(currentWeekStart, 5));
+            }
             return;
         }
 
         // overId é uma data no formato 'yyyy-MM-dd'
         const targetDate = overId;
 
-        // Calcular novo start_time baseado na posição Y do drop
-        const currentStartMinutes = entry.start_time
-            ? (() => { const [h, m] = entry.start_time!.split(':').map(Number); return (h - START_HOUR) * 60 + m; })()
-            : 0;
-        const deltaMinutes = Math.round(delta.y / PIXELS_PER_MINUTE / 15) * 15; // snap a cada 15min
-        const newMinutes = Math.max(0, Math.min((19 - START_HOUR) * 60 - entry.duration_minutes, currentStartMinutes + deltaMinutes));
-        const newHour = Math.floor(newMinutes / 60) + START_HOUR;
-        const newMin = newMinutes % 60;
+        // Calcular posição absoluta do pointer dentro da coluna droppable
+        const overRect = over.rect;
+        const pointerY = (activatorEvent as PointerEvent).clientY + event.delta.y;
+        const relativeY = pointerY - overRect.top;
+
+        // Converter pixels → minutos com snap de 15min
+        const rawMinutes = relativeY / PIXELS_PER_MINUTE;
+        const snappedMinutes = Math.round(rawMinutes / 15) * 15;
+        const clampedMinutes = Math.max(0, Math.min((19 - START_HOUR) * 60 - entry.duration_minutes, snappedMinutes));
+        const newHour = Math.floor(clampedMinutes / 60) + START_HOUR;
+        const newMin = clampedMinutes % 60;
         const newStartTime = `${String(newHour).padStart(2, '0')}:${String(newMin).padStart(2, '0')}:00`;
 
         const updated = { ...entry, planned_date: targetDate, start_time: newStartTime };
         setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
-        await updateScheduleEntry(entry.id, { planned_date: targetDate, start_time: newStartTime } as any);
+        try {
+            await updateScheduleEntry(entry.id, { planned_date: targetDate, start_time: newStartTime } as any);
+        } catch (err) {
+            console.error('Erro ao salvar posição:', err);
+            loadWeekData(currentWeekStart, addDays(currentWeekStart, 5));
+        }
     };
 
     const weekEnd = weekDays.length > 0 ? weekDays[weekDays.length - 1] : currentWeekStart;
