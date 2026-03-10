@@ -95,11 +95,8 @@ export const CalculatorView: React.FC = () => {
     // Helper: detect if ingredient is egg
     const isEgg = (name: string) => /\bovo\b|\bovos\b|\begg\b/i.test(name);
 
-    // Helper: detect if ingredient is "Massa Extrusada"
+    // Helper: detect if ingredient is "Massa Extrusada" (always show pre-cooked weight)
     const isMassaExtrusada = (name: string) => /massa\s+extrus/i.test(name);
-
-    // Helper: detect if recipe is lasanha/rondele
-    const isLasanhaOrRondele = (recipeName: string) => /lasanha|rondele|rondeli/i.test(recipeName);
 
     // Get production unit label
     const productionUnit = activeRecipe?.production_unit || 'UN';
@@ -283,7 +280,7 @@ export const CalculatorView: React.FC = () => {
                                                     ? Math.round((ing.scaled_quantity * 1000) / EGG_WEIGHT_GRAMS)
                                                     : null;
 
-                                                const massaPreCozida = isMassaExtrusada(ingName) && activeRecipe && isLasanhaOrRondele(activeRecipe.name)
+                                                const massaPreCozida = isMassaExtrusada(ingName)
                                                     ? ing.scaled_quantity * 1.28
                                                     : null;
 
