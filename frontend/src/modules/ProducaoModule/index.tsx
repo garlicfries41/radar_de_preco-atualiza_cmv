@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Calculator, ClipboardList } from 'lucide-react';
+import { Calendar, Calculator, FileText } from 'lucide-react';
 
 // Views
 import { AgendaView } from './components/agenda/AgendaView';
@@ -42,7 +42,7 @@ const ProducaoModule: React.FC = () => {
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                 >
-                    <ClipboardList size={18} className="mr-2" />
+                    <FileText size={18} className="mr-2" />
                     Catálogo de Processos
                 </button>
             </div>
