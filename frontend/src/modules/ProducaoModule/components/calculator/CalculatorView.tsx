@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calculator, Save, UtensilsCrossed, Scale, Target } from 'lucide-react';
+import { Calculator, Save, UtensilsCrossed, Scale, Target, ChevronDown, ChevronRight } from 'lucide-react';
 import { useCalculator } from '../../hooks/useCalculator';
 import type { RecipeWithIngredients, RecipeIngredient } from '../../hooks/useCalculator';
+
+const EGG_WEIGHT_GRAMS = 52;
 
 export const CalculatorView: React.FC = () => {
     const { fetchRecipesList, fetchRecipeDetails, loading } = useCalculator();
@@ -14,6 +16,9 @@ export const CalculatorView: React.FC = () => {
     // Interactive Inputs
     const [baseIngredientId, setBaseIngredientId] = useState<string>('');
     const [baseQuantityInput, setBaseQuantityInput] = useState<number | ''>('');
+
+    // Sub-ingredient expansion state
+    const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
 
     // Initial Load
     useEffect(() => {
@@ -32,10 +37,12 @@ export const CalculatorView: React.FC = () => {
                 setActiveRecipe(null);
                 setBaseIngredientId('');
                 setBaseQuantityInput('');
+                setExpandedSubs(new Set());
                 return;
             }
             const details = await fetchRecipeDetails(selectedRecipeId);
             setActiveRecipe(details);
+            setExpandedSubs(new Set());
 
             // Auto-select first ingredient as base if available
             if (details?.recipe_ingredients?.length) {
@@ -46,40 +53,57 @@ export const CalculatorView: React.FC = () => {
         loadDetails();
     }, [selectedRecipeId]);
 
+    const toggleSubExpansion = (ingredientId: string) => {
+        setExpandedSubs(prev => {
+            const next = new Set(prev);
+            if (next.has(ingredientId)) next.delete(ingredientId);
+            else next.add(ingredientId);
+            return next;
+        });
+    };
+
     // --- CORE CALCULATION LOGIC (Reverse Rule of 3) ---
     const calculationResults = useMemo(() => {
         if (!activeRecipe || !baseIngredientId || baseQuantityInput === '' || Number(baseQuantityInput) <= 0) {
             return null;
         }
 
-        // 1. Find the base ingredient in the original recipe to discover the multiplier
         const originalBaseIngredient = activeRecipe.recipe_ingredients.find((ri: RecipeIngredient) => ri.ingredient_id === baseIngredientId);
         if (!originalBaseIngredient || originalBaseIngredient.quantity <= 0) return null;
 
         const inputQtd = Number(baseQuantityInput);
-        // Multiplier = How many times bigger/smaller is this batch compared to original?
         const multiplier = inputQtd / originalBaseIngredient.quantity;
 
-        // 2. Scale all ingredients
+        // Scale all ingredients
         const scaledIngredients = activeRecipe.recipe_ingredients.map((ing: RecipeIngredient) => ({
             ...ing,
             scaled_quantity: ing.quantity * multiplier
         }));
 
-        // 3. Scale Outputs (Yields)
+        // Scale Outputs
         const expected_units = activeRecipe.yield_units * multiplier;
-        const expected_kg = activeRecipe.total_weight_kg * multiplier;
         const expected_sauce_kg = activeRecipe.sauce_yield_kg ? (activeRecipe.sauce_yield_kg * multiplier) : null;
 
         return {
             multiplier,
             scaledIngredients,
             expected_units,
-            expected_kg,
             expected_sauce_kg
         };
     }, [activeRecipe, baseIngredientId, baseQuantityInput]);
 
+    // Helper: detect if ingredient is egg
+    const isEgg = (name: string) => /\bovo\b|\bovos\b|\begg\b/i.test(name);
+
+    // Helper: detect if ingredient is "Massa Extrusada"
+    const isMassaExtrusada = (name: string) => /massa\s+extrus/i.test(name);
+
+    // Helper: detect if recipe is lasanha/rondele
+    const isLasanhaOrRondele = (recipeName: string) => /lasanha|rondele|rondeli/i.test(recipeName);
+
+    // Get production unit label
+    const productionUnit = activeRecipe?.production_unit || 'UN';
+    const unitLabel = productionUnit === 'KG' ? 'kg' : 'un';
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-6 pb-24 h-full">
@@ -116,7 +140,9 @@ export const CalculatorView: React.FC = () => {
                             >
                                 <option value="">-- Selecione uma Receita/Preparo --</option>
                                 {recipesList.map(r => (
-                                    <option key={r.id} value={r.id}>{r.name} (Rendimento Ref: {r.yield_units} un)</option>
+                                    <option key={r.id} value={r.id}>
+                                        {r.name} (Rend: {r.yield_units} {(r.production_unit || 'UN') === 'KG' ? 'kg' : 'un'})
+                                    </option>
                                 ))}
                             </select>
                         )}
@@ -210,21 +236,32 @@ export const CalculatorView: React.FC = () => {
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
 
                                     {/* Summary / Yield Cards */}
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                                    <div className="grid grid-cols-2 gap-3 mb-6">
                                         <div className="bg-white rounded-lg p-3 border border-green-100 shadow-sm border-l-4 border-l-green-500">
-                                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Rendimento (Un)</p>
-                                            <p className="text-2xl font-bold text-gray-900 font-heading">{(calculationResults.expected_units).toFixed(1)} <span className="text-sm font-normal text-gray-500">un</span></p>
+                                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">
+                                                Rendimento ({unitLabel})
+                                            </p>
+                                            <p className="text-2xl font-bold text-gray-900 font-heading">
+                                                {calculationResults.expected_units.toFixed(2)}
+                                                <span className="text-sm font-normal text-gray-500 ml-1">{unitLabel}</span>
+                                            </p>
                                         </div>
 
-                                        <div className="bg-white rounded-lg p-3 border border-blue-100 shadow-sm border-l-4 border-l-blue-500">
-                                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Peso Total</p>
-                                            <p className="text-2xl font-bold text-gray-900 font-heading">{(calculationResults.expected_kg).toFixed(2)} <span className="text-sm font-normal text-gray-500">kg</span></p>
-                                        </div>
-
-                                        {calculationResults.expected_sauce_kg !== null && (
-                                            <div className="bg-white rounded-lg p-3 border border-purple-100 shadow-sm border-l-4 border-l-purple-500 col-span-2 md:col-span-1">
-                                                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Rendimento Molho</p>
-                                                <p className="text-2xl font-bold text-gray-900 font-heading">{(calculationResults.expected_sauce_kg).toFixed(2)} <span className="text-sm font-normal text-gray-500">kg</span></p>
+                                        {calculationResults.expected_sauce_kg !== null ? (
+                                            <div className="bg-white rounded-lg p-3 border border-purple-100 shadow-sm border-l-4 border-l-purple-500">
+                                                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Molho/Recheio</p>
+                                                <p className="text-2xl font-bold text-gray-900 font-heading">
+                                                    {calculationResults.expected_sauce_kg.toFixed(2)}
+                                                    <span className="text-sm font-normal text-gray-500 ml-1">kg</span>
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm border-l-4 border-l-gray-300">
+                                                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Fator</p>
+                                                <p className="text-2xl font-bold text-gray-900 font-heading">
+                                                    {calculationResults.multiplier.toFixed(2)}
+                                                    <span className="text-sm font-normal text-gray-500 ml-1">x</span>
+                                                </p>
                                             </div>
                                         )}
                                     </div>
@@ -236,28 +273,93 @@ export const CalculatorView: React.FC = () => {
                                         <ul className="divide-y divide-gray-100">
                                             {calculationResults.scaledIngredients.map((ing: RecipeIngredient & { scaled_quantity: number }) => {
                                                 const isBase = ing.ingredient_id === baseIngredientId;
+                                                const hasSubs = ing.sub_ingredients && ing.sub_ingredients.length > 0;
+                                                const isExpanded = expandedSubs.has(ing.ingredient_id);
+                                                const ingName = ing.ingredients.name;
+                                                const ingUnit = ing.ingredients.unit;
+
+                                                // Cálculos auxiliares
+                                                const eggCount = isEgg(ingName) && ingUnit?.toLowerCase() === 'kg'
+                                                    ? Math.round((ing.scaled_quantity * 1000) / EGG_WEIGHT_GRAMS)
+                                                    : null;
+
+                                                const massaPreCozida = isMassaExtrusada(ingName) && activeRecipe && isLasanhaOrRondele(activeRecipe.name)
+                                                    ? ing.scaled_quantity * 1.28
+                                                    : null;
+
+                                                // Proporção do sub-preparo para escalar sub-ingredientes
+                                                const subScale = hasSubs && ing.sub_recipe_yield
+                                                    ? ing.scaled_quantity / ing.sub_recipe_yield
+                                                    : 1;
+
                                                 return (
-                                                    <li key={ing.ingredient_id} className={`px-4 py-3 flex justify-between items-center ${isBase ? 'bg-primary/5' : ''}`}>
-                                                        <div className="flex items-center">
-                                                            {isBase && <span className="w-2 h-2 rounded-full bg-primary mr-2" title="Ingrediente Base"></span>}
-                                                            <span className={`font-medium ${isBase ? 'text-primary' : 'text-gray-700'}`}>
-                                                                {ing.ingredients.name}
-                                                            </span>
+                                                    <li key={ing.ingredient_id} className={isBase ? 'bg-primary/5' : ''}>
+                                                        <div className={`px-4 py-3 flex justify-between items-center ${hasSubs ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                                                            onClick={() => hasSubs && toggleSubExpansion(ing.ingredient_id)}
+                                                        >
+                                                            <div className="flex items-center">
+                                                                {hasSubs && (
+                                                                    isExpanded
+                                                                        ? <ChevronDown size={14} className="mr-1 text-gray-400" />
+                                                                        : <ChevronRight size={14} className="mr-1 text-gray-400" />
+                                                                )}
+                                                                {isBase && !hasSubs && <span className="w-2 h-2 rounded-full bg-primary mr-2" title="Ingrediente Base"></span>}
+                                                                <div>
+                                                                    <span className={`font-medium ${isBase ? 'text-primary' : 'text-gray-700'}`}>
+                                                                        {ingName}
+                                                                    </span>
+                                                                    {hasSubs && (
+                                                                        <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Pré-preparo</span>
+                                                                    )}
+                                                                    {/* Info auxiliar: ovos */}
+                                                                    {eggCount !== null && (
+                                                                        <span className="ml-2 text-xs text-blue-600 font-medium">
+                                                                            ≈ {eggCount} {eggCount === 1 ? 'ovo' : 'ovos'}
+                                                                        </span>
+                                                                    )}
+                                                                    {/* Info auxiliar: massa pré-cozida */}
+                                                                    {massaPreCozida !== null && (
+                                                                        <span className="ml-2 text-xs text-orange-600 font-medium">
+                                                                            → {massaPreCozida.toFixed(2)} kg pré-cozida
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right flex-shrink-0">
+                                                                <span className={`font-bold text-lg ${isBase ? 'text-primary' : 'text-gray-900'}`}>
+                                                                    {ing.scaled_quantity.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 3 })}
+                                                                </span>
+                                                                <span className="text-gray-500 ml-1 text-sm">{ingUnit}</span>
+                                                            </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <span className={`font-bold text-lg ${isBase ? 'text-primary' : 'text-gray-900'}`}>
-                                                                {ing.scaled_quantity.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 3 })}
-                                                            </span>
-                                                            <span className="text-gray-500 ml-1 text-sm">{ing.ingredients.unit}</span>
-                                                        </div>
+
+                                                        {/* Sub-ingredientes expandidos */}
+                                                        {hasSubs && isExpanded && (
+                                                            <div className="bg-gray-50 border-t border-gray-100">
+                                                                <ul className="divide-y divide-gray-100">
+                                                                    {ing.sub_ingredients!.map((sub) => (
+                                                                        <li key={sub.ingredient_id} className="px-4 pl-10 py-2 flex justify-between items-center">
+                                                                            <span className="text-sm text-gray-600">
+                                                                                {sub.ingredients.name}
+                                                                            </span>
+                                                                            <div className="text-right flex-shrink-0">
+                                                                                <span className="font-medium text-sm text-gray-700">
+                                                                                    {(sub.quantity * subScale).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 3 })}
+                                                                                </span>
+                                                                                <span className="text-gray-400 ml-1 text-xs">{sub.ingredients.unit}</span>
+                                                                            </div>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
                                                     </li>
-                                                )
+                                                );
                                             })}
                                         </ul>
                                     </div>
 
                                     <div className="mt-6 flex justify-end">
-                                        {/* Placeholder for future action, like "Print" or "Save as Batch" */}
                                         <button className="text-sm font-medium text-gray-400 border border-gray-200 px-4 py-2 rounded-lg cursor-not-allowed hover:bg-gray-50 transition-colors flex items-center">
                                             <Save size={16} className="mr-2" />
                                             Salvar Lote (Em Breve)
