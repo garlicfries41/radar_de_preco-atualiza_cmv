@@ -31,7 +31,7 @@ export function DayColumn({ day, entries, onEdit, onDelete }: DayColumnProps) {
     return (
         <div className="flex flex-col flex-1 min-w-[120px] shrink-0">
             {/* Cabeçalho do dia */}
-            <div className="text-center py-2 border-b border-gray-200 bg-white sticky top-0 z-10">
+            <div className="text-center py-2 border-b border-gray-200 bg-white sticky top-0 z-10 shadow-sm">
                 <p className="text-xs text-gray-500 uppercase">
                     {format(day, 'EEE', { locale: ptBR })}
                 </p>

@@ -30,8 +30,8 @@ export function UnscheduledQueue({ entries }: UnscheduledQueueProps) {
     const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled' });
 
     return (
-        <div className="w-44 flex-shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col">
-            <div className="px-3 py-2 border-b border-gray-200 bg-white sticky top-0">
+        <div className="w-44 flex-shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col sticky left-0 z-20">
+            <div className="px-3 py-2 border-b border-gray-200 bg-white sticky top-0 z-20">
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Não agendado</p>
                 <p className="text-[10px] text-gray-400">{entries.length} item(s)</p>
             </div>

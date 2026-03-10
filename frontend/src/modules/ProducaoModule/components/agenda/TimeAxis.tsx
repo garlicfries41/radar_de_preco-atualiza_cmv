@@ -5,7 +5,7 @@ const PIXELS_PER_MINUTE = 1.5;
 export function TimeAxis() {
     const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
     return (
-        <div className="w-12 flex-shrink-0 border-r border-gray-200 bg-white relative" style={{ marginTop: '49px', minHeight: `${(END_HOUR - START_HOUR) * 60 * PIXELS_PER_MINUTE}px` }}>
+        <div className="w-12 flex-shrink-0 border-r border-gray-200 bg-white relative sticky z-10" style={{ left: '176px', marginTop: '49px', minHeight: `${(END_HOUR - START_HOUR) * 60 * PIXELS_PER_MINUTE}px` }}>
             {hours.map(h => (
                 <div
                     key={h}
