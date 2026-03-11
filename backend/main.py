@@ -1336,8 +1336,10 @@ def update_production_process(process_id: str, process: ProductionProcessInput):
 
 @app.delete("/api/production/processes/{process_id}")
 def delete_production_process(process_id: str):
-    """Delete a standard production process."""
+    """Delete a standard production process and its recipe links."""
     try:
+        # Remover vínculos em recipe_processes primeiro (FK constraint)
+        supabase.table("recipe_processes").delete().eq("process_id", process_id).execute()
         response = supabase.table("production_processes").delete().eq("id", process_id).execute()
         return {"status": "success"}
     except Exception as e:

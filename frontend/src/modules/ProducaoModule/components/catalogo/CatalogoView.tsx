@@ -96,7 +96,12 @@ export const CatalogoView: React.FC = () => {
     const handleSelectProcess = (processId: string) => {
         if (!addForm) return;
         const proc = processes.find(p => p.id === processId);
-        const tpu = proc?.default_time_per_unit || 0;
+        const yieldUnits = getRecipeYield(addForm.recipeId);
+        // Prioridade: default_time_per_unit (de uso anterior), senão calcula a partir de expected_duration / yield
+        let tpu = proc?.default_time_per_unit || 0;
+        if (!tpu && proc && proc.expected_duration_minutes > 0 && yieldUnits > 0) {
+            tpu = Math.round((proc.expected_duration_minutes / yieldUnits) * 100) / 100;
+        }
         setAddForm({ ...addForm, process_id: processId, time_per_unit_minutes: tpu });
     };
 
