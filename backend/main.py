@@ -1428,6 +1428,47 @@ def update_recipe_process(rp_id: str, data: RecipeProcessUpdate):
         logger.error(f"Error updating recipe process: {e}")
         raise HTTPException(500, str(e))
 
+@app.get("/api/production/processes/{process_id}/usage-count")
+def get_process_usage_count(process_id: str):
+    """Conta quantas receitas usam este processo."""
+    try:
+        result = supabase.table("recipe_processes") \
+            .select("recipe_id, recipes(name)") \
+            .eq("process_id", process_id) \
+            .execute()
+        recipes = [r["recipes"]["name"] for r in (result.data or []) if r.get("recipes")]
+        return {"count": len(recipes), "recipes": recipes}
+    except Exception as e:
+        logger.error(f"Error counting process usage: {e}")
+        raise HTTPException(500, str(e))
+
+@app.put("/api/production/processes/{process_id}/update-cascade")
+def update_process_cascade(process_id: str, data: dict):
+    """Atualiza processo e recalcula time_per_unit em todas as recipe_processes vinculadas."""
+    try:
+        new_name = data.get("name")
+        new_time_per_unit = data.get("time_per_unit_minutes")
+
+        update_payload = {}
+        if new_name:
+            update_payload["name"] = new_name
+        if new_time_per_unit is not None:
+            update_payload["expected_duration_minutes"] = round(new_time_per_unit)
+        if update_payload:
+            update_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+            supabase.table("production_processes").update(update_payload).eq("id", process_id).execute()
+
+        if new_time_per_unit is not None:
+            supabase.table("recipe_processes") \
+                .update({"time_per_unit_minutes": new_time_per_unit}) \
+                .eq("process_id", process_id) \
+                .execute()
+
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Error cascading process update: {e}")
+        raise HTTPException(500, str(e))
+
 @app.delete("/api/recipe-processes/{rp_id}")
 def delete_recipe_process(rp_id: str):
     """Remove vínculo processo-receita."""

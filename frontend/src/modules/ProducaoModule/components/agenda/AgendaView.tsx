@@ -489,27 +489,16 @@ export const AgendaView: React.FC = () => {
                                     </select>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            step="1"
-                                            value={recipeQuantity}
-                                            onChange={(e) => handleQuantityChange(Number(e.target.value))}
-                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
-                                        <input
-                                            type="date"
-                                            value={format(recipePlannedDate, 'yyyy-MM-dd')}
-                                            onChange={(e) => setRecipePlannedDate(new Date(e.target.value + 'T12:00:00'))}
-                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
-                                        />
-                                    </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={recipeQuantity}
+                                        onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
+                                    />
                                 </div>
 
                                 {/* Preview dos slots */}

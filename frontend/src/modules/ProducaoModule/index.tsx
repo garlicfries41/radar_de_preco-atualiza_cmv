@@ -26,16 +26,6 @@ const ProducaoModule: React.FC = () => {
                     Agenda Semanal
                 </button>
                 <button
-                    onClick={() => setActiveTab('calculator')}
-                    className={`pb-3 border-b-2 font-medium text-sm flex items-center transition-colors whitespace-nowrap ${activeTab === 'calculator'
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                        }`}
-                >
-                    <Calculator size={18} className="mr-2" />
-                    Calculadora de Lote
-                </button>
-                <button
                     onClick={() => setActiveTab('catalogo')}
                     className={`pb-3 border-b-2 font-medium text-sm flex items-center transition-colors whitespace-nowrap ${activeTab === 'catalogo'
                             ? 'border-primary text-primary'
@@ -44,6 +34,16 @@ const ProducaoModule: React.FC = () => {
                 >
                     <FileText size={18} className="mr-2" />
                     Catálogo de Processos
+                </button>
+                <button
+                    onClick={() => setActiveTab('calculator')}
+                    className={`pb-3 border-b-2 font-medium text-sm flex items-center transition-colors whitespace-nowrap ${activeTab === 'calculator'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                >
+                    <Calculator size={18} className="mr-2" />
+                    Calculadora de Lote
                 </button>
             </div>
 

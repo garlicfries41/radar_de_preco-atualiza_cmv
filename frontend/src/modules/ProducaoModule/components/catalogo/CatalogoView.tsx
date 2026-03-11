@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Clock, X, ChevronDown, ChevronRight, BookOpen, Wrench, Pencil } from 'lucide-react';
+import { Plus, Trash2, Clock, X, ChevronDown, ChevronRight, BookOpen, Pencil } from 'lucide-react';
 import { useProduction } from '../../hooks/useProduction';
 import type { ProductionProcess, RecipeSummary, RecipeProcess } from '../../hooks/useProduction';
 
@@ -8,12 +8,15 @@ type AddMode = 'existing' | 'new';
 interface AddProcessFormState {
     recipeId: string;
     mode: AddMode;
-    // Existente
     process_id: string;
-    // Novo
     newName: string;
     totalMinutes: number;
-    // Calculado
+    time_per_unit_minutes: number;
+}
+
+interface EditProcessState {
+    processId: string;
+    name: string;
     time_per_unit_minutes: number;
 }
 
@@ -21,12 +24,13 @@ export const CatalogoView: React.FC = () => {
     const {
         fetchProcesses,
         createProcess,
-        updateProcess,
         deleteProcess,
         fetchRecipes,
         fetchRecipeProcesses,
         addRecipeProcess,
         deleteRecipeProcess,
+        getProcessUsageCount,
+        updateProcessCascade,
         loading
     } = useProduction();
 
@@ -36,11 +40,10 @@ export const CatalogoView: React.FC = () => {
     const [recipeProcesses, setRecipeProcesses] = useState<Record<string, RecipeProcess[]>>({});
     const [addForm, setAddForm] = useState<AddProcessFormState | null>(null);
 
-    // Catálogo avulso
-    const [showCatalog, setShowCatalog] = useState(false);
-    const [catalogModal, setCatalogModal] = useState(false);
-    const [editingProcess, setEditingProcess] = useState<ProductionProcess | null>(null);
-    const [catalogForm, setCatalogForm] = useState({ name: '', expected_duration_minutes: 60, yield_notes: '' });
+    // Edição inline
+    const [editForm, setEditForm] = useState<EditProcessState | null>(null);
+    const [editModal, setEditModal] = useState(false);
+    const [usageInfo, setUsageInfo] = useState<{ count: number; recipes: string[] } | null>(null);
 
     useEffect(() => {
         loadProcesses();
@@ -74,14 +77,10 @@ export const CatalogoView: React.FC = () => {
         return recipe?.yield_units || 1;
     };
 
+    // --- Adicionar processo ---
     const openAddForm = (recipeId: string) => {
         setAddForm({
-            recipeId,
-            mode: 'existing',
-            process_id: '',
-            newName: '',
-            totalMinutes: 60,
-            time_per_unit_minutes: 0,
+            recipeId, mode: 'existing', process_id: '', newName: '', totalMinutes: 60, time_per_unit_minutes: 0,
         });
     };
 
@@ -97,7 +96,6 @@ export const CatalogoView: React.FC = () => {
         if (!addForm) return;
         const proc = processes.find(p => p.id === processId);
         const yieldUnits = getRecipeYield(addForm.recipeId);
-        // Prioridade: default_time_per_unit (de uso anterior), senão calcula a partir de expected_duration / yield
         let tpu = proc?.default_time_per_unit || 0;
         if (!tpu && proc && proc.expected_duration_minutes > 0 && yieldUnits > 0) {
             tpu = Math.round((proc.expected_duration_minutes / yieldUnits) * 100) / 100;
@@ -118,7 +116,7 @@ export const CatalogoView: React.FC = () => {
             const recipeId = addForm.recipeId;
             const existing = recipeProcesses[recipeId] || [];
             let processId = addForm.process_id;
-            let tpu = addForm.time_per_unit_minutes;
+            const tpu = addForm.time_per_unit_minutes;
 
             if (addForm.mode === 'new') {
                 if (!addForm.newName.trim() || addForm.totalMinutes <= 0) return;
@@ -139,7 +137,6 @@ export const CatalogoView: React.FC = () => {
                 time_per_unit_minutes: tpu,
             });
 
-            // Recarregar DEPOIS do vínculo para que default_time_per_unit venha preenchido
             const rps = await fetchRecipeProcesses(recipeId);
             setRecipeProcesses(prev => ({ ...prev, [recipeId]: rps }));
             await loadProcesses();
@@ -158,44 +155,57 @@ export const CatalogoView: React.FC = () => {
         } catch { /* hook trata */ }
     };
 
-    // --- Catálogo avulso ---
-    const openCatalogCreate = () => {
-        setEditingProcess(null);
-        setCatalogForm({ name: '', expected_duration_minutes: 60, yield_notes: '' });
-        setCatalogModal(true);
+    // --- Edição inline com cascata ---
+    const openEditProcess = async (rp: RecipeProcess) => {
+        const proc = rp.production_processes;
+        if (!proc) return;
+        setEditForm({
+            processId: proc.id,
+            name: proc.name,
+            time_per_unit_minutes: rp.time_per_unit_minutes,
+        });
+        const usage = await getProcessUsageCount(proc.id);
+        setUsageInfo(usage);
+        setEditModal(true);
     };
-    const openCatalogEdit = (proc: ProductionProcess) => {
-        setEditingProcess(proc);
-        setCatalogForm({ name: proc.name, expected_duration_minutes: proc.expected_duration_minutes, yield_notes: proc.yield_notes || '' });
-        setCatalogModal(true);
-    };
-    const handleCatalogSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!catalogForm.name.trim()) return;
+
+    const handleEditSave = async () => {
+        if (!editForm) return;
         try {
-            if (editingProcess) {
-                await updateProcess(editingProcess.id, {
-                    name: catalogForm.name.trim(),
-                    expected_duration_minutes: Number(catalogForm.expected_duration_minutes),
-                    yield_notes: catalogForm.yield_notes.trim() || undefined,
-                } as ProductionProcess);
-            } else {
-                await createProcess({
-                    name: catalogForm.name.trim(),
-                    expected_duration_minutes: Number(catalogForm.expected_duration_minutes),
-                    yield_notes: catalogForm.yield_notes.trim() || undefined,
-                } as Omit<ProductionProcess, 'id'>);
+            await updateProcessCascade(editForm.processId, {
+                name: editForm.name,
+                time_per_unit_minutes: editForm.time_per_unit_minutes,
+            });
+            // Recarregar dados
+            await loadProcesses();
+            // Recarregar processos da receita expandida
+            if (expandedRecipe) {
+                const rps = await fetchRecipeProcesses(expandedRecipe);
+                setRecipeProcesses(prev => ({ ...prev, [expandedRecipe]: rps }));
             }
-            setCatalogModal(false);
-            loadProcesses();
-        } catch { /* */ }
+            setEditModal(false);
+            setEditForm(null);
+            setUsageInfo(null);
+        } catch { /* hook trata */ }
     };
-    const handleCatalogDelete = async (proc: ProductionProcess) => {
-        if (!confirm(`Deletar "${proc.name}"?`)) return;
+
+    const handleDeleteProcess = async () => {
+        if (!editForm) return;
+        const usage = usageInfo;
+        const msg = usage && usage.count > 0
+            ? `Deletar "${editForm.name}"? Será removido de ${usage.count} receita(s): ${usage.recipes.join(', ')}`
+            : `Deletar "${editForm.name}"?`;
+        if (!confirm(msg)) return;
         try {
-            await deleteProcess(proc.id);
-            setProcesses(prev => prev.filter(p => p.id !== proc.id));
-        } catch { /* */ }
+            await deleteProcess(editForm.processId);
+            await loadProcesses();
+            if (expandedRecipe) {
+                const rps = await fetchRecipeProcesses(expandedRecipe);
+                setRecipeProcesses(prev => ({ ...prev, [expandedRecipe]: rps }));
+            }
+            setEditModal(false);
+            setEditForm(null);
+        } catch { /* hook trata */ }
     };
 
     const formatDuration = (minutes: number) => {
@@ -207,7 +217,6 @@ export const CatalogoView: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24">
-            {/* === RECEITAS E SEUS PROCESSOS (seção principal) === */}
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-2xl font-bold font-heading text-primary flex items-center">
@@ -274,20 +283,28 @@ export const CatalogoView: React.FC = () => {
                                                     {formatDuration(recipe.yield_units * rp.time_per_unit_minutes)}
                                                 </span>
                                             </div>
-                                            <button
-                                                onClick={() => handleRemoveRecipeProcess(recipe.id, rp.id)}
-                                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                title="Remover"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => openEditProcess(rp)}
+                                                    className="p-1 text-gray-400 hover:text-primary transition-colors"
+                                                    title="Editar processo"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRemoveRecipeProcess(recipe.id, rp.id)}
+                                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                    title="Remover da receita"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
 
                                     {/* Form adicionar processo */}
                                     {addForm?.recipeId === recipe.id ? (
                                         <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                            {/* Toggle Novo / Existente */}
                                             <div className="flex gap-1 mb-4 bg-gray-200 rounded-lg p-0.5 w-fit">
                                                 <button
                                                     type="button"
@@ -398,109 +415,68 @@ export const CatalogoView: React.FC = () => {
                 })}
             </div>
 
-            {/* === PROCESSOS AVULSOS (seção secundária, colapsável) === */}
-            <div className="mt-12">
-                <button
-                    onClick={() => setShowCatalog(!showCatalog)}
-                    className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors mb-4"
-                >
-                    {showCatalog ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    <Wrench size={16} />
-                    <span className="text-sm font-medium">Processos Avulsos</span>
-                    <span className="text-xs text-gray-400">(limpeza, feira, etc.)</span>
-                </button>
-
-                {showCatalog && (
-                    <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] overflow-hidden">
-                        <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-600">Todos os processos cadastrados</span>
-                            <button
-                                onClick={openCatalogCreate}
-                                className="text-xs text-primary hover:underline flex items-center"
-                            >
-                                <Plus size={12} className="mr-1" /> Novo
-                            </button>
-                        </div>
-                        {processes.length === 0 ? (
-                            <p className="text-sm text-gray-400 text-center py-6">Nenhum processo cadastrado.</p>
-                        ) : (
-                            <div className="divide-y divide-gray-100">
-                                {processes.map(proc => (
-                                    <div key={proc.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50">
-                                        <div>
-                                            <span className="text-sm font-medium text-gray-800">{proc.name}</span>
-                                            <span className="text-xs text-gray-400 ml-3">
-                                                <Clock size={12} className="inline mr-1" />
-                                                {formatDuration(proc.expected_duration_minutes)}
-                                                {proc.default_time_per_unit && (
-                                                    <span className="ml-2 text-gray-400">· {proc.default_time_per_unit} min/un</span>
-                                                )}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-1">
-                                            <button onClick={() => openCatalogEdit(proc)} className="p-1.5 text-gray-400 hover:text-primary"><Pencil size={14} /></button>
-                                            <button onClick={() => handleCatalogDelete(proc)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Modal Criar/Editar Processo Avulso */}
-            {catalogModal && (
+            {/* Modal Editar Processo (com cascata) */}
+            {editModal && editForm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="font-bold text-lg text-gray-900 font-heading">
-                                {editingProcess ? 'Editar Processo' : 'Novo Processo'}
-                            </h3>
-                            <button onClick={() => setCatalogModal(false)} className="text-gray-400 hover:text-gray-600">
+                            <h3 className="font-bold text-lg text-gray-900 font-heading">Editar Processo</h3>
+                            <button onClick={() => { setEditModal(false); setEditForm(null); setUsageInfo(null); }} className="text-gray-400 hover:text-gray-600">
                                 <X size={20} />
                             </button>
                         </div>
-                        <form onSubmit={handleCatalogSave} className="p-6 space-y-4">
+                        <div className="p-6 space-y-4">
+                            {usageInfo && usageInfo.count > 1 && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                                    <strong>Atenção:</strong> esse processo é usado em {usageInfo.count} receita(s): {usageInfo.recipes.join(', ')}. A alteração será aplicada em todas.
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                                 <input
                                     type="text"
-                                    value={catalogForm.name}
-                                    onChange={e => setCatalogForm({ ...catalogForm, name: e.target.value })}
-                                    placeholder='Ex: "Limpeza geral", "Feira"'
-                                    required
+                                    value={editForm.name}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                                     className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Duração padrão (min)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tempo por unidade (min/un)</label>
                                 <input
                                     type="number"
-                                    min="5"
-                                    step="5"
-                                    value={catalogForm.expected_duration_minutes}
-                                    onChange={e => setCatalogForm({ ...catalogForm, expected_duration_minutes: Number(e.target.value) })}
-                                    required
+                                    step="0.01"
+                                    min="0.01"
+                                    value={editForm.time_per_unit_minutes}
+                                    onChange={e => setEditForm({ ...editForm, time_per_unit_minutes: Number(e.target.value) })}
                                     className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>
-                                <input
-                                    type="text"
-                                    value={catalogForm.yield_notes}
-                                    onChange={e => setCatalogForm({ ...catalogForm, yield_notes: e.target.value })}
-                                    className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
-                                />
-                            </div>
-                            <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
-                                <button type="button" onClick={() => setCatalogModal(false)} className="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-                                <button type="submit" disabled={loading} className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90">
-                                    {loading ? 'Salvando...' : (editingProcess ? 'Atualizar' : 'Criar')}
+
+                            <div className="pt-4 flex justify-between border-t border-gray-100">
+                                <button
+                                    onClick={handleDeleteProcess}
+                                    className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                >
+                                    <Trash2 size={14} className="inline mr-1" /> Deletar
                                 </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => { setEditModal(false); setEditForm(null); setUsageInfo(null); }}
+                                        className="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleEditSave}
+                                        disabled={loading || !editForm.name.trim() || editForm.time_per_unit_minutes <= 0}
+                                        className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                                    >
+                                        {loading ? 'Salvando...' : 'Salvar'}
+                                    </button>
+                                </div>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             )}

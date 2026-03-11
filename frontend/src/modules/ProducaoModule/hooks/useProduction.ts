@@ -333,6 +333,35 @@ export function useProduction() {
         }
     }, []);
 
+    const getProcessUsageCount = useCallback(async (processId: string): Promise<{ count: number; recipes: string[] }> => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/production/processes/${processId}/usage-count`);
+            if (!res.ok) throw new Error('Erro ao buscar uso do processo');
+            return await res.json();
+        } catch (err: any) {
+            setError(err.message);
+            return { count: 0, recipes: [] };
+        }
+    }, []);
+
+    const updateProcessCascade = useCallback(async (processId: string, data: { name?: string; time_per_unit_minutes?: number }) => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_BASE_URL}/api/production/processes/${processId}/update-cascade`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error('Erro ao atualizar processo');
+            return await res.json();
+        } catch (err: any) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
@@ -351,5 +380,7 @@ export function useProduction() {
         deleteRecipeProcess,
         resolveRecipeSlots,
         scheduleRecipe,
+        getProcessUsageCount,
+        updateProcessCascade,
     };
 }
