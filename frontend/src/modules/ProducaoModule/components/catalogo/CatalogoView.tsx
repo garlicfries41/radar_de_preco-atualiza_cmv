@@ -17,7 +17,10 @@ interface AddProcessFormState {
 interface EditProcessState {
     processId: string;
     name: string;
+    totalMinutes: number;
     time_per_unit_minutes: number;
+    yieldUnits: number;
+    recipeName: string;
 }
 
 export const CatalogoView: React.FC = () => {
@@ -156,13 +159,18 @@ export const CatalogoView: React.FC = () => {
     };
 
     // --- Edição inline com cascata ---
-    const openEditProcess = async (rp: RecipeProcess) => {
+    const openEditProcess = async (rp: RecipeProcess, recipe: RecipeSummary) => {
         const proc = rp.production_processes;
         if (!proc) return;
+        const yieldUnits = recipe.yield_units || 1;
+        const totalMinutes = Math.round(rp.time_per_unit_minutes * yieldUnits * 100) / 100;
         setEditForm({
             processId: proc.id,
             name: proc.name,
+            totalMinutes,
             time_per_unit_minutes: rp.time_per_unit_minutes,
+            yieldUnits,
+            recipeName: recipe.name,
         });
         const usage = await getProcessUsageCount(proc.id);
         setUsageInfo(usage);
@@ -285,7 +293,7 @@ export const CatalogoView: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <button
-                                                    onClick={() => openEditProcess(rp)}
+                                                    onClick={() => openEditProcess(rp, recipe)}
                                                     className="p-1 text-gray-400 hover:text-primary transition-colors"
                                                     title="Editar processo"
                                                 >
@@ -441,16 +449,29 @@ export const CatalogoView: React.FC = () => {
                                     className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tempo por unidade (min/un)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    value={editForm.time_per_unit_minutes}
-                                    onChange={e => setEditForm({ ...editForm, time_per_unit_minutes: Number(e.target.value) })}
-                                    className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
-                                />
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Tempo total p/ {editForm.yieldUnits} un de {editForm.recipeName} (min)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        value={editForm.totalMinutes}
+                                        onChange={e => {
+                                            const total = Number(e.target.value);
+                                            const tpu = editForm.yieldUnits > 0 ? Math.round((total / editForm.yieldUnits) * 100) / 100 : 0;
+                                            setEditForm({ ...editForm, totalMinutes: total, time_per_unit_minutes: tpu });
+                                        }}
+                                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
+                                    />
+                                </div>
+                                <div className="pt-5">
+                                    <span className="text-sm text-gray-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-md">
+                                        = <strong>{editForm.time_per_unit_minutes}</strong> min/un
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="pt-4 flex justify-between border-t border-gray-100">
@@ -469,7 +490,7 @@ export const CatalogoView: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={handleEditSave}
-                                        disabled={loading || !editForm.name.trim() || editForm.time_per_unit_minutes <= 0}
+                                        disabled={loading || !editForm.name.trim() || editForm.totalMinutes <= 0}
                                         className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                                     >
                                         {loading ? 'Salvando...' : 'Salvar'}
