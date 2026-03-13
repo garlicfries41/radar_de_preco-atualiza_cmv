@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Clock, X, ChevronDown, ChevronRight, BookOpen, Pencil } from 'lucide-react';
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Plus, Trash2, Clock, X, ChevronDown, ChevronRight, BookOpen, Pencil, GripVertical, User, Hourglass, CheckCircle, List } from 'lucide-react';
 import { useProduction } from '../../hooks/useProduction';
 import type { ProductionProcess, RecipeSummary, RecipeProcess } from '../../hooks/useProduction';
 
@@ -12,6 +15,9 @@ interface AddProcessFormState {
     newName: string;
     totalMinutes: number;
     time_per_unit_minutes: number;
+    process_type: 'labor' | 'wait';
+    time_source: 'measured' | 'estimated';
+    measured_at: string | null;
 }
 
 interface EditProcessState {
@@ -21,6 +27,76 @@ interface EditProcessState {
     time_per_unit_minutes: number;
     yieldUnits: number;
     recipeName: string;
+    process_type: 'labor' | 'wait';
+    time_source: 'measured' | 'estimated';
+    measured_at: string | null;
+    isGlobalEdit: boolean;
+}
+
+function SortableProcessRow({
+    rp, idx, recipe, onEdit, onRemove, formatDuration
+}: {
+    rp: RecipeProcess;
+    idx: number;
+    recipe: RecipeSummary;
+    onEdit: (rp: RecipeProcess, recipe: RecipeSummary) => void;
+    onRemove: (recipeId: string, rpId: string) => void;
+    formatDuration: (m: number) => string;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rp.id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+            <div className="flex items-center gap-2">
+                <button {...attributes} {...listeners} className="cursor-grab p-1 text-gray-300 hover:text-gray-500 touch-none">
+                    <GripVertical size={14} />
+                </button>
+                <span className="text-xs font-mono text-gray-400 w-5 text-right">{idx + 1}.</span>
+                <span className="text-sm font-medium text-gray-800">
+                    {rp.production_processes?.name || 'Processo'}
+                </span>
+                {rp.production_processes?.process_type === 'wait' ? (
+                    <span title="Espera" className="text-gray-400"><Hourglass size={12} /></span>
+                ) : (
+                    <span title="Mão de obra" className="text-blue-500"><User size={12} /></span>
+                )}
+                {rp.production_processes?.time_source === 'measured' ? (
+                    <span title={`Aferido em ${rp.production_processes.measured_at ? new Date(rp.production_processes.measured_at).toLocaleDateString('pt-BR') : ''}`} className="text-green-500">
+                        <CheckCircle size={12} />
+                    </span>
+                ) : (
+                    <span title="Tempo estimado" className="text-xs text-gray-400">~</span>
+                )}
+                <span className="text-xs text-gray-500">
+                    {rp.time_per_unit_minutes} min/un
+                </span>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                    {formatDuration(recipe.yield_units * rp.time_per_unit_minutes)}
+                </span>
+            </div>
+            <div className="flex items-center gap-1">
+                <button
+                    onClick={() => onEdit(rp, recipe)}
+                    className="p-1 text-gray-400 hover:text-primary transition-colors"
+                    title="Editar processo"
+                >
+                    <Pencil size={14} />
+                </button>
+                <button
+                    onClick={() => onRemove(recipe.id, rp.id)}
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Remover da receita"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
+        </div>
+    );
 }
 
 export const CatalogoView: React.FC = () => {
@@ -34,6 +110,7 @@ export const CatalogoView: React.FC = () => {
         deleteRecipeProcess,
         getProcessUsageCount,
         updateProcessCascade,
+        reorderRecipeProcesses,
         loading
     } = useProduction();
 
@@ -84,6 +161,7 @@ export const CatalogoView: React.FC = () => {
     const openAddForm = (recipeId: string) => {
         setAddForm({
             recipeId, mode: 'existing', process_id: '', newName: '', totalMinutes: 60, time_per_unit_minutes: 0,
+            process_type: 'labor', time_source: 'estimated', measured_at: null,
         });
     };
 
@@ -92,7 +170,12 @@ export const CatalogoView: React.FC = () => {
         const defaultTotal = 60;
         const yieldUnits = getRecipeYield(addForm.recipeId);
         const tpu = mode === 'new' && yieldUnits > 0 ? Math.round((defaultTotal / yieldUnits) * 100) / 100 : 0;
-        setAddForm({ ...addForm, mode, process_id: '', newName: '', totalMinutes: defaultTotal, time_per_unit_minutes: tpu });
+        setAddForm({
+            ...addForm, mode, process_id: '', newName: '', totalMinutes: defaultTotal, time_per_unit_minutes: tpu,
+            process_type: addForm.process_type || 'labor',
+            time_source: addForm.time_source || 'estimated',
+            measured_at: addForm.measured_at || null,
+        });
     };
 
     const handleSelectProcess = (processId: string) => {
@@ -126,6 +209,9 @@ export const CatalogoView: React.FC = () => {
                 const created = await createProcess({
                     name: addForm.newName.trim(),
                     expected_duration_minutes: addForm.totalMinutes,
+                    process_type: addForm.process_type,
+                    time_source: addForm.time_source,
+                    measured_at: addForm.measured_at,
                 } as Omit<ProductionProcess, 'id'>);
                 processId = created.id;
             } else {
@@ -158,6 +244,25 @@ export const CatalogoView: React.FC = () => {
         } catch { /* hook trata */ }
     };
 
+    const handleDragEnd = async (recipeId: string, event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const rps = recipeProcesses[recipeId] || [];
+        const oldIndex = rps.findIndex(rp => rp.id === active.id);
+        const newIndex = rps.findIndex(rp => rp.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reordered = arrayMove(rps, oldIndex, newIndex);
+        setRecipeProcesses(prev => ({ ...prev, [recipeId]: reordered }));
+
+        try {
+            await reorderRecipeProcesses(recipeId, reordered.map(rp => rp.id));
+        } catch {
+            setRecipeProcesses(prev => ({ ...prev, [recipeId]: rps }));
+        }
+    };
+
     // --- Edição inline com cascata ---
     const openEditProcess = async (rp: RecipeProcess, recipe: RecipeSummary) => {
         const proc = rp.production_processes;
@@ -171,6 +276,10 @@ export const CatalogoView: React.FC = () => {
             time_per_unit_minutes: rp.time_per_unit_minutes,
             yieldUnits,
             recipeName: recipe.name,
+            process_type: proc.process_type || 'labor',
+            time_source: proc.time_source || 'estimated',
+            measured_at: proc.measured_at || null,
+            isGlobalEdit: false,
         });
         const usage = await getProcessUsageCount(proc.id);
         setUsageInfo(usage);
@@ -180,13 +289,19 @@ export const CatalogoView: React.FC = () => {
     const handleEditSave = async () => {
         if (!editForm) return;
         try {
-            await updateProcessCascade(editForm.processId, {
+            const payload: any = {
                 name: editForm.name,
-                time_per_unit_minutes: editForm.time_per_unit_minutes,
-            });
-            // Recarregar dados
+                process_type: editForm.process_type,
+                time_source: editForm.time_source,
+                measured_at: editForm.measured_at,
+            };
+            if (editForm.isGlobalEdit) {
+                payload.time_per_unit_minutes = editForm.totalMinutes;
+            } else {
+                payload.time_per_unit_minutes = editForm.time_per_unit_minutes;
+            }
+            await updateProcessCascade(editForm.processId, payload);
             await loadProcesses();
-            // Recarregar processos da receita expandida
             if (expandedRecipe) {
                 const rps = await fetchRecipeProcesses(expandedRecipe);
                 setRecipeProcesses(prev => ({ ...prev, [expandedRecipe]: rps }));
@@ -277,38 +392,21 @@ export const CatalogoView: React.FC = () => {
                                         <p className="text-sm text-gray-400 mb-3">Nenhum processo vinculado.</p>
                                     )}
 
-                                    {rps.map((rp, idx) => (
-                                        <div key={rp.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xs font-mono text-gray-400 w-5 text-right">{idx + 1}.</span>
-                                                <span className="text-sm font-medium text-gray-800">
-                                                    {rp.production_processes?.name || 'Processo'}
-                                                </span>
-                                                <span className="text-xs text-gray-500">
-                                                    {rp.time_per_unit_minutes} min/un
-                                                </span>
-                                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                                                    {formatDuration(recipe.yield_units * rp.time_per_unit_minutes)}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    onClick={() => openEditProcess(rp, recipe)}
-                                                    className="p-1 text-gray-400 hover:text-primary transition-colors"
-                                                    title="Editar processo"
-                                                >
-                                                    <Pencil size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRemoveRecipeProcess(recipe.id, rp.id)}
-                                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                    title="Remover da receita"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    <DndContext collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(recipe.id, e)}>
+                                        <SortableContext items={rps.map(rp => rp.id)} strategy={verticalListSortingStrategy}>
+                                            {rps.map((rp, idx) => (
+                                                <SortableProcessRow
+                                                    key={rp.id}
+                                                    rp={rp}
+                                                    idx={idx}
+                                                    recipe={recipe}
+                                                    onEdit={openEditProcess}
+                                                    onRemove={handleRemoveRecipeProcess}
+                                                    formatDuration={formatDuration}
+                                                />
+                                            ))}
+                                        </SortableContext>
+                                    </DndContext>
 
                                     {/* Form adicionar processo */}
                                     {addForm?.recipeId === recipe.id ? (
@@ -388,6 +486,56 @@ export const CatalogoView: React.FC = () => {
                                                                 = <strong>{addForm.time_per_unit_minutes}</strong> min/un
                                                             </span>
                                                         </div>
+                                                    </div>
+
+                                                    {/* process_type toggle */}
+                                                    <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">Tipo</label>
+                                                        <div className="flex gap-1 bg-gray-200 rounded-lg p-0.5 w-fit">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAddForm({ ...addForm, process_type: 'labor' })}
+                                                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${addForm.process_type === 'labor' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+                                                            >
+                                                                <User size={12} className="inline mr-1" /> Mão de obra
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAddForm({ ...addForm, process_type: 'wait' })}
+                                                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${addForm.process_type === 'wait' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-600'}`}
+                                                            >
+                                                                <Hourglass size={12} className="inline mr-1" /> Espera
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* time_source toggle + measured_at */}
+                                                    <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">Precisão do tempo</label>
+                                                        <div className="flex gap-1 bg-gray-200 rounded-lg p-0.5 w-fit mb-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAddForm({ ...addForm, time_source: 'estimated', measured_at: null })}
+                                                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${addForm.time_source === 'estimated' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-600'}`}
+                                                            >
+                                                                ~ Estimado
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAddForm({ ...addForm, time_source: 'measured', measured_at: addForm.measured_at || new Date().toISOString().split('T')[0] })}
+                                                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${addForm.time_source === 'measured' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600'}`}
+                                                            >
+                                                                <CheckCircle size={12} className="inline mr-1" /> Aferido
+                                                            </button>
+                                                        </div>
+                                                        {addForm.time_source === 'measured' && (
+                                                            <input
+                                                                type="date"
+                                                                value={addForm.measured_at?.split('T')[0] || ''}
+                                                                onChange={e => setAddForm({ ...addForm, measured_at: e.target.value })}
+                                                                className="border-gray-300 rounded-md shadow-sm text-sm px-3 py-1.5"
+                                                            />
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
@@ -472,6 +620,56 @@ export const CatalogoView: React.FC = () => {
                                         = <strong>{editForm.time_per_unit_minutes}</strong> min/un
                                     </span>
                                 </div>
+                            </div>
+
+                            {/* process_type toggle */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                                <div className="flex gap-1 bg-gray-200 rounded-lg p-0.5 w-fit">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditForm({ ...editForm, process_type: 'labor' })}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editForm.process_type === 'labor' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+                                    >
+                                        <User size={12} className="inline mr-1" /> Mão de obra
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditForm({ ...editForm, process_type: 'wait' })}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editForm.process_type === 'wait' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-600'}`}
+                                    >
+                                        <Hourglass size={12} className="inline mr-1" /> Espera
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* time_source toggle + measured_at */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Precisão do tempo</label>
+                                <div className="flex gap-1 bg-gray-200 rounded-lg p-0.5 w-fit mb-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditForm({ ...editForm, time_source: 'estimated', measured_at: null })}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editForm.time_source === 'estimated' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-600'}`}
+                                    >
+                                        ~ Estimado
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditForm({ ...editForm, time_source: 'measured', measured_at: editForm.measured_at || new Date().toISOString().split('T')[0] })}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editForm.time_source === 'measured' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600'}`}
+                                    >
+                                        <CheckCircle size={12} className="inline mr-1" /> Aferido
+                                    </button>
+                                </div>
+                                {editForm.time_source === 'measured' && (
+                                    <input
+                                        type="date"
+                                        value={editForm.measured_at?.split('T')[0] || ''}
+                                        onChange={e => setEditForm({ ...editForm, measured_at: e.target.value })}
+                                        className="border-gray-300 rounded-md shadow-sm text-sm px-3 py-1.5"
+                                    />
+                                )}
                             </div>
 
                             <div className="pt-4 flex justify-between border-t border-gray-100">
