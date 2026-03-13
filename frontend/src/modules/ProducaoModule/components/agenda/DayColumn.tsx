@@ -22,6 +22,49 @@ function timeToMinutes(time: string): number {
     return (h - START_HOUR) * 60 + m;
 }
 
+interface OverlapInfo {
+    entryId: string;
+    colIndex: number;
+    totalCols: number;
+}
+
+function computeOverlapLayout(entries: ProductionSchedule[]): Map<string, OverlapInfo> {
+    const scheduled = entries
+        .filter(e => e.start_time)
+        .map(e => ({
+            id: e.id,
+            start: timeToMinutes(e.start_time!),
+            end: timeToMinutes(e.start_time!) + e.duration_minutes,
+        }))
+        .sort((a, b) => a.start - b.start || a.end - b.end);
+
+    const result = new Map<string, OverlapInfo>();
+    if (scheduled.length === 0) return result;
+
+    const groups: typeof scheduled[] = [];
+    let currentGroup = [scheduled[0]];
+
+    for (let i = 1; i < scheduled.length; i++) {
+        const groupEnd = Math.max(...currentGroup.map(e => e.end));
+        if (scheduled[i].start < groupEnd) {
+            currentGroup.push(scheduled[i]);
+        } else {
+            groups.push(currentGroup);
+            currentGroup = [scheduled[i]];
+        }
+    }
+    groups.push(currentGroup);
+
+    for (const group of groups) {
+        const totalCols = group.length;
+        group.forEach((entry, colIndex) => {
+            result.set(entry.id, { entryId: entry.id, colIndex, totalCols });
+        });
+    }
+
+    return result;
+}
+
 export function DayColumn({ day, entries, onEdit, onDelete }: DayColumnProps) {
     const dayKey = format(day, 'yyyy-MM-dd');
     const { setNodeRef, isOver } = useDroppable({ id: dayKey, data: { date: dayKey } });
@@ -54,19 +97,31 @@ export function DayColumn({ day, entries, onEdit, onDelete }: DayColumnProps) {
                 ))}
 
                 {/* Blocos de tarefas agendadas */}
-                {entries.filter(e => e.start_time).map(entry => {
-                    const topPx = timeToMinutes(entry.start_time!) * PIXELS_PER_MINUTE;
-                    return (
-                        <div key={entry.id} style={{ position: 'absolute', top: `${topPx}px`, left: 0, right: 0 }}>
-                            <TimeSlot
-                                entry={entry}
-                                pixelsPerMinute={PIXELS_PER_MINUTE}
-                                onEdit={onEdit}
-                                onDelete={onDelete}
-                            />
-                        </div>
-                    );
-                })}
+                {(() => {
+                    const overlapMap = computeOverlapLayout(entries);
+                    return entries.filter(e => e.start_time).map(entry => {
+                        const topPx = timeToMinutes(entry.start_time!) * PIXELS_PER_MINUTE;
+                        const overlap = overlapMap.get(entry.id);
+                        const left = overlap ? `${(overlap.colIndex / overlap.totalCols) * 100}%` : '0';
+                        const width = overlap ? `${(1 / overlap.totalCols) * 100}%` : '100%';
+                        return (
+                            <div key={entry.id} style={{
+                                position: 'absolute',
+                                top: `${topPx}px`,
+                                left,
+                                width,
+                                paddingRight: overlap && overlap.totalCols > 1 ? '2px' : '0',
+                            }}>
+                                <TimeSlot
+                                    entry={entry}
+                                    pixelsPerMinute={PIXELS_PER_MINUTE}
+                                    onEdit={onEdit}
+                                    onDelete={onDelete}
+                                />
+                            </div>
+                        );
+                    });
+                })()}
             </div>
         </div>
     );
