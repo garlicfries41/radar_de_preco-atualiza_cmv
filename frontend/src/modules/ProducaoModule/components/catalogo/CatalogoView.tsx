@@ -124,6 +124,9 @@ export const CatalogoView: React.FC = () => {
     const [editForm, setEditForm] = useState<EditProcessState | null>(null);
     const [editModal, setEditModal] = useState(false);
     const [usageInfo, setUsageInfo] = useState<{ count: number; recipes: string[] } | null>(null);
+    const [globalPanelOpen, setGlobalPanelOpen] = useState(false);
+    const [globalSearch, setGlobalSearch] = useState('');
+    const [processUsageCounts, setProcessUsageCounts] = useState<Record<string, number>>({});
 
     useEffect(() => {
         loadProcesses();
@@ -331,6 +334,34 @@ export const CatalogoView: React.FC = () => {
         } catch { /* hook trata */ }
     };
 
+    const openGlobalPanel = async () => {
+        setGlobalPanelOpen(true);
+        const counts: Record<string, number> = {};
+        await Promise.all(processes.map(async (p) => {
+            const usage = await getProcessUsageCount(p.id);
+            counts[p.id] = usage.count;
+        }));
+        setProcessUsageCounts(counts);
+    };
+
+    const openGlobalEditProcess = async (proc: ProductionProcess) => {
+        setEditForm({
+            processId: proc.id,
+            name: proc.name,
+            totalMinutes: proc.expected_duration_minutes,
+            time_per_unit_minutes: 0,
+            yieldUnits: 0,
+            recipeName: '',
+            process_type: proc.process_type || 'labor',
+            time_source: proc.time_source || 'estimated',
+            measured_at: proc.measured_at || null,
+            isGlobalEdit: true,
+        });
+        const usage = await getProcessUsageCount(proc.id);
+        setUsageInfo(usage);
+        setEditModal(true);
+    };
+
     const formatDuration = (minutes: number) => {
         if (minutes < 60) return `${Math.round(minutes)} min`;
         const h = Math.floor(minutes / 60);
@@ -350,6 +381,13 @@ export const CatalogoView: React.FC = () => {
                         Gerencie os processos de produção de cada receita.
                     </p>
                 </div>
+                <button
+                    onClick={openGlobalPanel}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                    <List size={16} />
+                    Todos os Processos
+                </button>
             </div>
 
             {recipes.length === 0 && !loading && (
@@ -597,30 +635,46 @@ export const CatalogoView: React.FC = () => {
                                     className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                                 />
                             </div>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1">
+                            {editForm.isGlobalEdit ? (
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Tempo total p/ {editForm.yieldUnits} un de {editForm.recipeName} (min)
+                                        Duração esperada (min)
                                     </label>
                                     <input
                                         type="number"
                                         step="1"
                                         min="1"
                                         value={editForm.totalMinutes}
-                                        onChange={e => {
-                                            const total = Number(e.target.value);
-                                            const tpu = editForm.yieldUnits > 0 ? Math.round((total / editForm.yieldUnits) * 100) / 100 : 0;
-                                            setEditForm({ ...editForm, totalMinutes: total, time_per_unit_minutes: tpu });
-                                        }}
+                                        onChange={e => setEditForm({ ...editForm, totalMinutes: Number(e.target.value) })}
                                         className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                                     />
                                 </div>
-                                <div className="pt-5">
-                                    <span className="text-sm text-gray-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-md">
-                                        = <strong>{editForm.time_per_unit_minutes}</strong> min/un
-                                    </span>
+                            ) : (
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Tempo total p/ {editForm.yieldUnits} un de {editForm.recipeName} (min)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="1"
+                                            min="1"
+                                            value={editForm.totalMinutes}
+                                            onChange={e => {
+                                                const total = Number(e.target.value);
+                                                const tpu = editForm.yieldUnits > 0 ? Math.round((total / editForm.yieldUnits) * 100) / 100 : 0;
+                                                setEditForm({ ...editForm, totalMinutes: total, time_per_unit_minutes: tpu });
+                                            }}
+                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
+                                        />
+                                    </div>
+                                    <div className="pt-5">
+                                        <span className="text-sm text-gray-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-md">
+                                            = <strong>{editForm.time_per_unit_minutes}</strong> min/un
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* process_type toggle */}
                             <div>
@@ -695,6 +749,82 @@ export const CatalogoView: React.FC = () => {
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {globalPanelOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-lg text-gray-900 font-heading">Todos os Processos</h3>
+                            <button onClick={() => setGlobalPanelOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="px-6 py-3 border-b border-gray-100">
+                            <input
+                                type="text"
+                                placeholder="Buscar processo..."
+                                value={globalSearch}
+                                onChange={e => setGlobalSearch(e.target.value)}
+                                className="w-full border-gray-300 rounded-md shadow-sm text-sm px-3 py-2"
+                            />
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-6 py-2">
+                            {processes
+                                .filter(p => !globalSearch || p.name.toLowerCase().includes(globalSearch.toLowerCase()))
+                                .map(proc => (
+                                    <div key={proc.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-sm font-medium text-gray-800 truncate">{proc.name}</span>
+                                            {proc.process_type === 'wait' ? (
+                                                <span title="Espera" className="text-gray-400 shrink-0"><Hourglass size={12} /></span>
+                                            ) : (
+                                                <span title="Mão de obra" className="text-blue-500 shrink-0"><User size={12} /></span>
+                                            )}
+                                            {proc.time_source === 'measured' ? (
+                                                <span title="Aferido" className="text-green-500 shrink-0"><CheckCircle size={12} /></span>
+                                            ) : (
+                                                <span title="Estimado" className="text-xs text-gray-400 shrink-0">~</span>
+                                            )}
+                                            <span className="text-xs text-gray-500">{proc.expected_duration_minutes} min</span>
+                                            <span className="text-xs text-gray-400">{processUsageCounts[proc.id] || 0} receita(s)</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                                onClick={() => { setGlobalPanelOpen(false); openGlobalEditProcess(proc); }}
+                                                className="p-1 text-gray-400 hover:text-primary transition-colors"
+                                                title="Editar"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    const usage = await getProcessUsageCount(proc.id);
+                                                    const msg = usage.count > 0
+                                                        ? `Deletar "${proc.name}"? Será removido de ${usage.count} receita(s): ${usage.recipes.join(', ')}`
+                                                        : `Deletar "${proc.name}"?`;
+                                                    if (!confirm(msg)) return;
+                                                    await deleteProcess(proc.id);
+                                                    await loadProcesses();
+                                                    if (expandedRecipe) {
+                                                        const rps = await fetchRecipeProcesses(expandedRecipe);
+                                                        setRecipeProcesses(prev => ({ ...prev, [expandedRecipe]: rps }));
+                                                    }
+                                                }}
+                                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                title="Excluir definitivamente"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            {processes.filter(p => !globalSearch || p.name.toLowerCase().includes(globalSearch.toLowerCase())).length === 0 && (
+                                <p className="text-sm text-gray-400 text-center py-4">Nenhum processo encontrado.</p>
+                            )}
                         </div>
                     </div>
                 </div>
