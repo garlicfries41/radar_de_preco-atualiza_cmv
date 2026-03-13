@@ -7,6 +7,9 @@ export interface ProductionProcess {
     expected_duration_minutes: number;
     yield_notes?: string;
     default_time_per_unit?: number | null;
+    process_type: 'labor' | 'wait';
+    time_source: 'measured' | 'estimated';
+    measured_at?: string | null;
 }
 
 export interface RecipeProcess {
@@ -15,7 +18,14 @@ export interface RecipeProcess {
     process_id: string;
     sort_order: number;
     time_per_unit_minutes: number;
-    production_processes?: { id: string; name: string; expected_duration_minutes: number };
+    production_processes?: {
+        id: string;
+        name: string;
+        expected_duration_minutes: number;
+        process_type: 'labor' | 'wait';
+        time_source: 'measured' | 'estimated';
+        measured_at?: string | null;
+    };
 }
 
 export interface RecipeSummary {
@@ -287,6 +297,21 @@ export function useProduction() {
         }
     }, []);
 
+    const reorderRecipeProcesses = useCallback(async (recipeId: string, processIds: string[]) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/recipes/${recipeId}/reorder-processes`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ process_ids: processIds }),
+            });
+            if (!res.ok) throw new Error('Erro ao reordenar processos');
+            return await res.json();
+        } catch (err: any) {
+            setError(err.message);
+            throw err;
+        }
+    }, []);
+
     const deleteRecipeProcess = useCallback(async (rpId: string) => {
         try {
             setLoading(true);
@@ -344,7 +369,13 @@ export function useProduction() {
         }
     }, []);
 
-    const updateProcessCascade = useCallback(async (processId: string, data: { name?: string; time_per_unit_minutes?: number }) => {
+    const updateProcessCascade = useCallback(async (processId: string, data: {
+        name?: string;
+        time_per_unit_minutes?: number;
+        process_type?: 'labor' | 'wait';
+        time_source?: 'measured' | 'estimated';
+        measured_at?: string | null;
+    }) => {
         try {
             setLoading(true);
             const res = await fetch(`${API_BASE_URL}/api/production/processes/${processId}/update-cascade`, {
@@ -382,5 +413,6 @@ export function useProduction() {
         scheduleRecipe,
         getProcessUsageCount,
         updateProcessCascade,
+        reorderRecipeProcesses,
     };
 }
