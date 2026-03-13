@@ -102,6 +102,9 @@ class ProductionProcessInput(BaseModel):
     name: str
     expected_duration_minutes: int
     yield_notes: Optional[str] = None
+    process_type: Optional[str] = "labor"
+    time_source: Optional[str] = "estimated"
+    measured_at: Optional[str] = None
 
 
 class RecipeProcessInput(BaseModel):
@@ -908,6 +911,23 @@ def resolve_recipe_slots(recipe_id: str, quantity: float):
     return {"slots": slots, "total_minutes": sum(s["duration_minutes"] for s in slots)}
 
 
+@app.put("/api/recipes/{recipe_id}/reorder-processes")
+def reorder_recipe_processes(recipe_id: str, data: dict):
+    """Bulk update sort_order for processes in a recipe."""
+    try:
+        process_ids = data.get("process_ids", [])
+        for idx, rp_id in enumerate(process_ids):
+            supabase.table("recipe_processes") \
+                .update({"sort_order": idx}) \
+                .eq("id", rp_id) \
+                .eq("recipe_id", recipe_id) \
+                .execute()
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Error reordering processes: {e}")
+        raise HTTPException(500, f"Erro ao reordenar processos: {str(e)}")
+
+
 @app.get("/api/recipes/{recipe_id}")
 def get_recipe(recipe_id: str):
     """Get recipe details including ingredients."""
@@ -1444,30 +1464,39 @@ def get_process_usage_count(process_id: str):
 
 @app.put("/api/production/processes/{process_id}/update-cascade")
 def update_process_cascade(process_id: str, data: dict):
-    """Atualiza processo e recalcula time_per_unit em todas as recipe_processes vinculadas."""
-    try:
-        new_name = data.get("name")
-        new_time_per_unit = data.get("time_per_unit_minutes")
+    new_name = data.get("name")
+    new_time_per_unit = data.get("time_per_unit_minutes")
+    new_process_type = data.get("process_type")
+    new_time_source = data.get("time_source")
+    new_measured_at = data.get("measured_at")
 
-        update_payload = {}
-        if new_name:
-            update_payload["name"] = new_name
-        if new_time_per_unit is not None:
-            update_payload["expected_duration_minutes"] = round(new_time_per_unit)
-        if update_payload:
-            update_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
-            supabase.table("production_processes").update(update_payload).eq("id", process_id).execute()
+    update_payload = {}
+    if new_name:
+        update_payload["name"] = new_name
+    if new_time_per_unit is not None:
+        update_payload["expected_duration_minutes"] = round(new_time_per_unit)
+    if new_process_type is not None:
+        update_payload["process_type"] = new_process_type
+    if new_time_source is not None:
+        update_payload["time_source"] = new_time_source
+        if new_time_source == "measured" and not new_measured_at:
+            update_payload["measured_at"] = datetime.now(timezone.utc).isoformat()
+        elif new_time_source == "estimated":
+            update_payload["measured_at"] = None
+    if new_measured_at:
+        update_payload["measured_at"] = new_measured_at
 
-        if new_time_per_unit is not None:
-            supabase.table("recipe_processes") \
-                .update({"time_per_unit_minutes": new_time_per_unit}) \
-                .eq("process_id", process_id) \
-                .execute()
+    if update_payload:
+        update_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+        supabase.table("production_processes").update(update_payload).eq("id", process_id).execute()
 
-        return {"ok": True}
-    except Exception as e:
-        logger.error(f"Error cascading process update: {e}")
-        raise HTTPException(500, str(e))
+    if new_time_per_unit is not None:
+        supabase.table("recipe_processes") \
+            .update({"time_per_unit_minutes": new_time_per_unit}) \
+            .eq("process_id", process_id) \
+            .execute()
+
+    return {"ok": True}
 
 @app.delete("/api/recipe-processes/{rp_id}")
 def delete_recipe_process(rp_id: str):
