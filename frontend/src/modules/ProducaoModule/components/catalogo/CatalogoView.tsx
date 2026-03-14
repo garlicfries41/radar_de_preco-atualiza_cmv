@@ -62,7 +62,7 @@ function SortableProcessRow({
                     {rp.production_processes?.name || 'Processo'}
                 </span>
                 {rp.production_processes?.process_type === 'wait' ? (
-                    <span title="Espera" className="text-gray-400"><Hourglass size={12} /></span>
+                    <span title="Espera" className="text-red-500"><Hourglass size={12} /></span>
                 ) : (
                     <span title="Mão de obra" className="text-blue-500"><User size={12} /></span>
                 )}
@@ -71,7 +71,7 @@ function SortableProcessRow({
                         <CheckCircle size={12} />
                     </span>
                 ) : (
-                    <span title="Tempo estimado" className="text-xs text-gray-400">~</span>
+                    <span title="Tempo estimado" className="text-xs text-red-500">~</span>
                 )}
                 <span className="text-xs text-gray-500">
                     {rp.time_per_unit_minutes} min/un
@@ -781,14 +781,14 @@ export const CatalogoView: React.FC = () => {
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-sm font-medium text-gray-800 truncate">{proc.name}</span>
                                             {proc.process_type === 'wait' ? (
-                                                <span title="Espera" className="text-gray-400 shrink-0"><Hourglass size={12} /></span>
+                                                <span title="Espera" className="text-red-500 shrink-0"><Hourglass size={12} /></span>
                                             ) : (
                                                 <span title="Mão de obra" className="text-blue-500 shrink-0"><User size={12} /></span>
                                             )}
                                             {proc.time_source === 'measured' ? (
                                                 <span title="Aferido" className="text-green-500 shrink-0"><CheckCircle size={12} /></span>
                                             ) : (
-                                                <span title="Estimado" className="text-xs text-gray-400 shrink-0">~</span>
+                                                <span title="Estimado" className="text-xs text-red-500 shrink-0">~</span>
                                             )}
                                             <span className="text-xs text-gray-500">{proc.expected_duration_minutes} min</span>
                                             <span className="text-xs text-gray-400">{processUsageCounts[proc.id] || 0} receita(s)</span>

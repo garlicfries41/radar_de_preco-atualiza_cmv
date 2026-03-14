@@ -822,7 +822,7 @@ def get_recipe_processes(recipe_id: str):
     """Lista processos vinculados a uma receita, ordenados por sort_order."""
     try:
         result = supabase.table("recipe_processes") \
-            .select("*, production_processes(id, name, expected_duration_minutes)") \
+            .select("*, production_processes(id, name, expected_duration_minutes, process_type, time_source, measured_at)") \
             .eq("recipe_id", recipe_id) \
             .order("sort_order") \
             .execute()
