@@ -18,6 +18,7 @@ export interface RecipeProcess {
     process_id: string;
     sort_order: number;
     time_per_unit_minutes: number;
+    chain_group_id?: string | null;
     production_processes?: {
         id: string;
         name: string;
@@ -45,6 +46,7 @@ export interface ResolvedSlot {
     quantity: number;
     is_sub_preparo: boolean;
     sort_order: number;
+    chain_group_id?: string | null;
 }
 
 export interface ProductionSchedule {
@@ -57,6 +59,7 @@ export interface ProductionSchedule {
     status: 'pending' | 'done' | 'cancelled';
     production_processes?: { name: string };
     updated_at?: string;
+    chain_group_id?: string | null;
 }
 
 const getApiUrl = () => {
@@ -279,7 +282,7 @@ export function useProduction() {
         }
     }, []);
 
-    const updateRecipeProcess = useCallback(async (rpId: string, data: { sort_order?: number; time_per_unit_minutes?: number }) => {
+    const updateRecipeProcess = useCallback(async (rpId: string, data: { sort_order?: number; time_per_unit_minutes?: number; chain_group_id?: string | null }) => {
         try {
             setLoading(true);
             const res = await fetch(`${API_BASE_URL}/api/recipe-processes/${rpId}`, {

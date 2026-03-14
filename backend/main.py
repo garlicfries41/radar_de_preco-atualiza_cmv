@@ -116,6 +116,7 @@ class RecipeProcessInput(BaseModel):
 class RecipeProcessUpdate(BaseModel):
     sort_order: Optional[int] = None
     time_per_unit_minutes: Optional[float] = None
+    chain_group_id: Optional[str] = None
 
 class BulkScheduleInput(BaseModel):
     recipe_id: str
@@ -129,6 +130,7 @@ class ProductionScheduleInput(BaseModel):
     custom_item_name: Optional[str] = None
     duration_minutes: Optional[int] = None
     status: Optional[str] = None
+    chain_group_id: Optional[str] = None
 
 class AddExpenseRequest(BaseModel):
     description: str
@@ -884,6 +886,7 @@ def resolve_recipe_slots(recipe_id: str, quantity: float):
                 "quantity": qty,
                 "is_sub_preparo": bool(parent_name),
                 "sort_order": rp["sort_order"],
+                "chain_group_id": rp.get("chain_group_id"),
             })
 
         ing_res = supabase.table("recipe_ingredients") \
@@ -1441,7 +1444,7 @@ def delete_production_schedule(schedule_id: str):
 def update_recipe_process(rp_id: str, data: RecipeProcessUpdate):
     """Atualiza sort_order ou time_per_unit_minutes."""
     try:
-        payload = {k: v for k, v in data.model_dump().items() if v is not None}
+        payload = data.model_dump(exclude_unset=True)
         result = supabase.table("recipe_processes").update(payload).eq("id", rp_id).execute()
         return result.data[0] if result.data else {}
     except Exception as e:
@@ -1532,6 +1535,7 @@ def schedule_recipe(data: BulkScheduleInput):
             "custom_item_name": slot["label"],
             "duration_minutes": max(1, round(slot["duration_minutes"])),
             "status": "pending",
+            "chain_group_id": slot.get("chain_group_id"),
         }
         result = supabase.table("production_schedule").insert(entry).execute()
         if result.data:
