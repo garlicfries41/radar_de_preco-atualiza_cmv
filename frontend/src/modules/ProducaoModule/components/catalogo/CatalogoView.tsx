@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, Trash2, Clock, X, ChevronDown, ChevronRight, BookOpen, Pencil, GripVertical, User, Hourglass, CheckCircle, List } from 'lucide-react';
