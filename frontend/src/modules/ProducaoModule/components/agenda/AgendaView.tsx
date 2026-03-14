@@ -224,6 +224,63 @@ export const AgendaView: React.FC = () => {
         return m > 0 ? `${h}h ${m}min` : `${h}h`;
     };
 
+    // --- Break Link ---
+    const handleBreakLink = async (entry: ProductionSchedule) => {
+        try {
+            await updateScheduleEntry(entry.id, { chain_group_id: null } as any);
+            loadWeekData(currentWeekStart, addDays(currentWeekStart, 5));
+        } catch (err) {
+            console.error('Erro ao quebrar vínculo:', err);
+        }
+    };
+
+    // --- Chain-aware drag helper ---
+    const handleChainDrop = async (droppedEntry: ProductionSchedule, newStartTime: string, targetDate: string) => {
+        if (!droppedEntry.chain_group_id) {
+            const updated = { ...droppedEntry, planned_date: targetDate, start_time: newStartTime };
+            setScheduleData(prev => prev.map(s => s.id === droppedEntry.id ? updated : s));
+            await updateScheduleEntry(droppedEntry.id, {
+                planned_date: targetDate,
+                start_time: newStartTime,
+                duration_minutes: droppedEntry.duration_minutes,
+                status: droppedEntry.status,
+            } as any);
+            return;
+        }
+
+        // Find all chain siblings in the same day
+        const chainSiblings = scheduleData.filter(e =>
+            e.chain_group_id === droppedEntry.chain_group_id &&
+            e.planned_date === droppedEntry.planned_date &&
+            e.id !== droppedEntry.id
+        );
+
+        // All chain entries sorted by id (creation order = recipe sort_order)
+        const allChain = [droppedEntry, ...chainSiblings].sort((a, b) => a.id.localeCompare(b.id));
+
+        // Sequence from newStartTime
+        let currentTime = newStartTime;
+        const updates = allChain.map(entry => {
+            const thisStart = currentTime;
+            const [h, m] = thisStart.split(':').map(Number);
+            const totalMin = h * 60 + m + entry.duration_minutes;
+            const nextH = Math.floor(totalMin / 60).toString().padStart(2, '0');
+            const nextM = (totalMin % 60).toString().padStart(2, '0');
+            currentTime = `${nextH}:${nextM}:00`;
+            return { id: entry.id, start_time: thisStart.includes(':00', thisStart.length - 3) ? thisStart : `${thisStart}:00` };
+        });
+
+        // Optimistic update
+        setScheduleData(prev => prev.map(s => {
+            const u = updates.find(u => u.id === s.id);
+            return u ? { ...s, planned_date: targetDate, start_time: u.start_time } : s;
+        }));
+
+        await Promise.all(
+            updates.map(u => updateScheduleEntry(u.id, { start_time: u.start_time, planned_date: targetDate } as any))
+        );
+    };
+
     // --- Drag & Drop ---
     const handleDragStart = (event: DragStartEvent) => {
         const entry = event.active.data.current?.entry as ProductionSchedule | undefined;
@@ -274,15 +331,8 @@ export const AgendaView: React.FC = () => {
         const newMin = clampedMinutes % 60;
         const newStartTime = `${String(newHour).padStart(2, '0')}:${String(newMin).padStart(2, '0')}:00`;
 
-        const updated = { ...entry, planned_date: targetDate, start_time: newStartTime };
-        setScheduleData(prev => prev.map(s => s.id === entry.id ? updated : s));
         try {
-            await updateScheduleEntry(entry.id, {
-                planned_date: targetDate,
-                start_time: newStartTime,
-                duration_minutes: entry.duration_minutes,
-                status: entry.status,
-            } as any);
+            await handleChainDrop(entry, newStartTime, targetDate);
         } catch (err) {
             console.error('Erro ao salvar posição:', err);
             loadWeekData(currentWeekStart, addDays(currentWeekStart, 5));
@@ -338,6 +388,7 @@ export const AgendaView: React.FC = () => {
                                 entries={scheduleData.filter(e => e.planned_date?.startsWith(format(day, 'yyyy-MM-dd')))}
                                 onEdit={handleEditEntry}
                                 onDelete={handleDeleteEntry}
+                                onBreakLink={handleBreakLink}
                             />
                         ))}
                     </div>

@@ -15,6 +15,7 @@ interface DayColumnProps {
     entries: ProductionSchedule[];
     onEdit: (entry: ProductionSchedule) => void;
     onDelete: (entry: ProductionSchedule) => void;
+    onBreakLink?: (entry: ProductionSchedule) => void;
 }
 
 function timeToMinutes(time: string): number {
@@ -65,7 +66,7 @@ function computeOverlapLayout(entries: ProductionSchedule[]): Map<string, Overla
     return result;
 }
 
-export function DayColumn({ day, entries, onEdit, onDelete }: DayColumnProps) {
+export function DayColumn({ day, entries, onEdit, onDelete, onBreakLink }: DayColumnProps) {
     const dayKey = format(day, 'yyyy-MM-dd');
     const { setNodeRef, isOver } = useDroppable({ id: dayKey, data: { date: dayKey } });
 
@@ -117,6 +118,7 @@ export function DayColumn({ day, entries, onEdit, onDelete }: DayColumnProps) {
                                     pixelsPerMinute={PIXELS_PER_MINUTE}
                                     onEdit={onEdit}
                                     onDelete={onDelete}
+                                    onBreakLink={onBreakLink}
                                 />
                             </div>
                         );
