@@ -1,5 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { Link2, Link2Off } from 'lucide-react';
 import type { ProductionSchedule } from '../../hooks/useProduction';
 
 // Paleta de cores para diferenciar slots visualmente
@@ -38,9 +39,10 @@ interface TimeSlotProps {
     pixelsPerMinute: number;
     onEdit: (entry: ProductionSchedule) => void;
     onDelete: (entry: ProductionSchedule) => void;
+    onBreakLink?: (entry: ProductionSchedule) => void;
 }
 
-export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete }: TimeSlotProps) {
+export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete, onBreakLink }: TimeSlotProps) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: entry.id,
         data: { entry },
@@ -72,10 +74,23 @@ export function TimeSlot({ entry, pixelsPerMinute, onEdit, onDelete }: TimeSlotP
                     </span>
                 )}
                 <p className={`text-xs font-semibold ${color.text} truncate`}>{label}</p>
+                {entry.chain_group_id && (
+                    <span className="text-blue-400/60 flex-shrink-0"><Link2 size={10} /></span>
+                )}
             </div>
             <div className="flex items-center justify-between mt-auto">
                 <p className="text-[10px] text-gray-500">{entry.duration_minutes}min</p>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {entry.chain_group_id && onBreakLink && (
+                        <button
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); onBreakLink(entry); }}
+                            className="text-[10px] bg-white border border-orange-200 rounded px-1 text-orange-400 hover:text-orange-600"
+                            title="Quebrar link"
+                        >
+                            <Link2Off size={10} />
+                        </button>
+                    )}
                     <button
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
